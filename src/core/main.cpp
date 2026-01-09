@@ -30,6 +30,76 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <sstream>
+
+// Check if a DLL can be loaded on Windows
+static bool canLoadDll(const char* dllName) {
+    HMODULE hModule = LoadLibraryExA(dllName, NULL, LOAD_LIBRARY_AS_DATAFILE);
+    if (hModule) {
+        FreeLibrary(hModule);
+        return true;
+    }
+    return false;
+}
+
+// Check Windows dependencies at startup and show helpful dialog if missing
+static bool checkWindowsDependencies(const std::string& exeDir) {
+    std::vector<std::pair<std::string, std::string>> missingDeps;
+    
+    // Check Visual C++ Runtime (CRITICAL - almost everything needs this)
+    if (!canLoadDll("vcruntime140.dll")) {
+        missingDeps.push_back({"Visual C++ Redistributable 2015-2022", 
+            "Download from: https://aka.ms/vs/17/release/vc_redist.x64.exe"});
+    }
+    
+    // Check bundled Python DLL
+    std::string pythonDll = exeDir + "\\python311.dll";
+    struct stat buffer;
+    if (stat(pythonDll.c_str(), &buffer) != 0) {
+        missingDeps.push_back({"Python 3.11 DLL (python311.dll)", 
+            "The bundled Python files are missing. Please re-download NST."});
+    }
+    
+    // Check bundled Python directory
+    std::string pythonDir = exeDir + "\\python";
+    if (stat(pythonDir.c_str(), &buffer) != 0) {
+        missingDeps.push_back({"Bundled Python Directory", 
+            "The python/ folder is missing. Please re-download NST."});
+    }
+    
+    if (!missingDeps.empty()) {
+        std::stringstream msg;
+        msg << "NST detected missing dependencies:\n\n";
+        
+        for (size_t i = 0; i < missingDeps.size(); i++) {
+            msg << (i + 1) << ". " << missingDeps[i].first << "\n";
+            msg << "   " << missingDeps[i].second << "\n\n";
+        }
+        
+        msg << "Would you like to continue anyway?\n";
+        msg << "(AI features may not work until dependencies are installed)";
+        
+        int result = MessageBoxA(NULL, msg.str().c_str(), 
+            "NST - Missing Dependencies", 
+            MB_YESNO | MB_ICONWARNING);
+        
+        return (result == IDYES);
+    }
+    
+    return true; // All dependencies present
+}
+
+// Get executable directory on Windows
+static std::string getExeDirectory() {
+    char exe_path_buf[MAX_PATH];
+    DWORD len = GetModuleFileNameA(NULL, exe_path_buf, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) {
+        return ".";
+    }
+    std::string exe_path(exe_path_buf);
+    size_t last_sep = exe_path.find_last_of("\\/");
+    return (last_sep != std::string::npos) ? exe_path.substr(0, last_sep) : ".";
+}
 #endif
 
 
@@ -156,9 +226,19 @@ static void configurePythonEnvironment(const char* argv0)
 
 int main(int argc, char *argv[])
 {
+#ifdef _WIN32
+    // Check Windows dependencies FIRST, before anything else
+    std::string exeDir = getExeDirectory();
+    if (!checkWindowsDependencies(exeDir)) {
+        // User chose not to continue
+        return 1;
+    }
+#endif
+
 #ifdef HAS_PYTHON
     // Configure Python BEFORE creating interpreter
     configurePythonEnvironment(argv[0]);
+
 
     std::cerr << "[NST] About to initialize Python interpreter..." << std::endl;
     
