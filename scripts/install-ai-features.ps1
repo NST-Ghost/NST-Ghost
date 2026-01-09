@@ -15,17 +15,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║           NST AI Features Installer (Windows)                    ║" -ForegroundColor Cyan
-Write-Host "╠══════════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
-Write-Host "║  This will install:                                              ║" -ForegroundColor Cyan
-Write-Host "║  • EasyOCR        - Text detection from images                   ║" -ForegroundColor Cyan
+Write-Host "===================================================================" -ForegroundColor Cyan
+Write-Host "           NST AI Features Installer (Windows)                     " -ForegroundColor Cyan
+Write-Host "-------------------------------------------------------------------" -ForegroundColor Cyan
+Write-Host "  This will install:                                               " -ForegroundColor Cyan
+Write-Host "  - EasyOCR        - Text detection from images                    " -ForegroundColor Cyan
 if ($GPU) {
-    Write-Host "║  • PyTorch (GPU)  - AI framework with CUDA support               ║" -ForegroundColor Cyan
+    Write-Host "  - PyTorch (GPU)  - AI framework with CUDA support                " -ForegroundColor Cyan
 } else {
-    Write-Host "║  • PyTorch (CPU)  - AI framework (no GPU required)               ║" -ForegroundColor Cyan
+    Write-Host "  - PyTorch (CPU)  - AI framework (no GPU required)                " -ForegroundColor Cyan
 }
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "===================================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Find NST root directory from script location
@@ -66,15 +66,15 @@ if (Test-Path $SitePackagesPath) {
 }
 
 if (-not $PySitePackages) {
-    Write-Host "❌ Error: Cannot find bundled Python in NST." -ForegroundColor Red
+    Write-Host "[ERROR] Cannot find bundled Python in NST." -ForegroundColor Red
     Write-Host "   Looking for site-packages in: $NSTRoot" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "   If you're running from source, create the directory structure first." -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "✓ NST bundled Python: $BundledPyVer" -ForegroundColor Green
-Write-Host "✓ Install target: $PySitePackages" -ForegroundColor Green
+Write-Host "[OK] NST bundled Python: $BundledPyVer" -ForegroundColor Green
+Write-Host "[OK] Install target: $PySitePackages" -ForegroundColor Green
 
 # Check if uv is installed
 $UvCmd = $null
@@ -104,13 +104,13 @@ foreach ($uvPath in $UvPaths) {
 
 if (-not $UvCmd) {
     Write-Host ""
-    Write-Host "📦 Installing uv (fast Python package manager)..." -ForegroundColor Yellow
+    Write-Host "[*] Installing uv (fast Python package manager)..." -ForegroundColor Yellow
     
     # Install uv using PowerShell installer
     try {
         Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
     } catch {
-        Write-Host "❌ Error: Failed to download uv installer." -ForegroundColor Red
+        Write-Host "[ERROR] Failed to download uv installer." -ForegroundColor Red
         Write-Host "   Please install uv manually: https://docs.astral.sh/uv/getting-started/installation/" -ForegroundColor Yellow
         exit 1
     }
@@ -133,17 +133,17 @@ if (-not $UvCmd) {
     }
     
     if (-not $UvCmd) {
-        Write-Host "❌ Error: Failed to install uv." -ForegroundColor Red
+        Write-Host "[ERROR] Failed to install uv." -ForegroundColor Red
         exit 1
     }
 }
 
-Write-Host "✓ Using uv: $UvCmd" -ForegroundColor Green
+Write-Host "[OK] Using uv: $UvCmd" -ForegroundColor Green
 
 # Create temp venv with correct Python version
 $TempVenv = Join-Path $env:TEMP "nst-install-venv"
 Write-Host ""
-Write-Host "📦 Setting up Python $BundledPyVer environment..." -ForegroundColor Yellow
+Write-Host "[*] Setting up Python $BundledPyVer environment..." -ForegroundColor Yellow
 
 # Clean up any previous venv
 if (Test-Path $TempVenv) {
@@ -167,7 +167,7 @@ $VenvPython = Join-Path $TempVenv "Scripts\python.exe"
 Write-Host "Installing pip in temporary environment..." -ForegroundColor Yellow
 & $UvCmd pip install --python $VenvPython pip
 
-Write-Host "✓ Python $BundledPyVer environment ready" -ForegroundColor Green
+Write-Host "[OK] Python $BundledPyVer environment ready" -ForegroundColor Green
 
 # Ask for confirmation
 Write-Host ""
@@ -189,8 +189,8 @@ if ($response -match "^[Nn]$") {
 }
 
 Write-Host ""
-Write-Host "📦 Installing packages..." -ForegroundColor Yellow
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Gray
+Write-Host "[*] Installing packages..." -ForegroundColor Yellow
+Write-Host "-------------------------------------------------------------------" -ForegroundColor Gray
 
 # Install PyTorch
 Write-Host ""
@@ -209,7 +209,7 @@ if ($GPU) {
 }
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Error: Failed to install PyTorch." -ForegroundColor Red
+    Write-Host "[ERROR] Failed to install PyTorch." -ForegroundColor Red
     exit 1
 }
 
@@ -224,7 +224,7 @@ Write-Host "[2/2] Installing EasyOCR..." -ForegroundColor Cyan
     easyocr
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Error: Failed to install EasyOCR." -ForegroundColor Red
+    Write-Host "[ERROR] Failed to install EasyOCR." -ForegroundColor Red
     exit 1
 }
 
@@ -236,7 +236,7 @@ Write-Host "Installing EasyOCR dependencies..." -ForegroundColor Yellow
     opencv-python-headless scipy numpy Pillow scikit-image python-bidi PyYAML Shapely pyclipper ninja
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Error: Failed to install EasyOCR dependencies." -ForegroundColor Red
+    Write-Host "[ERROR] Failed to install EasyOCR dependencies." -ForegroundColor Red
     exit 1
 }
 
@@ -246,13 +246,13 @@ if (Test-Path $TempVenv) {
 }
 
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Gray
+Write-Host "-------------------------------------------------------------------" -ForegroundColor Gray
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║  ✅ Installation Complete!                                       ║" -ForegroundColor Green
-Write-Host "╠══════════════════════════════════════════════════════════════════╣" -ForegroundColor Green
-Write-Host "║  Please restart NST to enable AI features.                       ║" -ForegroundColor Green
-Write-Host "║                                                                  ║" -ForegroundColor Green
-Write-Host "║  Note: First OCR run will download language models (~100MB).    ║" -ForegroundColor Green
-Write-Host "╚══════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "===================================================================" -ForegroundColor Green
+Write-Host "    Installation Complete!                                         " -ForegroundColor Green
+Write-Host "-------------------------------------------------------------------" -ForegroundColor Green
+Write-Host "    Please restart NST to enable AI features.                      " -ForegroundColor Green
+Write-Host "                                                                   " -ForegroundColor Green
+Write-Host "    Note: First OCR run will download language models (~100MB).   " -ForegroundColor Green
+Write-Host "===================================================================" -ForegroundColor Green
 Write-Host ""
