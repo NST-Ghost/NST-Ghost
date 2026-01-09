@@ -216,13 +216,19 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           # These DLLs are required by PyTorch but MISSING from the CPU-only wheel.
-          # We download them from the FULL PyTorch wheel (which includes them).
+          # We download them from the CUDA wheel (which includes all DLLs).
+          # Note: We only extract the DLLs, not the full CUDA package.
           
           $targetDir = "package/python/Lib/site-packages/torch/lib"
           New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
           
-          Write-Host "Downloading full PyTorch wheel for DLL extraction..."
-          pip download torch --no-deps --dest . --python-version 3.11 --platform win_amd64
+          Write-Host "Downloading PyTorch CUDA wheel for DLL extraction..."
+          Write-Host "(This is only to extract runtime DLLs, not to install CUDA)"
+          
+          # Download CUDA 12.1 wheel which contains all required DLLs
+          pip download torch --no-deps --dest . `
+            --index-url https://download.pytorch.org/whl/cu121 `
+            --python-version 3.11 --platform win_amd64
           
           $whl = Get-ChildItem -Filter "torch-*.whl" | Select-Object -First 1
           if (-not $whl) {
@@ -230,27 +236,41 @@ jobs:
             exit 1
           }
           
+          Write-Host "Downloaded: $($whl.Name)"
+          
           $zipName = $whl.Name -replace "\.whl$", ".zip"
           Rename-Item $whl.Name $zipName
+          
+          Write-Host "Extracting wheel..."
           Expand-Archive $zipName -DestinationPath "torch_extract" -Force
+          
+          # Debug: List what's in torch/lib in the extracted wheel
+          Write-Host "`nContents of extracted torch/lib:"
+          Get-ChildItem -Path "torch_extract" -Filter "lib" -Recurse -Directory | ForEach-Object {
+            Get-ChildItem $_.FullName -Filter "*.dll" | ForEach-Object { Write-Host "  - $($_.Name)" }
+          }
           
           # Copy required DLLs
           $dllsToCopy = @("fbgemm.dll", "libomp140.x86_64.dll", "asmjit.dll", "uv.dll", "c10.dll", "torch_cpu.dll")
+          $copiedCount = 0
           foreach ($dll in $dllsToCopy) {
             $found = Get-ChildItem -Path "torch_extract" -Filter $dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($found) {
               Copy-Item $found.FullName -Destination $targetDir -Force
-              Write-Host "  [OK] Bundled $dll"
+              Write-Host "  [OK] Bundled $dll ($([math]::Round($found.Length / 1MB, 2)) MB)"
+              $copiedCount++
             } else {
-              Write-Host "  [WARN] $dll not found in wheel (may be optional)"
+              Write-Host "  [WARN] $dll not found in wheel"
             }
           }
+          
+          Write-Host "`nCopied $copiedCount DLLs to $targetDir"
           
           # Cleanup extracted files (to not bloat the download)
           Remove-Item -Recurse -Force "torch_extract", $zipName
           
           Write-Host "`nPre-bundled DLLs:"
-          Get-ChildItem $targetDir -Filter "*.dll" | Select-Object Name, Length | Format-Table
+          Get-ChildItem $targetDir -Filter "*.dll" | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length / 1MB, 2)}} | Format-Table
         shell: pwsh
       
       - name: Validate Python bundle structure
