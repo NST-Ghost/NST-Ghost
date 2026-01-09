@@ -244,14 +244,14 @@ jobs:
           Write-Host "Extracting wheel..."
           Expand-Archive $zipName -DestinationPath "torch_extract" -Force
           
-          # Debug: List what's in torch/lib in the extracted wheel
-          Write-Host "`nContents of extracted torch/lib:"
-          Get-ChildItem -Path "torch_extract" -Filter "lib" -Recurse -Directory | ForEach-Object {
-            Get-ChildItem $_.FullName -Filter "*.dll" | ForEach-Object { Write-Host "  - $($_.Name)" }
+          # Debug: List ALL DLLs in the extracted wheel
+          Write-Host "`nAll DLLs in extracted wheel:"
+          Get-ChildItem -Path "torch_extract" -Filter "*.dll" -Recurse | ForEach-Object { 
+            Write-Host "  - $($_.Name) ($([math]::Round($_.Length / 1MB, 2)) MB)" 
           }
           
-          # Copy required DLLs
-          $dllsToCopy = @("fbgemm.dll", "libomp140.x86_64.dll", "asmjit.dll", "uv.dll", "c10.dll", "torch_cpu.dll")
+          # Copy required DLLs (with alternatives for OpenMP)
+          $dllsToCopy = @("fbgemm.dll", "asmjit.dll", "uv.dll", "c10.dll", "torch_cpu.dll")
           $copiedCount = 0
           foreach ($dll in $dllsToCopy) {
             $found = Get-ChildItem -Path "torch_extract" -Filter $dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -262,6 +262,54 @@ jobs:
             } else {
               Write-Host "  [WARN] $dll not found in wheel"
             }
+          }
+          
+          # Special handling for OpenMP library (has multiple possible names)
+          $ompNames = @("libomp140.x86_64.dll", "libiomp5md.dll", "vcomp140.dll", "libomp.dll")
+          $ompFound = $false
+          foreach ($omp in $ompNames) {
+            $found = Get-ChildItem -Path "torch_extract" -Filter $omp -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              # Always save as libomp140.x86_64.dll for consistency
+              Copy-Item $found.FullName -Destination "$targetDir/libomp140.x86_64.dll" -Force
+              Write-Host "  [OK] Bundled OpenMP as libomp140.x86_64.dll (from $omp)"
+              $copiedCount++
+              $ompFound = $true
+              break
+            }
+          }
+          
+          # Fallback: Download OpenMP from official Intel redistributable
+          if (-not $ompFound) {
+            Write-Host "  [INFO] OpenMP not in wheel, downloading from llvm-project releases..."
+            try {
+              # Download pre-built libomp from LLVM releases
+              $ompUrl = "https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/LLVM-17.0.6-win64.exe"
+              # Actually, let's use a simpler approach - download from a known good numpy wheel
+              Write-Host "  Downloading numpy wheel to extract libomp..."
+              pip download numpy --no-deps --dest . --python-version 3.11 --platform win_amd64
+              $numpyWhl = Get-ChildItem -Filter "numpy-*.whl" | Select-Object -First 1
+              if ($numpyWhl) {
+                $numpyZip = $numpyWhl.Name -replace "\.whl$", ".zip"
+                Rename-Item $numpyWhl.Name $numpyZip
+                Expand-Archive $numpyZip -DestinationPath "numpy_extract" -Force
+                
+                $ompInNumpy = Get-ChildItem -Path "numpy_extract" -Filter "libomp*.dll" -Recurse | Select-Object -First 1
+                if ($ompInNumpy) {
+                  Copy-Item $ompInNumpy.FullName -Destination "$targetDir/libomp140.x86_64.dll" -Force
+                  Write-Host "  [OK] Bundled libomp140.x86_64.dll from numpy"
+                  $copiedCount++
+                  $ompFound = $true
+                }
+                Remove-Item -Recurse -Force "numpy_extract", $numpyZip
+              }
+            } catch {
+              Write-Host "  [WARN] Failed to download OpenMP fallback: $_"
+            }
+          }
+          
+          if (-not $ompFound) {
+            Write-Host "  [ERROR] Could not find or download OpenMP library!"
           }
           
           Write-Host "`nCopied $copiedCount DLLs to $targetDir"
