@@ -154,8 +154,25 @@ static void configurePythonEnvironment(const char* argv0)
         _putenv(s_pythonhome_env);
         _putenv(s_pythonpath_env);
         
+        // CRITICAL: Add torch/lib to PATH so c10.dll and other torch DLLs can find their dependencies
+        // This is more reliable than os.add_dll_directory() in embedded Python scenarios
+        std::string torch_lib = site_packages + "/torch/lib";
+        const char* current_path = std::getenv("PATH");
+        std::string new_path_str;
+        if (current_path) {
+            new_path_str = torch_lib + ";" + win_python_home + ";" + std::string(current_path);
+        } else {
+            new_path_str = torch_lib + ";" + win_python_home;
+        }
+        
+        // Use static storage for PATH (persistent for program lifetime)
+        static char s_path_env[32768];
+        snprintf(s_path_env, sizeof(s_path_env), "PATH=%s", new_path_str.c_str());
+        _putenv(s_path_env);
+        
         std::cerr << "[NST] Configured bundled Python (Windows): " << win_python_home << std::endl;
         std::cerr << "[NST] PYTHONPATH: " << pythonpath << std::endl;
+        std::cerr << "[NST] Added to PATH: " << torch_lib << std::endl;
         return;
     }
 #else
