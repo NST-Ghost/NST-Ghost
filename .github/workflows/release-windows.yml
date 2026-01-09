@@ -212,6 +212,47 @@ jobs:
           Get-ChildItem "$sitePackages" -Directory | Select-Object Name | Format-Table
         shell: pwsh
       
+      - name: Pre-bundle PyTorch Runtime DLLs
+        if: ${{ !cancelled() }}
+        run: |
+          # These DLLs are required by PyTorch but MISSING from the CPU-only wheel.
+          # We download them from the FULL PyTorch wheel (which includes them).
+          
+          $targetDir = "package/python/Lib/site-packages/torch/lib"
+          New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
+          
+          Write-Host "Downloading full PyTorch wheel for DLL extraction..."
+          pip download torch --no-deps --dest . --python-version 3.11 --platform win_amd64
+          
+          $whl = Get-ChildItem -Filter "torch-*.whl" | Select-Object -First 1
+          if (-not $whl) {
+            Write-Error "Failed to download PyTorch wheel"
+            exit 1
+          }
+          
+          $zipName = $whl.Name -replace "\.whl$", ".zip"
+          Rename-Item $whl.Name $zipName
+          Expand-Archive $zipName -DestinationPath "torch_extract" -Force
+          
+          # Copy required DLLs
+          $dllsToCopy = @("fbgemm.dll", "libomp140.x86_64.dll", "asmjit.dll", "uv.dll", "c10.dll", "torch_cpu.dll")
+          foreach ($dll in $dllsToCopy) {
+            $found = Get-ChildItem -Path "torch_extract" -Filter $dll -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) {
+              Copy-Item $found.FullName -Destination $targetDir -Force
+              Write-Host "  [OK] Bundled $dll"
+            } else {
+              Write-Host "  [WARN] $dll not found in wheel (may be optional)"
+            }
+          }
+          
+          # Cleanup extracted files (to not bloat the download)
+          Remove-Item -Recurse -Force "torch_extract", $zipName
+          
+          Write-Host "`nPre-bundled DLLs:"
+          Get-ChildItem $targetDir -Filter "*.dll" | Select-Object Name, Length | Format-Table
+        shell: pwsh
+      
       - name: Validate Python bundle structure
         run: |
           Write-Host "Validating Python bundle structure..."
@@ -221,15 +262,17 @@ jobs:
             "package/python/python.exe",
             "package/python/Lib/site-packages",
             "package/python311.dll",
-            "package/scripts"
+            "package/scripts",
+            "package/python/Lib/site-packages/torch/lib/fbgemm.dll",
+            "package/python/Lib/site-packages/torch/lib/libomp140.x86_64.dll"
           )
           
           $allPresent = $true
           foreach ($file in $expectedFiles) {
             if (Test-Path $file) {
-              Write-Host "  ✓ $file"
+              Write-Host "  [OK] $file"
             } else {
-              Write-Host "  ✗ Missing: $file" -ForegroundColor Red
+              Write-Host "  [MISSING] $file" -ForegroundColor Red
               $allPresent = $false
             }
           }
@@ -239,7 +282,7 @@ jobs:
             exit 1
           }
           
-          Write-Host "`n✓ All required Python files present"
+          Write-Host "`n[OK] All required Python files present"
         shell: pwsh
       
       - name: Create ZIP package

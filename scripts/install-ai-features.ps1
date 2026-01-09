@@ -192,18 +192,17 @@ Write-Host ""
 Write-Host "[*] Installing packages..." -ForegroundColor Yellow
 Write-Host "-------------------------------------------------------------------" -ForegroundColor Gray
 
-# Install PyTorch
+# Install PyTorch into the Temporary Venv (Standard Install)
+# We avoid --target because it often breaks DLL layouts for complex packages like torch.
 Write-Host ""
 if ($GPU) {
-    Write-Host "[1/2] Installing PyTorch (GPU with CUDA)..." -ForegroundColor Cyan
+    Write-Host "[1/2] Installing PyTorch (GPU with CUDA) into generic environment..." -ForegroundColor Cyan
     & $VenvPip install `
-        --target="$PySitePackages" `
         --upgrade --no-user `
         torch torchvision
 } else {
-    Write-Host "[1/2] Installing PyTorch (CPU)..." -ForegroundColor Cyan
+    Write-Host "[1/2] Installing PyTorch (CPU) into generic environment..." -ForegroundColor Cyan
     & $VenvPip install `
-        --target="$PySitePackages" `
         --upgrade --no-user `
         torch torchvision --index-url https://download.pytorch.org/whl/cpu
 }
@@ -213,31 +212,78 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Install EasyOCR (without deps to prevent overwriting torch CPU with CUDA)
+# Install EasyOCR into Temp Venv
 Write-Host ""
-Write-Host "[2/2] Installing EasyOCR..." -ForegroundColor Cyan
-
-# First install easyocr without dependencies
+Write-Host "[2/2] Installing EasyOCR and dependencies..." -ForegroundColor Cyan
 & $VenvPip install `
-    --target="$PySitePackages" `
-    --upgrade --no-user --no-deps `
-    easyocr
+    --upgrade --no-user `
+    easyocr opencv-python-headless scipy numpy Pillow scikit-image python-bidi PyYAML Shapely pyclipper ninja
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Failed to install EasyOCR." -ForegroundColor Red
     exit 1
 }
 
-# Then install remaining easyocr dependencies (excluding torch/torchvision which we already have)
-Write-Host "Installing EasyOCR dependencies..." -ForegroundColor Yellow
-& $VenvPip install `
-    --target="$PySitePackages" `
-    --upgrade --no-user `
-    opencv-python-headless scipy numpy Pillow scikit-image python-bidi PyYAML Shapely pyclipper ninja
+# =============================================================================
+# Deploy to Application
+# =============================================================================
+Write-Host ""
+Write-Host "[*] Deploying packages to NST..." -ForegroundColor Yellow
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Failed to install EasyOCR dependencies." -ForegroundColor Red
+if (-not (Test-Path $PySitePackages)) {
+    New-Item -ItemType Directory -Force -Path $PySitePackages | Out-Null
+}
+
+# Source directory in Venv
+$VenvSitePackages = Join-Path $TempVenv "Lib\site-packages"
+
+if (-not (Test-Path $VenvSitePackages)) {
+    Write-Host "[ERROR] Could not find venv site-packages at $VenvSitePackages" -ForegroundColor Red
     exit 1
+}
+
+# Use Robocopy for reliable copying if available (faster/better for deep paths)
+$RobocopyLog = Join-Path $env:TEMP "nst_robo_install.log"
+try {
+    Write-Host "   Copying files (this may take a moment)..." -ForegroundColor Cyan
+    # Robocopy args: source dest files /E /XO /NFL /NDL /NJH /R:3 /W:1
+    $copyArgs = @($VenvSitePackages, $PySitePackages, "/E", "/XO", "/NFL", "/NDL", "/NJH", "/R:3", "/W:1")
+    & robocopy $copyArgs | Out-Null
+    
+    if ($LASTEXITCODE -gt 7) {
+        throw "Robocopy failed with code $LASTEXITCODE"
+    }
+    Write-Host "   [OK] Packages deployed." -ForegroundColor Green
+} catch {
+    Write-Host "   [WARNING] Robocopy failed, falling back to Copy-Item..." -ForegroundColor Yellow
+    Copy-Item -Path "$VenvSitePackages\*" -Destination $PySitePackages -Recurse -Force
+}
+
+# =============================================================================
+# Verification (DLLs are now pre-bundled in the release)
+# =============================================================================
+Write-Host ""
+Write-Host "[*] Verifying installation..." -ForegroundColor Yellow
+
+$TorchLib = Join-Path $PySitePackages "torch\lib"
+$CriticalChecks = @("fbgemm.dll", "libomp140.x86_64.dll", "torch_cpu.dll", "c10.dll")
+$MissingCount = 0
+
+foreach ($dll in $CriticalChecks) {
+    $path = Join-Path $TorchLib $dll
+    if (Test-Path $path) {
+        Write-Host "   [OK] $dll" -ForegroundColor Green
+    } else {
+        Write-Host "   [MISSING] $dll" -ForegroundColor Red
+        $MissingCount++
+    }
+}
+
+if ($MissingCount -eq 0) {
+    Write-Host "[OK] All critical DLLs present." -ForegroundColor Green
+} else {
+    Write-Host "[WARNING] Some DLLs are missing. You may need to update your NST installation." -ForegroundColor Yellow
+    Write-Host "          Download the latest release from: https://github.com/NST-Ghost/NST/releases" -ForegroundColor Yellow
 }
 
 # Cleanup
@@ -253,6 +299,6 @@ Write-Host "    Installation Complete!                                         "
 Write-Host "-------------------------------------------------------------------" -ForegroundColor Green
 Write-Host "    Please restart NST to enable AI features.                      " -ForegroundColor Green
 Write-Host "                                                                   " -ForegroundColor Green
-Write-Host "    Note: First OCR run will download language models (~100MB).   " -ForegroundColor Green
+Write-Host "    Note: First OCR run will download language models (~100MB).    " -ForegroundColor Green
 Write-Host "===================================================================" -ForegroundColor Green
 Write-Host ""
