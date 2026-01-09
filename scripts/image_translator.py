@@ -7,25 +7,52 @@ import logging
 # Since Python 3.8, DLL loading is more restrictive for security.
 # For bundled deployments (embedded Python), we need to explicitly add DLL directories.
 if sys.platform == 'win32':
-    # Get the directory where python.exe lives (bundled Python root)
-    python_dir = os.path.dirname(sys.executable)
-    
-    # Add DLL search directories for NumPy, OpenCV, Torch, etc.
-    if hasattr(os, 'add_dll_directory'):
-        # Python 3.8+ provides this API
-        dll_dirs = [
-            python_dir,
-            os.path.join(python_dir, 'DLLs'),
-            os.path.join(python_dir, 'Lib', 'site-packages', 'numpy', '.libs'),
-            os.path.join(python_dir, 'Lib', 'site-packages', 'cv2'),
-            os.path.join(python_dir, 'Lib', 'site-packages', 'torch', 'lib'),
+    try:
+        # Strategy: Find the "Lib/site-packages" directory relative to this script
+        # Structure in bundled app: NST_ROOT/scripts/image_translator.py
+        # Python root is NST_ROOT/python
+        # Site-packages is NST_ROOT/python/Lib/site-packages
+        
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        nst_root = os.path.dirname(script_dir) # Go up one level from scripts/
+        
+        # Check standard embedded structure
+        candidate_site_packages = [
+            os.path.join(nst_root, 'python', 'Lib', 'site-packages'), # Bundled structure
+            os.path.join(nst_root, 'Lib', 'site-packages'),           # Alternative structure
+            os.path.join(os.path.dirname(sys.executable), 'Lib', 'site-packages'), # Standard Python
         ]
-        for dll_dir in dll_dirs:
-            if os.path.isdir(dll_dir):
-                try:
-                    os.add_dll_directory(dll_dir)
-                except OSError:
-                    pass  # Directory already added or doesn't exist
+        
+        found_site_packages = None
+        for path in candidate_site_packages:
+            if os.path.isdir(path):
+                found_site_packages = path
+                break
+        
+        if found_site_packages:
+            # Add DLL search directories for critical AI packages
+            # Torch 2.x+ usually puts DLLs in torch/lib
+            torch_lib = os.path.join(found_site_packages, 'torch', 'lib')
+            torch_bin = os.path.join(found_site_packages, 'torch', 'bin') # Sometimes here in newer builds
+            numpy_libs = os.path.join(found_site_packages, 'numpy', '.libs')
+            cv2_dir = os.path.join(found_site_packages, 'cv2')
+            
+            # Also add the main python dir for python3.dll etc
+            python_dir = os.path.dirname(sys.executable)
+            
+            paths_to_add = [python_dir, torch_lib, torch_bin, numpy_libs, cv2_dir]
+            
+            for dll_dir in paths_to_add:
+                if os.path.isdir(dll_dir):
+                    try:
+                        os.add_dll_directory(dll_dir)
+                        # Also add to PATH as fallback for some legacy loads
+                        os.environ['PATH'] = dll_dir + ';' + os.environ['PATH']
+                    except Exception:
+                        pass
+                        
+    except Exception as e:
+        print(f"Warning: Failed to configure DLL search paths: {e}", file=sys.stderr)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
