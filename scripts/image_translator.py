@@ -118,6 +118,54 @@ class ImageTranslator:
                 print(f"[DEBUG] ✓ torch imported successfully (version: {torch.__version__})", file=_sys.stderr)
             except ImportError as e:
                 print(f"[DEBUG] ✗ torch import FAILED: {e}", file=_sys.stderr)
+                
+                # Enhanced diagnostics for WinError 126
+                if "126" in str(e) and sys.platform == 'win32':
+                    print("\n" + "="*60, file=_sys.stderr)
+                    print("DETAILED WinError 126 DIAGNOSIS", file=_sys.stderr)
+                    print("="*60, file=_sys.stderr)
+                    
+                    import ctypes
+                    
+                    # Find torch lib directory
+                    torch_lib_candidates = []
+                    for path in sys.path:
+                        torch_lib = os.path.join(path, 'torch', 'lib')
+                        if os.path.isdir(torch_lib):
+                            torch_lib_candidates.append(torch_lib)
+                    
+                    if torch_lib_candidates:
+                        torch_lib = torch_lib_candidates[0]
+                        print(f"Torch lib directory: {torch_lib}", file=_sys.stderr)
+                        
+                        # List all DLLs in torch/lib
+                        print("\nDLLs in torch/lib:", file=_sys.stderr)
+                        dlls_in_dir = [f for f in os.listdir(torch_lib) if f.endswith('.dll')]
+                        for dll in sorted(dlls_in_dir):
+                            print(f"  - {dll}", file=_sys.stderr)
+                        
+                        # Try loading each critical DLL individually
+                        critical_dlls = ['c10.dll', 'torch_cpu.dll', 'fbgemm.dll', 'libomp140.x86_64.dll', 'asmjit.dll']
+                        print("\nDLL Load Test (one by one):", file=_sys.stderr)
+                        
+                        for dll_name in critical_dlls:
+                            dll_path = os.path.join(torch_lib, dll_name)
+                            try:
+                                if os.path.exists(dll_path):
+                                    ctypes.CDLL(dll_path)
+                                    print(f"  ✓ {dll_name} - LOADABLE", file=_sys.stderr)
+                                else:
+                                    print(f"  ✗ {dll_name} - FILE NOT FOUND", file=_sys.stderr)
+                            except OSError as dll_err:
+                                print(f"  ✗ {dll_name} - LOAD FAILED: {dll_err}", file=_sys.stderr)
+                                # This is likely the culprit!
+                                if "126" in str(dll_err):
+                                    print(f"    ^ THIS DLL has missing dependencies!", file=_sys.stderr)
+                    else:
+                        print("Could not find torch/lib directory!", file=_sys.stderr)
+                    
+                    print("\n" + "="*60, file=_sys.stderr)
+                
                 raise
             
             try:
