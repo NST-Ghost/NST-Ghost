@@ -150,6 +150,15 @@ target_link_libraries(NST PRIVATE
 if(NST_ENABLE_PYTHON)
     target_link_libraries(NST PRIVATE pybind11::embed)
     target_compile_definitions(NST PRIVATE HAS_PYTHON=1)
+    
+    # Windows: Define expected Python paths for build-time validation
+    if(WIN32)
+        target_compile_definitions(NST PRIVATE 
+            NST_WIN_PYTHON_SUBDIR="python"
+            NST_WIN_PYTHON_DLL="python311.dll"
+        )
+        message(STATUS "Windows Python paths: subdir=python, dll=python311.dll")
+    endif()
 endif()
 
 

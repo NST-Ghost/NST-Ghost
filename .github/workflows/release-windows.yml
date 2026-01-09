@@ -212,6 +212,36 @@ jobs:
           Get-ChildItem "$sitePackages" -Directory | Select-Object Name | Format-Table
         shell: pwsh
       
+      - name: Validate Python bundle structure
+        run: |
+          Write-Host "Validating Python bundle structure..."
+          
+          $expectedFiles = @(
+            "package/python/python311.dll",
+            "package/python/python.exe",
+            "package/python/Lib/site-packages",
+            "package/python311.dll",
+            "package/scripts"
+          )
+          
+          $allPresent = $true
+          foreach ($file in $expectedFiles) {
+            if (Test-Path $file) {
+              Write-Host "  ✓ $file"
+            } else {
+              Write-Host "  ✗ Missing: $file" -ForegroundColor Red
+              $allPresent = $false
+            }
+          }
+          
+          if (-not $allPresent) {
+            Write-Error "Python bundle validation failed: missing required files"
+            exit 1
+          }
+          
+          Write-Host "`n✓ All required Python files present"
+        shell: pwsh
+      
       - name: Create ZIP package
         run: |
           $version = "${{ inputs.version }}"

@@ -28,6 +28,10 @@
 #include <vector>
 #include <sys/stat.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 
 
 #ifdef HAS_PYTHON
@@ -45,14 +49,20 @@ static void configurePythonEnvironment(const char* argv0)
     const char* appdir = std::getenv("APPDIR");
     
 #ifdef _WIN32
-    // Windows: Get executable directory from argv[0]
-    std::string exe_path(argv0);
+    // Windows: Use GetModuleFileName for reliable exe path (argv[0] is unreliable)
+    char exe_path_buf[MAX_PATH];
+    DWORD len = GetModuleFileNameA(NULL, exe_path_buf, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH) {
+        std::cerr << "[NST] Error: GetModuleFileName failed" << std::endl;
+        return;
+    }
+    std::string exe_path(exe_path_buf);
     size_t last_sep = exe_path.find_last_of("\\/");
     std::string exe_dir_str = (last_sep != std::string::npos) ? exe_path.substr(0, last_sep) : ".";
     
     // Windows: Check for bundled Python in exe_dir/python/
-    std::string win_python_home = exe_dir_str + "/python";
-    std::string win_python_dll = win_python_home + "/python311.dll";
+    std::string win_python_home = exe_dir_str + "\\python";
+    std::string win_python_dll = win_python_home + "\\python311.dll";
     
     // Use C++ filesystem to check file exists (no Qt dependency)
     struct stat buffer;
