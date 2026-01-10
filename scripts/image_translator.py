@@ -60,6 +60,34 @@ logging.basicConfig(level=logging.INFO,
                     filename='image_translator.log')
 logger = logging.getLogger("ImageTranslator")
 
+# DEV MODE: Check if debug mode is enabled via environment variable
+DEV_MODE = os.environ.get('NST_DEV_MODE', '0') == '1'
+
+# Setup debug logger for dev mode
+debug_logger = None
+if DEV_MODE:
+    debug_log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'image_translator_debug.log')
+    debug_logger = logging.getLogger("ImageTranslatorDebug")
+    debug_logger.setLevel(logging.DEBUG)
+    debug_handler = logging.FileHandler(debug_log_path, mode='w', encoding='utf-8')
+    debug_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    debug_logger.addHandler(debug_handler)
+    debug_logger.info("=" * 60)
+    debug_logger.info("NST Image Translator Debug Log")
+    debug_logger.info("=" * 60)
+
+def debug_log(message, level="info"):
+    """Write to debug log file if DEV_MODE is enabled."""
+    if debug_logger:
+        if level == "debug":
+            debug_logger.debug(message)
+        elif level == "warning":
+            debug_logger.warning(message)
+        elif level == "error":
+            debug_logger.error(message)
+        else:
+            debug_logger.info(message)
+
 class ImageTranslator:
     def __init__(self):
         self.reader = None
@@ -104,23 +132,32 @@ class ImageTranslator:
             # 3. Log final sys.path for debugging
             logger.debug(f"Final sys.path: {sys.path}")
             
-            # DEBUG: Print to stderr for immediate visibility
+            # DEBUG: Print to stderr for immediate visibility and log to file
             import sys as _sys
+            debug_log(f"Python executable: {_sys.executable}")
+            debug_log(f"Python version: {_sys.version}")
+            debug_log("sys.path:")
             print(f"[DEBUG] Python executable: {_sys.executable}", file=_sys.stderr)
             print(f"[DEBUG] Python version: {_sys.version}", file=_sys.stderr)
             print(f"[DEBUG] sys.path:", file=_sys.stderr)
             for i, p in enumerate(_sys.path):
+                debug_log(f"  [{i}] {p}")
                 print(f"  [{i}] {p}", file=_sys.stderr)
             
             # Try importing each dependency separately for better error messages
             try:
                 import torch
+                debug_log(f"✓ torch imported successfully (version: {torch.__version__})")
                 print(f"[DEBUG] ✓ torch imported successfully (version: {torch.__version__})", file=_sys.stderr)
             except ImportError as e:
+                debug_log(f"✗ torch import FAILED: {e}", "error")
                 print(f"[DEBUG] ✗ torch import FAILED: {e}", file=_sys.stderr)
                 
                 # Enhanced diagnostics for WinError 126
                 if "126" in str(e) and sys.platform == 'win32':
+                    debug_log("=" * 60)
+                    debug_log("DETAILED WinError 126 DIAGNOSIS")
+                    debug_log("=" * 60)
                     print("\n" + "="*60, file=_sys.stderr)
                     print("DETAILED WinError 126 DIAGNOSIS", file=_sys.stderr)
                     print("="*60, file=_sys.stderr)
@@ -136,16 +173,20 @@ class ImageTranslator:
                     
                     if torch_lib_candidates:
                         torch_lib = torch_lib_candidates[0]
+                        debug_log(f"Torch lib directory: {torch_lib}")
                         print(f"Torch lib directory: {torch_lib}", file=_sys.stderr)
                         
                         # List all DLLs in torch/lib
+                        debug_log("DLLs in torch/lib:")
                         print("\nDLLs in torch/lib:", file=_sys.stderr)
                         dlls_in_dir = [f for f in os.listdir(torch_lib) if f.endswith('.dll')]
                         for dll in sorted(dlls_in_dir):
+                            debug_log(f"  - {dll}")
                             print(f"  - {dll}", file=_sys.stderr)
                         
                         # Try loading each critical DLL individually
                         critical_dlls = ['c10.dll', 'torch_cpu.dll', 'fbgemm.dll', 'libomp140.x86_64.dll', 'asmjit.dll']
+                        debug_log("DLL Load Test (one by one):")
                         print("\nDLL Load Test (one by one):", file=_sys.stderr)
                         
                         for dll_name in critical_dlls:
@@ -153,25 +194,33 @@ class ImageTranslator:
                             try:
                                 if os.path.exists(dll_path):
                                     ctypes.CDLL(dll_path)
+                                    debug_log(f"  ✓ {dll_name} - LOADABLE")
                                     print(f"  ✓ {dll_name} - LOADABLE", file=_sys.stderr)
                                 else:
+                                    debug_log(f"  ✗ {dll_name} - FILE NOT FOUND", "warning")
                                     print(f"  ✗ {dll_name} - FILE NOT FOUND", file=_sys.stderr)
                             except OSError as dll_err:
+                                debug_log(f"  ✗ {dll_name} - LOAD FAILED: {dll_err}", "error")
                                 print(f"  ✗ {dll_name} - LOAD FAILED: {dll_err}", file=_sys.stderr)
                                 # This is likely the culprit!
                                 if "126" in str(dll_err):
+                                    debug_log(f"    ^ THIS DLL has missing dependencies!", "error")
                                     print(f"    ^ THIS DLL has missing dependencies!", file=_sys.stderr)
                     else:
+                        debug_log("Could not find torch/lib directory!", "error")
                         print("Could not find torch/lib directory!", file=_sys.stderr)
                     
+                    debug_log("=" * 60)
                     print("\n" + "="*60, file=_sys.stderr)
                 
                 raise
             
             try:
                 import easyocr
+                debug_log("✓ easyocr imported successfully")
                 print(f"[DEBUG] ✓ easyocr imported successfully", file=_sys.stderr)
             except ImportError as e:
+                debug_log(f"✗ easyocr import FAILED: {e}", "error")
                 print(f"[DEBUG] ✗ easyocr import FAILED: {e}", file=_sys.stderr)
                 raise
             
