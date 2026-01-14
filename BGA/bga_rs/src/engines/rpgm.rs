@@ -666,11 +666,15 @@ impl RpgmAnalyzer {
                 }
             }
         } else {
-            // Search for data folder
-            let data_dir = project_path.join("data");
-            let data_dir_alt = project_path.join("Data");
+            // Search for data folder (including www/ subdirectory for NW.js packaged games)
+            let data_dirs = [
+                project_path.join("data"),
+                project_path.join("Data"),
+                project_path.join("www").join("data"),
+                project_path.join("www").join("Data"),
+            ];
 
-            for dir in [&data_dir, &data_dir_alt] {
+            for dir in &data_dirs {
                 if dir.exists() {
                     for entry in WalkDir::new(dir)
                         .max_depth(1)
@@ -688,18 +692,24 @@ impl RpgmAnalyzer {
                 }
             }
 
-            // Search js/plugins folder
-            let plugins_dir = project_path.join("js").join("plugins");
-            if plugins_dir.exists() {
-                for entry in WalkDir::new(&plugins_dir)
-                    .max_depth(1)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
-                    if entry.file_type().is_file() {
-                        if let Some(ext) = entry.path().extension() {
-                            if ext == "json" {
-                                files.push(entry.into_path());
+            // Search js/plugins folder (including www/ subdirectory)
+            let plugins_dirs = [
+                project_path.join("js").join("plugins"),
+                project_path.join("www").join("js").join("plugins"),
+            ];
+            
+            for plugins_dir in &plugins_dirs {
+                if plugins_dir.exists() {
+                    for entry in WalkDir::new(plugins_dir)
+                        .max_depth(1)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
+                        if entry.file_type().is_file() {
+                            if let Some(ext) = entry.path().extension() {
+                                if ext == "json" {
+                                    files.push(entry.into_path());
+                                }
                             }
                         }
                     }
@@ -724,24 +734,29 @@ impl RpgmAnalyzer {
             project_path
         };
 
-        for font_dir_name in ["fonts", "Fonts"] {
-            let font_dir = parent.join(font_dir_name);
-            if font_dir.exists() {
-                for entry in WalkDir::new(&font_dir)
-                    .max_depth(1)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
-                    if entry.file_type().is_file() {
-                        if let Some(ext) = entry.path().extension() {
-                            let ext_lower = ext.to_string_lossy().to_lowercase();
-                            if ["ttf", "otf", "woff", "woff2"].contains(&ext_lower.as_str()) {
-                                fonts.push(json!({
-                                    "name": entry.path().file_stem()
-                                        .map(|s| s.to_string_lossy().to_string())
-                                        .unwrap_or_default(),
-                                    "path": entry.path().to_string_lossy().to_string()
-                                }));
+        // Check both root and www/ subdirectory for fonts
+        let font_parents = [parent.to_path_buf(), parent.join("www")];
+        
+        for font_parent in &font_parents {
+            for font_dir_name in ["fonts", "Fonts"] {
+                let font_dir = font_parent.join(font_dir_name);
+                if font_dir.exists() {
+                    for entry in WalkDir::new(&font_dir)
+                        .max_depth(1)
+                        .into_iter()
+                        .filter_map(|e| e.ok())
+                    {
+                        if entry.file_type().is_file() {
+                            if let Some(ext) = entry.path().extension() {
+                                let ext_lower = ext.to_string_lossy().to_lowercase();
+                                if ["ttf", "otf", "woff", "woff2"].contains(&ext_lower.as_str()) {
+                                    fonts.push(json!({
+                                        "name": entry.path().file_stem()
+                                            .map(|s| s.to_string_lossy().to_string())
+                                            .unwrap_or_default(),
+                                        "path": entry.path().to_string_lossy().to_string()
+                                    }));
+                                }
                             }
                         }
                     }

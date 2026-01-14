@@ -46,3 +46,91 @@ BGADataManager: After QJsonDocument::fromJson
 BGADataManager: Extracted 4956 entries.
 BGADataManager: After extracting entries
 BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/[Chanomhub] RJ01498687/彼女たちのプライベートを僕は知らない　製品版
+BGADataManager: Analyzer output payload size:1334321bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 4956 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/[Chanomhub] RJ01498687/彼女たちのプライベートを僕は知らない　製品版
+BGADataManager: Analyzer output payload size:1334321bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 4956 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity
+BGADataManager: Analyzer output payload size:173bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity
+BGADataManager: Analyzer output payload size:173bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:210bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:210bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:210bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:210bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:210bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:210bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/ChanoX2Library/[Chanomhub.com] Exorcist's Calamity/[Chanomhub.com] Exorcist's Calamity/
+BGADataManager: Analyzer output payload size:749480bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 3110 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.

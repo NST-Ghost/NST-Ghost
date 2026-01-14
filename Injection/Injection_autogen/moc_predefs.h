@@ -62,7 +62,6 @@
 #define __BFLT16_MAX_10_EXP__ 38
 #define __BFLT16_MAX_EXP__ 128
 #define __LDBL_IS_IEC_60559__ 1
-#define QT_NO_DEBUG 1
 #define __FLT64X_HAS_QUIET_NAN__ 1
 #define __UINT_LEAST8_MAX__ 0xff
 #define __GCC_ATOMIC_BOOL_LOCK_FREE 2
@@ -343,7 +342,7 @@
 #define __INTPTR_TYPE__ long int
 #define __UINT16_TYPE__ short unsigned int
 #define __WCHAR_TYPE__ int
-#define APP_VERSION "0.5.2"
+#define APP_VERSION "0.5.4"
 #define __UINTPTR_MAX__ 0xffffffffffffffffUL
 #define __INT_FAST64_WIDTH__ 64
 #define __INT_FAST64_MAX__ 0x7fffffffffffffffL
