@@ -246,8 +246,10 @@ FileTranslationWidget::~FileTranslationWidget()
     delete ui;
 }
 
-void FileTranslationWidget::onNewProject(const QString &engineName, const QString &projectPath)
+void FileTranslationWidget::onNewProject(const QString &engineName, const QString &projectPath, bool cliMode)
 {
+    Q_UNUSED(cliMode); // No longer needed - always auto-save unless conflict
+    
     m_engineName = engineName; 
     m_smartFilterManager->setEngine(engineName);
     
@@ -263,20 +265,25 @@ void FileTranslationWidget::onNewProject(const QString &engineName, const QStrin
     // Or just clearAllData covers it via model->clear()
     ui->translationTableView->setModel(m_translationModel); // Reattach
     
-    // Prompt to save .nst immediately (Enforce "Project File is King")
-    QString defaultName = QFileInfo(projectPath).fileName() + "_Translation.nst";
-    QString filePath = QFileDialog::getSaveFileName(this, tr("Create Translation Project"), 
-                                                     defaultName, 
-                                                     tr("NST Workspace Files (*.nst)"));
-                                                     
-    if (!filePath.isEmpty()) {
-        if (!filePath.endsWith(".nst")) filePath += ".nst";
-        m_currentProjectFile = filePath;
-        // We will save empty state initially or after load? 
-        // Better to load first, then save.
+    // Auto-generate project file in the game's project directory
+    QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+    QString defaultName = QString("project_%1.nst").arg(timestamp);
+    QString autoPath = QDir(projectPath).absoluteFilePath(defaultName);
+    
+    // Check if file already exists (rare with timestamp, but possible)
+    if (QFile::exists(autoPath)) {
+        // File exists - ask user what to do
+        QString filePath = QFileDialog::getSaveFileName(this, tr("Project file already exists - Save As"), 
+                                                        autoPath, 
+                                                        tr("NST Workspace Files (*.nst)"));
+        if (!filePath.isEmpty()) {
+            if (!filePath.endsWith(".nst")) filePath += ".nst";
+            m_currentProjectFile = filePath;
+        }
+        // If user cancels, m_currentProjectFile stays empty (unsaved mode)
     } else {
-        // If user cancels, we still load but unsaved state? Or cancel?
-        // Let's allow loading but warn or just leave m_currentProjectFile empty (unsaved).
+        // No conflict - auto-save
+        m_currentProjectFile = autoPath;
     }
 
     m_progressDialog = new CustomProgressDialog(this);

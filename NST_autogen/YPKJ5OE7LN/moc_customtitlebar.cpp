@@ -46,6 +46,7 @@ template <> constexpr inline auto CustomTitleBar::qt_create_metaobjectdata<qt_me
         "closeClicked",
         "translateModeClicked",
         "realTimeModeClicked",
+        "imageTranslationClicked",
         "relationsModeClicked"
     };
 
@@ -60,8 +61,10 @@ template <> constexpr inline auto CustomTitleBar::qt_create_metaobjectdata<qt_me
         QtMocHelpers::SignalData<void()>(5, 2, QMC::AccessPublic, QMetaType::Void),
         // Signal 'realTimeModeClicked'
         QtMocHelpers::SignalData<void()>(6, 2, QMC::AccessPublic, QMetaType::Void),
-        // Signal 'relationsModeClicked'
+        // Signal 'imageTranslationClicked'
         QtMocHelpers::SignalData<void()>(7, 2, QMC::AccessPublic, QMetaType::Void),
+        // Signal 'relationsModeClicked'
+        QtMocHelpers::SignalData<void()>(8, 2, QMC::AccessPublic, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -90,7 +93,8 @@ void CustomTitleBar::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
         case 2: _t->closeClicked(); break;
         case 3: _t->translateModeClicked(); break;
         case 4: _t->realTimeModeClicked(); break;
-        case 5: _t->relationsModeClicked(); break;
+        case 5: _t->imageTranslationClicked(); break;
+        case 6: _t->relationsModeClicked(); break;
         default: ;
         }
     }
@@ -105,7 +109,9 @@ void CustomTitleBar::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _
             return;
         if (QtMocHelpers::indexOfMethod<void (CustomTitleBar::*)()>(_a, &CustomTitleBar::realTimeModeClicked, 4))
             return;
-        if (QtMocHelpers::indexOfMethod<void (CustomTitleBar::*)()>(_a, &CustomTitleBar::relationsModeClicked, 5))
+        if (QtMocHelpers::indexOfMethod<void (CustomTitleBar::*)()>(_a, &CustomTitleBar::imageTranslationClicked, 5))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (CustomTitleBar::*)()>(_a, &CustomTitleBar::relationsModeClicked, 6))
             return;
     }
 }
@@ -129,14 +135,14 @@ int CustomTitleBar::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 6)
+        if (_id < 7)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 6;
+        _id -= 7;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 6)
+        if (_id < 7)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 6;
+        _id -= 7;
     }
     return _id;
 }
@@ -172,8 +178,14 @@ void CustomTitleBar::realTimeModeClicked()
 }
 
 // SIGNAL 5
-void CustomTitleBar::relationsModeClicked()
+void CustomTitleBar::imageTranslationClicked()
 {
     QMetaObject::activate(this, &staticMetaObject, 5, nullptr);
+}
+
+// SIGNAL 6
+void CustomTitleBar::relationsModeClicked()
+{
+    QMetaObject::activate(this, &staticMetaObject, 6, nullptr);
 }
 QT_WARNING_POP

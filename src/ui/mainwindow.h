@@ -31,6 +31,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    // CLI Support: Open project directly without dialog
+    void openProjectFromCLI(const QString &engineName, const QString &projectPath);
+
 public slots:
     void onNewProject(); // Renamed
 

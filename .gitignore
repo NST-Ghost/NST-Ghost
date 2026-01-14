@@ -1,5 +1,4 @@
-# Build directories
-/build/
+
 /BGA/build/
 /BGA/build-t1/
 
@@ -37,5 +36,17 @@ cmake_install.cmake
 Makefile
 build-verify/
 *.d
-
 BGA/bga_rs/target/*
+
+build/
+Makefile
+CPackConfig.cmake
+CPackSourceConfig.cmake
+NST
+
+# Qt autogen
+*_autogen/
+
+# Python
+__pycache__/
+*.pyc

@@ -50,6 +50,7 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         "fonts",
         "onFontManagerActionTriggered",
         "onPluginManagerActionTriggered",
+        "onFeatureManagerActionTriggered",
         "onEditEngineScript",
         "onToggleContext",
         "checked",
@@ -77,28 +78,30 @@ template <> constexpr inline auto MainWindow::qt_create_metaobjectdata<qt_meta_t
         QtMocHelpers::SlotData<void()>(8, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onPluginManagerActionTriggered'
         QtMocHelpers::SlotData<void()>(9, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onEditEngineScript'
+        // Slot 'onFeatureManagerActionTriggered'
         QtMocHelpers::SlotData<void()>(10, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onEditEngineScript'
+        QtMocHelpers::SlotData<void()>(11, 2, QMC::AccessPrivate, QMetaType::Void),
         // Slot 'onToggleContext'
-        QtMocHelpers::SlotData<void(bool)>(11, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Bool, 12 },
+        QtMocHelpers::SlotData<void(bool)>(12, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Bool, 13 },
         }}),
         // Slot 'onHideCompleted'
-        QtMocHelpers::SlotData<void(bool)>(13, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Bool, 12 },
+        QtMocHelpers::SlotData<void(bool)>(14, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Bool, 13 },
         }}),
         // Slot 'onNavigationChanged'
-        QtMocHelpers::SlotData<void(int)>(14, 2, QMC::AccessPrivate, QMetaType::Void, {{
-            { QMetaType::Int, 15 },
+        QtMocHelpers::SlotData<void(int)>(15, 2, QMC::AccessPrivate, QMetaType::Void, {{
+            { QMetaType::Int, 16 },
         }}),
         // Slot 'onExportSmartFilterRules'
-        QtMocHelpers::SlotData<void()>(16, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onImportSmartFilterRules'
         QtMocHelpers::SlotData<void()>(17, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onSaveProject'
+        // Slot 'onImportSmartFilterRules'
         QtMocHelpers::SlotData<void()>(18, 2, QMC::AccessPrivate, QMetaType::Void),
-        // Slot 'onDeployProject'
+        // Slot 'onSaveProject'
         QtMocHelpers::SlotData<void()>(19, 2, QMC::AccessPrivate, QMetaType::Void),
+        // Slot 'onDeployProject'
+        QtMocHelpers::SlotData<void()>(20, 2, QMC::AccessPrivate, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -128,14 +131,15 @@ void MainWindow::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 3: _t->onFontsLoaded((*reinterpret_cast<std::add_pointer_t<QJsonArray>>(_a[1]))); break;
         case 4: _t->onFontManagerActionTriggered(); break;
         case 5: _t->onPluginManagerActionTriggered(); break;
-        case 6: _t->onEditEngineScript(); break;
-        case 7: _t->onToggleContext((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 8: _t->onHideCompleted((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 9: _t->onNavigationChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 10: _t->onExportSmartFilterRules(); break;
-        case 11: _t->onImportSmartFilterRules(); break;
-        case 12: _t->onSaveProject(); break;
-        case 13: _t->onDeployProject(); break;
+        case 6: _t->onFeatureManagerActionTriggered(); break;
+        case 7: _t->onEditEngineScript(); break;
+        case 8: _t->onToggleContext((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 9: _t->onHideCompleted((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 10: _t->onNavigationChanged((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 11: _t->onExportSmartFilterRules(); break;
+        case 12: _t->onImportSmartFilterRules(); break;
+        case 13: _t->onSaveProject(); break;
+        case 14: _t->onDeployProject(); break;
         default: ;
         }
     }
@@ -160,14 +164,14 @@ int MainWindow::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 14)
+        if (_id < 15)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 15;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 14)
+        if (_id < 15)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 14;
+        _id -= 15;
     }
     return _id;
 }

@@ -47,8 +47,8 @@ public:
     void onHideCompleted(bool checked);
     void onExportSmartFilterRules();
     void onImportSmartFilterRules();
-    // New Project Flow
-    void onNewProject(const QString &engineName, const QString &projectPath); 
+    // New Project Flow (cliMode=true skips save dialog and auto-saves)
+    void onNewProject(const QString &engineName, const QString &projectPath, bool cliMode = false); 
     void onOpenProject();  // Renamed from onLoadTranslationWorkspace
     void onSaveProject();  // Renamed from onSaveGameProject
     void onDeployProject(); // Renamed from onExportGameProject

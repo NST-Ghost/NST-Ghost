@@ -811,6 +811,30 @@ src/dialogs/customprogressdialog.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/NST.dir/build.make CMakeFiles/NST.dir/src/dialogs/customprogressdialog.cpp.s
 .PHONY : src/dialogs/customprogressdialog.cpp.s
 
+src/dialogs/featuremanagerdialog.o: src/dialogs/featuremanagerdialog.cpp.o
+.PHONY : src/dialogs/featuremanagerdialog.o
+
+# target to build an object file
+src/dialogs/featuremanagerdialog.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/NST.dir/build.make CMakeFiles/NST.dir/src/dialogs/featuremanagerdialog.cpp.o
+.PHONY : src/dialogs/featuremanagerdialog.cpp.o
+
+src/dialogs/featuremanagerdialog.i: src/dialogs/featuremanagerdialog.cpp.i
+.PHONY : src/dialogs/featuremanagerdialog.i
+
+# target to preprocess a source file
+src/dialogs/featuremanagerdialog.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/NST.dir/build.make CMakeFiles/NST.dir/src/dialogs/featuremanagerdialog.cpp.i
+.PHONY : src/dialogs/featuremanagerdialog.cpp.i
+
+src/dialogs/featuremanagerdialog.s: src/dialogs/featuremanagerdialog.cpp.s
+.PHONY : src/dialogs/featuremanagerdialog.s
+
+# target to generate assembly for a file
+src/dialogs/featuremanagerdialog.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/NST.dir/build.make CMakeFiles/NST.dir/src/dialogs/featuremanagerdialog.cpp.s
+.PHONY : src/dialogs/featuremanagerdialog.cpp.s
+
 src/dialogs/fontmanagerdialog.o: src/dialogs/fontmanagerdialog.cpp.o
 .PHONY : src/dialogs/fontmanagerdialog.o
 
@@ -1436,6 +1460,9 @@ help:
 	@echo "... src/dialogs/customprogressdialog.o"
 	@echo "... src/dialogs/customprogressdialog.i"
 	@echo "... src/dialogs/customprogressdialog.s"
+	@echo "... src/dialogs/featuremanagerdialog.o"
+	@echo "... src/dialogs/featuremanagerdialog.i"
+	@echo "... src/dialogs/featuremanagerdialog.s"
 	@echo "... src/dialogs/fontmanagerdialog.o"
 	@echo "... src/dialogs/fontmanagerdialog.i"
 	@echo "... src/dialogs/fontmanagerdialog.s"

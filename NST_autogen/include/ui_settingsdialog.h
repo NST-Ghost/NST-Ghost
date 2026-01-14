@@ -12,15 +12,19 @@
 #include <QtCore/QVariant>
 #include <QtWidgets/QAbstractButton>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QCheckBox>
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QDoubleSpinBox>
 #include <QtWidgets/QFormLayout>
+#include <QtWidgets/QFrame>
 #include <QtWidgets/QGroupBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
-#include <QtWidgets/QRadioButton>
+#include <QtWidgets/QListWidget>
+#include <QtWidgets/QScrollArea>
 #include <QtWidgets/QSpacerItem>
 #include <QtWidgets/QStackedWidget>
 #include <QtWidgets/QVBoxLayout>
@@ -31,25 +35,34 @@ QT_BEGIN_NAMESPACE
 class Ui_SettingsDialog
 {
 public:
-    QVBoxLayout *verticalLayout;
-    QGroupBox *translationModeGroupBox;
-    QHBoxLayout *horizontalLayout_mode;
-    QRadioButton *quickTranslateRadioButton;
-    QRadioButton *professionalTranslateRadioButton;
-    QRadioButton *aiPoweredTranslateRadioButton;
-    QGroupBox *basicSettingsGroupBox;
-    QFormLayout *formLayout_basic;
+    QHBoxLayout *horizontalLayout_main;
+    QListWidget *settingsListWidget;
+    QFrame *frame_content;
+    QVBoxLayout *verticalLayout_content;
+    QStackedWidget *configStackedWidget;
+    QWidget *page_general;
+    QVBoxLayout *verticalLayout_general;
+    QGroupBox *generalGroupBox;
+    QFormLayout *formLayout_general;
+    QLabel *sourceLanguageLabel;
+    QComboBox *sourceLanguageComboBox;
     QLabel *targetLanguageLabel;
     QComboBox *targetLanguageComboBox;
-    QStackedWidget *configStackedWidget;
-    QWidget *page_quick;
-    QVBoxLayout *verticalLayout_quick;
-    QLabel *label_quick_info;
-    QWidget *page_professional;
+    QLabel *activeModeLabel;
+    QComboBox *translatorModeComboBox;
+    QLabel *label_enable_ai;
+    QCheckBox *enableAiFilterCheckBox;
+    QSpacerItem *verticalSpacer_general;
+    QWidget *page_translation;
+    QVBoxLayout *verticalLayout_translation;
+    QScrollArea *scrollArea_translation;
+    QWidget *scrollAreaWidgetContents_translation;
+    QVBoxLayout *verticalLayout_scroll_translation;
+    QGroupBox *googleProGroupBox;
     QFormLayout *formLayout_professional;
     QLabel *googleApiKeyLabel;
     QLineEdit *googleApiKeyEdit;
-    QWidget *page_ai_powered;
+    QGroupBox *llmProviderGroup;
     QFormLayout *formLayout_ai_powered;
     QLabel *llmProviderLabel;
     QComboBox *llmProviderComboBox;
@@ -61,132 +74,187 @@ public:
     QFormLayout *formLayout_advanced;
     QLabel *llmBaseUrlLabel;
     QLineEdit *llmBaseUrlEdit;
-    QSpacerItem *verticalSpacer_bottom;
+    QSpacerItem *verticalSpacer_translation;
+    QWidget *page_ai_ui;
+    QVBoxLayout *verticalLayout_ai_ui;
+    QGroupBox *aiFilterDetailsGroupBox;
+    QFormLayout *formLayout_ai_settings;
+    QLabel *label_ai_sensitivity;
+    QDoubleSpinBox *aiFilterThresholdSpinBox;
+    QLabel *aiInfoLabel;
+    QGroupBox *visualsGroupBox;
+    QVBoxLayout *verticalLayout_visuals;
+    QCheckBox *enableRelationsCheckBox;
+    QSpacerItem *verticalSpacer_ai_ui;
+    QWidget *page_plugins;
+    QHBoxLayout *horizontalLayout_plugins;
+    QListWidget *pluginListWidget;
+    QVBoxLayout *verticalLayout_plugins_right;
+    QCheckBox *pluginEnabledCheckBox;
+    QScrollArea *pluginSettingsScrollArea;
+    QWidget *pluginSettingsContainer;
+    QFormLayout *formLayout_plugins;
     QDialogButtonBox *buttonBox;
 
     void setupUi(QDialog *SettingsDialog)
     {
         if (SettingsDialog->objectName().isEmpty())
             SettingsDialog->setObjectName("SettingsDialog");
-        SettingsDialog->resize(480, 420);
-        verticalLayout = new QVBoxLayout(SettingsDialog);
-        verticalLayout->setSpacing(12);
-        verticalLayout->setObjectName("verticalLayout");
-        verticalLayout->setContentsMargins(12, 12, 12, 12);
-        translationModeGroupBox = new QGroupBox(SettingsDialog);
-        translationModeGroupBox->setObjectName("translationModeGroupBox");
-        horizontalLayout_mode = new QHBoxLayout(translationModeGroupBox);
-        horizontalLayout_mode->setObjectName("horizontalLayout_mode");
-        quickTranslateRadioButton = new QRadioButton(translationModeGroupBox);
-        quickTranslateRadioButton->setObjectName("quickTranslateRadioButton");
-        quickTranslateRadioButton->setChecked(true);
+        SettingsDialog->resize(750, 550);
+        horizontalLayout_main = new QHBoxLayout(SettingsDialog);
+        horizontalLayout_main->setSpacing(0);
+        horizontalLayout_main->setObjectName("horizontalLayout_main");
+        horizontalLayout_main->setContentsMargins(0, 0, 0, 0);
+        settingsListWidget = new QListWidget(SettingsDialog);
+        new QListWidgetItem(settingsListWidget);
+        new QListWidgetItem(settingsListWidget);
+        new QListWidgetItem(settingsListWidget);
+        new QListWidgetItem(settingsListWidget);
+        settingsListWidget->setObjectName("settingsListWidget");
+        settingsListWidget->setMaximumSize(QSize(180, 16777215));
+        settingsListWidget->setFrameShape(QFrame::NoFrame);
 
-        horizontalLayout_mode->addWidget(quickTranslateRadioButton);
+        horizontalLayout_main->addWidget(settingsListWidget);
 
-        professionalTranslateRadioButton = new QRadioButton(translationModeGroupBox);
-        professionalTranslateRadioButton->setObjectName("professionalTranslateRadioButton");
+        frame_content = new QFrame(SettingsDialog);
+        frame_content->setObjectName("frame_content");
+        frame_content->setFrameShape(QFrame::StyledPanel);
+        frame_content->setFrameShadow(QFrame::Raised);
+        verticalLayout_content = new QVBoxLayout(frame_content);
+        verticalLayout_content->setSpacing(12);
+        verticalLayout_content->setObjectName("verticalLayout_content");
+        verticalLayout_content->setContentsMargins(12, 12, 12, 12);
+        configStackedWidget = new QStackedWidget(frame_content);
+        configStackedWidget->setObjectName("configStackedWidget");
+        page_general = new QWidget();
+        page_general->setObjectName("page_general");
+        verticalLayout_general = new QVBoxLayout(page_general);
+        verticalLayout_general->setObjectName("verticalLayout_general");
+        generalGroupBox = new QGroupBox(page_general);
+        generalGroupBox->setObjectName("generalGroupBox");
+        formLayout_general = new QFormLayout(generalGroupBox);
+        formLayout_general->setObjectName("formLayout_general");
+        formLayout_general->setHorizontalSpacing(15);
+        formLayout_general->setVerticalSpacing(10);
+        sourceLanguageLabel = new QLabel(generalGroupBox);
+        sourceLanguageLabel->setObjectName("sourceLanguageLabel");
 
-        horizontalLayout_mode->addWidget(professionalTranslateRadioButton);
+        formLayout_general->setWidget(0, QFormLayout::ItemRole::LabelRole, sourceLanguageLabel);
 
-        aiPoweredTranslateRadioButton = new QRadioButton(translationModeGroupBox);
-        aiPoweredTranslateRadioButton->setObjectName("aiPoweredTranslateRadioButton");
+        sourceLanguageComboBox = new QComboBox(generalGroupBox);
+        sourceLanguageComboBox->setObjectName("sourceLanguageComboBox");
 
-        horizontalLayout_mode->addWidget(aiPoweredTranslateRadioButton);
+        formLayout_general->setWidget(0, QFormLayout::ItemRole::FieldRole, sourceLanguageComboBox);
 
-
-        verticalLayout->addWidget(translationModeGroupBox);
-
-        basicSettingsGroupBox = new QGroupBox(SettingsDialog);
-        basicSettingsGroupBox->setObjectName("basicSettingsGroupBox");
-        formLayout_basic = new QFormLayout(basicSettingsGroupBox);
-        formLayout_basic->setObjectName("formLayout_basic");
-        formLayout_basic->setHorizontalSpacing(15);
-        formLayout_basic->setVerticalSpacing(10);
-        formLayout_basic->setContentsMargins(10, 10, 10, 10);
-        targetLanguageLabel = new QLabel(basicSettingsGroupBox);
+        targetLanguageLabel = new QLabel(generalGroupBox);
         targetLanguageLabel->setObjectName("targetLanguageLabel");
 
-        formLayout_basic->setWidget(0, QFormLayout::ItemRole::LabelRole, targetLanguageLabel);
+        formLayout_general->setWidget(1, QFormLayout::ItemRole::LabelRole, targetLanguageLabel);
 
-        targetLanguageComboBox = new QComboBox(basicSettingsGroupBox);
+        targetLanguageComboBox = new QComboBox(generalGroupBox);
         targetLanguageComboBox->setObjectName("targetLanguageComboBox");
 
-        formLayout_basic->setWidget(0, QFormLayout::ItemRole::FieldRole, targetLanguageComboBox);
+        formLayout_general->setWidget(1, QFormLayout::ItemRole::FieldRole, targetLanguageComboBox);
+
+        activeModeLabel = new QLabel(generalGroupBox);
+        activeModeLabel->setObjectName("activeModeLabel");
+
+        formLayout_general->setWidget(2, QFormLayout::ItemRole::LabelRole, activeModeLabel);
+
+        translatorModeComboBox = new QComboBox(generalGroupBox);
+        translatorModeComboBox->addItem(QString());
+        translatorModeComboBox->addItem(QString());
+        translatorModeComboBox->addItem(QString());
+        translatorModeComboBox->addItem(QString());
+        translatorModeComboBox->setObjectName("translatorModeComboBox");
+
+        formLayout_general->setWidget(2, QFormLayout::ItemRole::FieldRole, translatorModeComboBox);
+
+        label_enable_ai = new QLabel(generalGroupBox);
+        label_enable_ai->setObjectName("label_enable_ai");
+
+        formLayout_general->setWidget(3, QFormLayout::ItemRole::LabelRole, label_enable_ai);
+
+        enableAiFilterCheckBox = new QCheckBox(generalGroupBox);
+        enableAiFilterCheckBox->setObjectName("enableAiFilterCheckBox");
+
+        formLayout_general->setWidget(3, QFormLayout::ItemRole::FieldRole, enableAiFilterCheckBox);
 
 
-        verticalLayout->addWidget(basicSettingsGroupBox);
+        verticalLayout_general->addWidget(generalGroupBox);
 
-        configStackedWidget = new QStackedWidget(SettingsDialog);
-        configStackedWidget->setObjectName("configStackedWidget");
-        page_quick = new QWidget();
-        page_quick->setObjectName("page_quick");
-        verticalLayout_quick = new QVBoxLayout(page_quick);
-        verticalLayout_quick->setObjectName("verticalLayout_quick");
-        label_quick_info = new QLabel(page_quick);
-        label_quick_info->setObjectName("label_quick_info");
-        label_quick_info->setAlignment(Qt::AlignCenter);
+        verticalSpacer_general = new QSpacerItem(20, 40, QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Expanding);
 
-        verticalLayout_quick->addWidget(label_quick_info);
+        verticalLayout_general->addItem(verticalSpacer_general);
 
-        configStackedWidget->addWidget(page_quick);
-        page_professional = new QWidget();
-        page_professional->setObjectName("page_professional");
-        formLayout_professional = new QFormLayout(page_professional);
+        configStackedWidget->addWidget(page_general);
+        page_translation = new QWidget();
+        page_translation->setObjectName("page_translation");
+        verticalLayout_translation = new QVBoxLayout(page_translation);
+        verticalLayout_translation->setObjectName("verticalLayout_translation");
+        scrollArea_translation = new QScrollArea(page_translation);
+        scrollArea_translation->setObjectName("scrollArea_translation");
+        scrollArea_translation->setWidgetResizable(true);
+        scrollArea_translation->setFrameShape(QFrame::NoFrame);
+        scrollAreaWidgetContents_translation = new QWidget();
+        scrollAreaWidgetContents_translation->setObjectName("scrollAreaWidgetContents_translation");
+        scrollAreaWidgetContents_translation->setGeometry(QRect(0, 0, 100, 100));
+        verticalLayout_scroll_translation = new QVBoxLayout(scrollAreaWidgetContents_translation);
+        verticalLayout_scroll_translation->setObjectName("verticalLayout_scroll_translation");
+        googleProGroupBox = new QGroupBox(scrollAreaWidgetContents_translation);
+        googleProGroupBox->setObjectName("googleProGroupBox");
+        formLayout_professional = new QFormLayout(googleProGroupBox);
         formLayout_professional->setObjectName("formLayout_professional");
-        formLayout_professional->setHorizontalSpacing(15);
-        formLayout_professional->setVerticalSpacing(10);
-        formLayout_professional->setContentsMargins(10, 10, 10, 10);
-        googleApiKeyLabel = new QLabel(page_professional);
+        googleApiKeyLabel = new QLabel(googleProGroupBox);
         googleApiKeyLabel->setObjectName("googleApiKeyLabel");
 
         formLayout_professional->setWidget(0, QFormLayout::ItemRole::LabelRole, googleApiKeyLabel);
 
-        googleApiKeyEdit = new QLineEdit(page_professional);
+        googleApiKeyEdit = new QLineEdit(googleProGroupBox);
         googleApiKeyEdit->setObjectName("googleApiKeyEdit");
 
         formLayout_professional->setWidget(0, QFormLayout::ItemRole::FieldRole, googleApiKeyEdit);
 
-        configStackedWidget->addWidget(page_professional);
-        page_ai_powered = new QWidget();
-        page_ai_powered->setObjectName("page_ai_powered");
-        formLayout_ai_powered = new QFormLayout(page_ai_powered);
+
+        verticalLayout_scroll_translation->addWidget(googleProGroupBox);
+
+        llmProviderGroup = new QGroupBox(scrollAreaWidgetContents_translation);
+        llmProviderGroup->setObjectName("llmProviderGroup");
+        formLayout_ai_powered = new QFormLayout(llmProviderGroup);
         formLayout_ai_powered->setObjectName("formLayout_ai_powered");
-        formLayout_ai_powered->setHorizontalSpacing(15);
-        formLayout_ai_powered->setVerticalSpacing(10);
-        formLayout_ai_powered->setContentsMargins(10, 10, 10, 10);
-        llmProviderLabel = new QLabel(page_ai_powered);
+        llmProviderLabel = new QLabel(llmProviderGroup);
         llmProviderLabel->setObjectName("llmProviderLabel");
 
         formLayout_ai_powered->setWidget(0, QFormLayout::ItemRole::LabelRole, llmProviderLabel);
 
-        llmProviderComboBox = new QComboBox(page_ai_powered);
+        llmProviderComboBox = new QComboBox(llmProviderGroup);
         llmProviderComboBox->addItem(QString());
         llmProviderComboBox->addItem(QString());
         llmProviderComboBox->setObjectName("llmProviderComboBox");
 
         formLayout_ai_powered->setWidget(0, QFormLayout::ItemRole::FieldRole, llmProviderComboBox);
 
-        llmApiKeyLabel = new QLabel(page_ai_powered);
+        llmApiKeyLabel = new QLabel(llmProviderGroup);
         llmApiKeyLabel->setObjectName("llmApiKeyLabel");
 
         formLayout_ai_powered->setWidget(1, QFormLayout::ItemRole::LabelRole, llmApiKeyLabel);
 
-        llmApiKeyEdit = new QLineEdit(page_ai_powered);
+        llmApiKeyEdit = new QLineEdit(llmProviderGroup);
         llmApiKeyEdit->setObjectName("llmApiKeyEdit");
 
         formLayout_ai_powered->setWidget(1, QFormLayout::ItemRole::FieldRole, llmApiKeyEdit);
 
-        llmModelLabel = new QLabel(page_ai_powered);
+        llmModelLabel = new QLabel(llmProviderGroup);
         llmModelLabel->setObjectName("llmModelLabel");
 
         formLayout_ai_powered->setWidget(2, QFormLayout::ItemRole::LabelRole, llmModelLabel);
 
-        llmModelComboBox = new QComboBox(page_ai_powered);
+        llmModelComboBox = new QComboBox(llmProviderGroup);
         llmModelComboBox->setObjectName("llmModelComboBox");
 
         formLayout_ai_powered->setWidget(2, QFormLayout::ItemRole::FieldRole, llmModelComboBox);
 
-        llmAdvancedGroupBox = new QGroupBox(page_ai_powered);
+        llmAdvancedGroupBox = new QGroupBox(llmProviderGroup);
         llmAdvancedGroupBox->setObjectName("llmAdvancedGroupBox");
         llmAdvancedGroupBox->setCheckable(true);
         llmAdvancedGroupBox->setChecked(false);
@@ -205,26 +273,118 @@ public:
 
         formLayout_ai_powered->setWidget(3, QFormLayout::ItemRole::SpanningRole, llmAdvancedGroupBox);
 
-        configStackedWidget->addWidget(page_ai_powered);
 
-        verticalLayout->addWidget(configStackedWidget);
+        verticalLayout_scroll_translation->addWidget(llmProviderGroup);
 
-        verticalSpacer_bottom = new QSpacerItem(20, 40, QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Expanding);
+        verticalSpacer_translation = new QSpacerItem(20, 40, QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Expanding);
 
-        verticalLayout->addItem(verticalSpacer_bottom);
+        verticalLayout_scroll_translation->addItem(verticalSpacer_translation);
 
-        buttonBox = new QDialogButtonBox(SettingsDialog);
+        scrollArea_translation->setWidget(scrollAreaWidgetContents_translation);
+
+        verticalLayout_translation->addWidget(scrollArea_translation);
+
+        configStackedWidget->addWidget(page_translation);
+        page_ai_ui = new QWidget();
+        page_ai_ui->setObjectName("page_ai_ui");
+        verticalLayout_ai_ui = new QVBoxLayout(page_ai_ui);
+        verticalLayout_ai_ui->setObjectName("verticalLayout_ai_ui");
+        aiFilterDetailsGroupBox = new QGroupBox(page_ai_ui);
+        aiFilterDetailsGroupBox->setObjectName("aiFilterDetailsGroupBox");
+        formLayout_ai_settings = new QFormLayout(aiFilterDetailsGroupBox);
+        formLayout_ai_settings->setObjectName("formLayout_ai_settings");
+        label_ai_sensitivity = new QLabel(aiFilterDetailsGroupBox);
+        label_ai_sensitivity->setObjectName("label_ai_sensitivity");
+
+        formLayout_ai_settings->setWidget(0, QFormLayout::ItemRole::LabelRole, label_ai_sensitivity);
+
+        aiFilterThresholdSpinBox = new QDoubleSpinBox(aiFilterDetailsGroupBox);
+        aiFilterThresholdSpinBox->setObjectName("aiFilterThresholdSpinBox");
+        aiFilterThresholdSpinBox->setMaximum(1.000000000000000);
+        aiFilterThresholdSpinBox->setSingleStep(0.050000000000000);
+        aiFilterThresholdSpinBox->setValue(0.750000000000000);
+
+        formLayout_ai_settings->setWidget(0, QFormLayout::ItemRole::FieldRole, aiFilterThresholdSpinBox);
+
+        aiInfoLabel = new QLabel(aiFilterDetailsGroupBox);
+        aiInfoLabel->setObjectName("aiInfoLabel");
+        aiInfoLabel->setWordWrap(true);
+
+        formLayout_ai_settings->setWidget(1, QFormLayout::ItemRole::SpanningRole, aiInfoLabel);
+
+
+        verticalLayout_ai_ui->addWidget(aiFilterDetailsGroupBox);
+
+        visualsGroupBox = new QGroupBox(page_ai_ui);
+        visualsGroupBox->setObjectName("visualsGroupBox");
+        verticalLayout_visuals = new QVBoxLayout(visualsGroupBox);
+        verticalLayout_visuals->setObjectName("verticalLayout_visuals");
+        enableRelationsCheckBox = new QCheckBox(visualsGroupBox);
+        enableRelationsCheckBox->setObjectName("enableRelationsCheckBox");
+
+        verticalLayout_visuals->addWidget(enableRelationsCheckBox);
+
+
+        verticalLayout_ai_ui->addWidget(visualsGroupBox);
+
+        verticalSpacer_ai_ui = new QSpacerItem(20, 40, QSizePolicy::Policy::Minimum, QSizePolicy::Policy::Expanding);
+
+        verticalLayout_ai_ui->addItem(verticalSpacer_ai_ui);
+
+        configStackedWidget->addWidget(page_ai_ui);
+        page_plugins = new QWidget();
+        page_plugins->setObjectName("page_plugins");
+        horizontalLayout_plugins = new QHBoxLayout(page_plugins);
+        horizontalLayout_plugins->setObjectName("horizontalLayout_plugins");
+        pluginListWidget = new QListWidget(page_plugins);
+        pluginListWidget->setObjectName("pluginListWidget");
+        pluginListWidget->setMaximumSize(QSize(150, 16777215));
+
+        horizontalLayout_plugins->addWidget(pluginListWidget);
+
+        verticalLayout_plugins_right = new QVBoxLayout();
+        verticalLayout_plugins_right->setObjectName("verticalLayout_plugins_right");
+        pluginEnabledCheckBox = new QCheckBox(page_plugins);
+        pluginEnabledCheckBox->setObjectName("pluginEnabledCheckBox");
+        pluginEnabledCheckBox->setEnabled(false);
+
+        verticalLayout_plugins_right->addWidget(pluginEnabledCheckBox);
+
+        pluginSettingsScrollArea = new QScrollArea(page_plugins);
+        pluginSettingsScrollArea->setObjectName("pluginSettingsScrollArea");
+        pluginSettingsScrollArea->setWidgetResizable(true);
+        pluginSettingsContainer = new QWidget();
+        pluginSettingsContainer->setObjectName("pluginSettingsContainer");
+        pluginSettingsContainer->setGeometry(QRect(0, 0, 256, 228));
+        formLayout_plugins = new QFormLayout(pluginSettingsContainer);
+        formLayout_plugins->setObjectName("formLayout_plugins");
+        pluginSettingsScrollArea->setWidget(pluginSettingsContainer);
+
+        verticalLayout_plugins_right->addWidget(pluginSettingsScrollArea);
+
+
+        horizontalLayout_plugins->addLayout(verticalLayout_plugins_right);
+
+        configStackedWidget->addWidget(page_plugins);
+
+        verticalLayout_content->addWidget(configStackedWidget);
+
+        buttonBox = new QDialogButtonBox(frame_content);
         buttonBox->setObjectName("buttonBox");
-        buttonBox->setOrientation(Qt::Orientation::Horizontal);
-        buttonBox->setStandardButtons(QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok);
+        buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
 
-        verticalLayout->addWidget(buttonBox);
+        verticalLayout_content->addWidget(buttonBox);
+
+
+        horizontalLayout_main->addWidget(frame_content);
 
 
         retranslateUi(SettingsDialog);
         QObject::connect(buttonBox, &QDialogButtonBox::accepted, SettingsDialog, qOverload<>(&QDialog::accept));
         QObject::connect(buttonBox, &QDialogButtonBox::rejected, SettingsDialog, qOverload<>(&QDialog::reject));
+        QObject::connect(settingsListWidget, &QListWidget::currentRowChanged, configStackedWidget, &QStackedWidget::setCurrentIndex);
 
+        settingsListWidget->setCurrentRow(0);
         configStackedWidget->setCurrentIndex(0);
 
 
@@ -234,37 +394,50 @@ public:
     void retranslateUi(QDialog *SettingsDialog)
     {
         SettingsDialog->setWindowTitle(QCoreApplication::translate("SettingsDialog", "Settings", nullptr));
-        translationModeGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "Translation Mode", nullptr));
-        quickTranslateRadioButton->setText(QCoreApplication::translate("SettingsDialog", "\360\237\206\223 Quick (Google Free)", nullptr));
-        professionalTranslateRadioButton->setText(QCoreApplication::translate("SettingsDialog", "\360\237\224\221 Professional (Google API)", nullptr));
-        aiPoweredTranslateRadioButton->setText(QCoreApplication::translate("SettingsDialog", "\360\237\244\226 AI-Powered (LLM)", nullptr));
-        basicSettingsGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "Basic Settings", nullptr));
-#if QT_CONFIG(tooltip)
-        targetLanguageLabel->setToolTip(QCoreApplication::translate("SettingsDialog", "The language to translate into.", nullptr));
-#endif // QT_CONFIG(tooltip)
+
+        const bool __sortingEnabled = settingsListWidget->isSortingEnabled();
+        settingsListWidget->setSortingEnabled(false);
+        QListWidgetItem *___qlistwidgetitem = settingsListWidget->item(0);
+        ___qlistwidgetitem->setText(QCoreApplication::translate("SettingsDialog", "General", nullptr));
+        QListWidgetItem *___qlistwidgetitem1 = settingsListWidget->item(1);
+        ___qlistwidgetitem1->setText(QCoreApplication::translate("SettingsDialog", "Translation", nullptr));
+        QListWidgetItem *___qlistwidgetitem2 = settingsListWidget->item(2);
+        ___qlistwidgetitem2->setText(QCoreApplication::translate("SettingsDialog", "AI Engine", nullptr));
+        QListWidgetItem *___qlistwidgetitem3 = settingsListWidget->item(3);
+        ___qlistwidgetitem3->setText(QCoreApplication::translate("SettingsDialog", "Plugins", nullptr));
+        settingsListWidget->setSortingEnabled(__sortingEnabled);
+
+        generalGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "General Settings", nullptr));
+        sourceLanguageLabel->setText(QCoreApplication::translate("SettingsDialog", "Source Language:", nullptr));
         targetLanguageLabel->setText(QCoreApplication::translate("SettingsDialog", "Target Language:", nullptr));
-        label_quick_info->setText(QCoreApplication::translate("SettingsDialog", "No specific settings for Quick Translate.", nullptr));
-#if QT_CONFIG(tooltip)
-        googleApiKeyLabel->setToolTip(QCoreApplication::translate("SettingsDialog", "Your Google Translate API key.", nullptr));
-#endif // QT_CONFIG(tooltip)
+        activeModeLabel->setText(QCoreApplication::translate("SettingsDialog", "Active Mode:", nullptr));
+        translatorModeComboBox->setItemText(0, QCoreApplication::translate("SettingsDialog", "Quick (Google Free)", nullptr));
+        translatorModeComboBox->setItemText(1, QCoreApplication::translate("SettingsDialog", "Professional (Google API)", nullptr));
+        translatorModeComboBox->setItemText(2, QCoreApplication::translate("SettingsDialog", "AI-Powered (LLM)", nullptr));
+        translatorModeComboBox->setItemText(3, QCoreApplication::translate("SettingsDialog", "Plugins (Lua)", nullptr));
+
+        label_enable_ai->setText(QCoreApplication::translate("SettingsDialog", "AI Features:", nullptr));
+        enableAiFilterCheckBox->setText(QCoreApplication::translate("SettingsDialog", "Enable AI Context Filter", nullptr));
+        googleProGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "Google Cloud Translation API", nullptr));
         googleApiKeyLabel->setText(QCoreApplication::translate("SettingsDialog", "API Key:", nullptr));
-#if QT_CONFIG(tooltip)
-        llmProviderLabel->setToolTip(QCoreApplication::translate("SettingsDialog", "The LLM provider to use (e.g., OpenAI, Google AI).", nullptr));
-#endif // QT_CONFIG(tooltip)
+        llmProviderGroup->setTitle(QCoreApplication::translate("SettingsDialog", "LLM Provider Settings", nullptr));
         llmProviderLabel->setText(QCoreApplication::translate("SettingsDialog", "Provider:", nullptr));
         llmProviderComboBox->setItemText(0, QCoreApplication::translate("SettingsDialog", "Google AI", nullptr));
         llmProviderComboBox->setItemText(1, QCoreApplication::translate("SettingsDialog", "Anthropic", nullptr));
 
-#if QT_CONFIG(tooltip)
-        llmApiKeyLabel->setToolTip(QCoreApplication::translate("SettingsDialog", "Your API key for the selected LLM provider.", nullptr));
-#endif // QT_CONFIG(tooltip)
         llmApiKeyLabel->setText(QCoreApplication::translate("SettingsDialog", "API Key:", nullptr));
-#if QT_CONFIG(tooltip)
-        llmModelLabel->setToolTip(QCoreApplication::translate("SettingsDialog", "The specific LLM model to use.", nullptr));
-#endif // QT_CONFIG(tooltip)
         llmModelLabel->setText(QCoreApplication::translate("SettingsDialog", "Model:", nullptr));
         llmAdvancedGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "Advanced", nullptr));
         llmBaseUrlLabel->setText(QCoreApplication::translate("SettingsDialog", "Base URL:", nullptr));
+        aiFilterDetailsGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "AI Filter Configuration", nullptr));
+        label_ai_sensitivity->setText(QCoreApplication::translate("SettingsDialog", "Sensitivity:", nullptr));
+#if QT_CONFIG(tooltip)
+        aiFilterThresholdSpinBox->setToolTip(QCoreApplication::translate("SettingsDialog", "Similarity Threshold (Higher = Stricter/Fewer Skips)", nullptr));
+#endif // QT_CONFIG(tooltip)
+        aiInfoLabel->setText(QCoreApplication::translate("SettingsDialog", "<html><head/><body><p><span style=\" font-style:italic;\">Details on how the AI interprets the image context.</span></p></body></html>", nullptr));
+        visualsGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "Visualizations", nullptr));
+        enableRelationsCheckBox->setText(QCoreApplication::translate("SettingsDialog", "Enable Data Relations Graph (RPG Maker)", nullptr));
+        pluginEnabledCheckBox->setText(QCoreApplication::translate("SettingsDialog", "Enable Plugin", nullptr));
     } // retranslateUi
 
 };

@@ -235,6 +235,52 @@ void MainWindow::onOpenMockData()
     }
 }
 
+void MainWindow::openProjectFromCLI(const QString &engineName, const QString &projectPath)
+{
+    if (engineName.isEmpty() || projectPath.isEmpty()) {
+        qWarning() << "[NST] CLI Error: Both --engine and --project are required";
+        return;
+    }
+    
+    // Validate engine exists
+    BGADataManager tempManager(this);
+    QStringList availableEngines = tempManager.getAvailableAnalyzers();
+    
+    // Case-insensitive engine matching
+    QString matchedEngine;
+    for (const QString &engine : availableEngines) {
+        if (engine.compare(engineName, Qt::CaseInsensitive) == 0) {
+            matchedEngine = engine;
+            break;
+        }
+    }
+    
+    if (matchedEngine.isEmpty()) {
+        QMessageBox::warning(this, "Invalid Engine", 
+            QString("Engine '%1' not found.\n\nAvailable engines:\n%2")
+            .arg(engineName, availableEngines.join("\n")));
+        return;
+    }
+    
+    // Validate project path exists
+    if (!QDir(projectPath).exists()) {
+        QMessageBox::warning(this, "Invalid Path",
+            QString("Project path does not exist:\n%1").arg(projectPath));
+        return;
+    }
+
+    // Open project (cliMode=true for auto-save without dialog)
+    m_engineName = matchedEngine;
+    m_fileTranslationWidget->onNewProject(matchedEngine, projectPath, true);
+    
+    // Update Relations visibility
+    bool isRpgMaker = matchedEngine.startsWith("RPG Maker");
+    bool showRelations = m_enableRelations && isRpgMaker;
+    if (m_titleBar) {
+        m_titleBar->setRelationsVisible(showRelations);
+    }
+}
+
 void MainWindow::onSettingsActionTriggered()
 {
     SettingsDialog dialog(this);

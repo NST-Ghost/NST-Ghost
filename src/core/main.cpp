@@ -21,6 +21,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QDir>
+#include <QCommandLineParser>
 #include <QCoreApplication>
 #include <cstdlib>
 #include <string>
@@ -271,6 +272,54 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     std::cerr << "[NST] QApplication created" << std::endl;
 
+    // Set application info for CLI
+    QCoreApplication::setApplicationName("NST");
+    QCoreApplication::setApplicationVersion("1.0.0");
+
+    // Parse command line arguments
+    QCommandLineParser parser;
+    parser.setApplicationDescription("NST Translation Tool - Game Translation Made Easy");
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    QCommandLineOption engineOption(
+        QStringList() << "e" << "engine",
+        "Game engine name (e.g., rpgm, unity, renpy)",
+        "engine"
+    );
+    QCommandLineOption projectOption(
+        QStringList() << "p" << "project",
+        "Path to game project directory",
+        "path"
+    );
+
+    parser.addOption(engineOption);
+    parser.addOption(projectOption);
+    
+    // Process arguments - on Linux GUI apps, help/version are shown via message box
+    // We manually print to stderr for CLI usage
+    parser.parse(a.arguments());
+    
+    if (parser.isSet("help")) {
+        std::cerr << parser.helpText().toStdString() << std::endl;
+        return 0;
+    }
+    if (parser.isSet("version")) {
+        std::cerr << QCoreApplication::applicationName().toStdString() 
+                  << " " << QCoreApplication::applicationVersion().toStdString() << std::endl;
+        return 0;
+    }
+    
+    // Check for unknown options
+    if (!parser.unknownOptionNames().isEmpty()) {
+        std::cerr << "Unknown options: " << parser.unknownOptionNames().join(", ").toStdString() << std::endl;
+        std::cerr << parser.helpText().toStdString() << std::endl;
+        return 1;
+    }
+
+    QString cliEngine = parser.value(engineOption);
+    QString cliProject = parser.value(projectOption);
+
     // Fix: Correct resource path for stylesheet (was :/style.qss, needed :/ui/style.qss)
     QFile file(":/ui/style.qss");
     if (file.open(QFile::ReadOnly | QFile::Text)) {
@@ -294,7 +343,15 @@ int main(int argc, char *argv[])
     std::cerr << "[NST] Showing MainWindow..." << std::endl;
     w.show();
 
-    // QTimer::singleShot(0, &w, &MainWindow::onNewProject); // Optional: Auto-start new project flow
+    // CLI mode: auto-open project if --engine and --project provided
+    if (!cliEngine.isEmpty() && !cliProject.isEmpty()) {
+        std::cerr << "[NST] CLI mode: Opening project..." << std::endl;
+        std::cerr << "[NST]   Engine: " << cliEngine.toStdString() << std::endl;
+        std::cerr << "[NST]   Project: " << cliProject.toStdString() << std::endl;
+        QTimer::singleShot(0, &w, [&w, cliEngine, cliProject]() {
+            w.openProjectFromCLI(cliEngine, cliProject);
+        });
+    }
 
     std::cerr << "[NST] Entering event loop..." << std::endl;
     return a.exec();

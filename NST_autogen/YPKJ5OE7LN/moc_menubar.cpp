@@ -49,6 +49,7 @@ template <> constexpr inline auto MenuBar::qt_create_metaobjectdata<qt_meta_tag_
         "exit",
         "fontManager",
         "pluginManager",
+        "featureManager",
         "editEngineScript",
         "toggleContext",
         "checked",
@@ -76,20 +77,22 @@ template <> constexpr inline auto MenuBar::qt_create_metaobjectdata<qt_meta_tag_
         QtMocHelpers::SignalData<void()>(9, 2, QMC::AccessPublic, QMetaType::Void),
         // Signal 'pluginManager'
         QtMocHelpers::SignalData<void()>(10, 2, QMC::AccessPublic, QMetaType::Void),
-        // Signal 'editEngineScript'
+        // Signal 'featureManager'
         QtMocHelpers::SignalData<void()>(11, 2, QMC::AccessPublic, QMetaType::Void),
+        // Signal 'editEngineScript'
+        QtMocHelpers::SignalData<void()>(12, 2, QMC::AccessPublic, QMetaType::Void),
         // Signal 'toggleContext'
-        QtMocHelpers::SignalData<void(bool)>(12, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Bool, 13 },
+        QtMocHelpers::SignalData<void(bool)>(13, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 14 },
         }}),
         // Signal 'hideCompleted'
-        QtMocHelpers::SignalData<void(bool)>(14, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Bool, 13 },
+        QtMocHelpers::SignalData<void(bool)>(15, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 14 },
         }}),
         // Signal 'exportSmartFilterRules'
-        QtMocHelpers::SignalData<void()>(15, 2, QMC::AccessPublic, QMetaType::Void),
-        // Signal 'importSmartFilterRules'
         QtMocHelpers::SignalData<void()>(16, 2, QMC::AccessPublic, QMetaType::Void),
+        // Signal 'importSmartFilterRules'
+        QtMocHelpers::SignalData<void()>(17, 2, QMC::AccessPublic, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
     };
@@ -122,11 +125,12 @@ void MenuBar::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
         case 6: _t->exit(); break;
         case 7: _t->fontManager(); break;
         case 8: _t->pluginManager(); break;
-        case 9: _t->editEngineScript(); break;
-        case 10: _t->toggleContext((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 11: _t->hideCompleted((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 12: _t->exportSmartFilterRules(); break;
-        case 13: _t->importSmartFilterRules(); break;
+        case 9: _t->featureManager(); break;
+        case 10: _t->editEngineScript(); break;
+        case 11: _t->toggleContext((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 12: _t->hideCompleted((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 13: _t->exportSmartFilterRules(); break;
+        case 14: _t->importSmartFilterRules(); break;
         default: ;
         }
     }
@@ -149,15 +153,17 @@ void MenuBar::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, voi
             return;
         if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::pluginManager, 8))
             return;
-        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::editEngineScript, 9))
+        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::featureManager, 9))
             return;
-        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)(bool )>(_a, &MenuBar::toggleContext, 10))
+        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::editEngineScript, 10))
             return;
-        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)(bool )>(_a, &MenuBar::hideCompleted, 11))
+        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)(bool )>(_a, &MenuBar::toggleContext, 11))
             return;
-        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::exportSmartFilterRules, 12))
+        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)(bool )>(_a, &MenuBar::hideCompleted, 12))
             return;
-        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::importSmartFilterRules, 13))
+        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::exportSmartFilterRules, 13))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (MenuBar::*)()>(_a, &MenuBar::importSmartFilterRules, 14))
             return;
     }
 }
@@ -181,14 +187,14 @@ int MenuBar::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 14)
+        if (_id < 15)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 15;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 14)
+        if (_id < 15)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 14;
+        _id -= 15;
     }
     return _id;
 }
@@ -248,32 +254,38 @@ void MenuBar::pluginManager()
 }
 
 // SIGNAL 9
-void MenuBar::editEngineScript()
+void MenuBar::featureManager()
 {
     QMetaObject::activate(this, &staticMetaObject, 9, nullptr);
 }
 
 // SIGNAL 10
-void MenuBar::toggleContext(bool _t1)
+void MenuBar::editEngineScript()
 {
-    QMetaObject::activate<void>(this, &staticMetaObject, 10, nullptr, _t1);
+    QMetaObject::activate(this, &staticMetaObject, 10, nullptr);
 }
 
 // SIGNAL 11
-void MenuBar::hideCompleted(bool _t1)
+void MenuBar::toggleContext(bool _t1)
 {
     QMetaObject::activate<void>(this, &staticMetaObject, 11, nullptr, _t1);
 }
 
 // SIGNAL 12
-void MenuBar::exportSmartFilterRules()
+void MenuBar::hideCompleted(bool _t1)
 {
-    QMetaObject::activate(this, &staticMetaObject, 12, nullptr);
+    QMetaObject::activate<void>(this, &staticMetaObject, 12, nullptr, _t1);
 }
 
 // SIGNAL 13
-void MenuBar::importSmartFilterRules()
+void MenuBar::exportSmartFilterRules()
 {
     QMetaObject::activate(this, &staticMetaObject, 13, nullptr);
+}
+
+// SIGNAL 14
+void MenuBar::importSmartFilterRules()
+{
+    QMetaObject::activate(this, &staticMetaObject, 14, nullptr);
 }
 QT_WARNING_POP
