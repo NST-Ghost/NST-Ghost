@@ -9,6 +9,8 @@
 #include <QStandardPaths>
 #include <QDir>
 #include <QFileInfo>
+#include <QSet>
+#include <QDateTime>
 
 BGADataManager::BGADataManager(QObject *parent)
     : QObject(parent)
@@ -184,6 +186,7 @@ bool BGADataManager::exportStringsToGameProject(const QString &engineName, const
     }
 
     // Copy logic
+
     for (const QString &sourceFilePath : filesToProcess) {
         QString relativePath = projectDir.relativeFilePath(sourceFilePath);
         QString targetFilePath = targetDirectory.filePath(relativePath);
@@ -193,13 +196,16 @@ bool BGADataManager::exportStringsToGameProject(const QString &engineName, const
             targetFileInfo.dir().mkpath(".");
         }
 
-        if (QFile::exists(targetFilePath)) {
-            QFile::remove(targetFilePath);
-        }
+        // If deploying in-place (source == target), skip copy/remove to avoid deleting original data
+        if (QFileInfo(sourceFilePath).canonicalFilePath() != QFileInfo(targetFilePath).canonicalFilePath()) {
+            if (QFile::exists(targetFilePath)) {
+                QFile::remove(targetFilePath);
+            }
 
-        if (!QFile::copy(sourceFilePath, targetFilePath)) {
-             emit errorOccurred("Failed to copy file: " + sourceFilePath + " to " + targetFilePath);
-             return false;
+            if (!QFile::copy(sourceFilePath, targetFilePath)) {
+                 emit errorOccurred("Failed to copy file: " + sourceFilePath + " to " + targetFilePath);
+                 return false;
+            }
         }
     }
 
@@ -252,3 +258,69 @@ QPair<QString, QString> BGADataManager::getScriptDetails(const QString &engineNa
     return qMakePair(QString(), QString());
 }
 
+bool BGADataManager::createBackup(const QString &projectPath, const QMap<QString, QJsonArray> &data)
+{
+    QDir projectDir(projectPath);
+    QString backupDirPath = projectDir.filePath("_nst_backup");
+    QDir backupDir(backupDirPath);
+    
+    // Create backup directory if it doesn't exist
+    if (!backupDir.exists()) {
+        if (!QDir().mkpath(backupDirPath)) {
+            emit errorOccurred(tr("Failed to create backup directory: %1").arg(backupDirPath));
+            return false;
+        }
+    }
+    
+    // Collect unique file paths that will be modified
+    QSet<QString> filesToBackup;
+    for (const QJsonArray &entries : data) {
+        for (const QJsonValue &val : entries) {
+            QString filePath = val.toObject()["path"].toString();
+            if (!filePath.isEmpty() && QFile::exists(filePath)) {
+                filesToBackup.insert(filePath);
+            }
+        }
+    }
+    
+    // Copy each file to backup directory
+    int backedUp = 0;
+    for (const QString &originalPath : filesToBackup) {
+        QString relativePath = projectDir.relativeFilePath(originalPath);
+        QString backupPath = backupDir.filePath(relativePath);
+        
+        // Create parent directories in backup
+        QFileInfo backupFileInfo(backupPath);
+        if (!backupFileInfo.dir().exists()) {
+            backupFileInfo.dir().mkpath(".");
+        }
+        
+        // Skip if already backed up
+        if (QFile::exists(backupPath)) {
+            backedUp++;
+            continue;
+        }
+        
+        // Copy file
+        if (QFile::copy(originalPath, backupPath)) {
+            backedUp++;
+        } else {
+            qWarning() << "[NST Backup] Failed to backup:" << originalPath;
+        }
+    }
+    
+    // Write backup manifest
+    QJsonObject manifest;
+    manifest["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    manifest["projectPath"] = projectPath;
+    manifest["filesCount"] = backedUp;
+    
+    QFile manifestFile(backupDir.filePath("manifest.json"));
+    if (manifestFile.open(QIODevice::WriteOnly)) {
+        manifestFile.write(QJsonDocument(manifest).toJson(QJsonDocument::Compact));
+        manifestFile.close();
+    }
+    
+    qDebug() << "[NST Backup] Created backup of" << backedUp << "files in" << backupDirPath;
+    return true;
+}

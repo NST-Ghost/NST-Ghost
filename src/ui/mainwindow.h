@@ -32,7 +32,13 @@ public:
     ~MainWindow();
 
     // CLI Support: Open project directly without dialog
-    void openProjectFromCLI(const QString &engineName, const QString &projectPath);
+    // deployAfterLoad: if true, deploy game after loading
+    // outputPath: target directory for deployment (empty = in-place)
+    // backupPreference: -1 = use settings, 0 = no backup, 1 = force backup
+    void openProjectFromCLI(const QString &engineName, const QString &projectPath, 
+                            bool deployAfterLoad = false, 
+                            const QString &outputPath = QString(), 
+                            int backupPreference = -1);
 
 public slots:
     void onNewProject(); // Renamed

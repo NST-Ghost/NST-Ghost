@@ -25,6 +25,9 @@ public:
     QPair<QString, QString> getScriptDetails(const QString &engineName, const QString &projectPath);
 
     QJsonArray loadedFonts() const;
+    
+    // Backup functionality for CLI deploy
+    bool createBackup(const QString &projectPath, const QMap<QString, QJsonArray> &data);
 
 signals:
     void errorOccurred(const QString &message);

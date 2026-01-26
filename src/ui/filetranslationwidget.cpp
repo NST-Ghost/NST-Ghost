@@ -15,6 +15,9 @@
 #include <QFileInfo>
 #include <QMenu>
 #include <QFileDialog>
+#include <QSettings>
+#include <QApplication>
+#include <iostream>
 
 FileTranslationWidget::FileTranslationWidget(TranslationServiceManager *serviceManager, QWidget *parent)
     : QWidget(parent)
@@ -820,6 +823,17 @@ void FileTranslationWidget::onOpenProject()
     }
 }
 
+// Accessors for Default Deployment Path
+void FileTranslationWidget::setDefaultDeploymentPath(const QString &path)
+{
+    m_defaultDeploymentPath = path;
+}
+
+QString FileTranslationWidget::defaultDeploymentPath() const
+{
+    return m_defaultDeploymentPath;
+}
+
 void FileTranslationWidget::onDeployProject()
 {
     if (m_projectDataManager->getLoadedGameProjectData().isEmpty()) {
@@ -854,20 +868,58 @@ void FileTranslationWidget::onDeployProject()
     
     bool onlyTranslated = (choice == options[0]);
 
-    QString dir = QFileDialog::getExistingDirectory(this, tr("Select Deployment Folder (Where to create game)"),
-                                                "",
-                                                QFileDialog::ShowDirsOnly
-                                                | QFileDialog::DontResolveSymlinks);
+    QString dir;
+    
+    // Check if default path is set via CLI
+    if (!m_defaultDeploymentPath.isEmpty()) {
+        dir = m_defaultDeploymentPath;
+        // Verify path is valid/writable?
+        QFileInfo info(dir);
+        if (!info.isDir() && !info.absolutePath().isEmpty()) {
+            QDir().mkpath(info.absolutePath());
+        }
+    } else {
+        dir = QFileDialog::getExistingDirectory(this, tr("Select Deployment Folder (Where to create game)"),
+                                                    gamePath,
+                                                    QFileDialog::ShowDirsOnly
+                                                    | QFileDialog::DontResolveSymlinks);
+    }
 
     if (dir.isEmpty()) return;
     
     if (!m_progressDialog) m_progressDialog = new CustomProgressDialog(this);
+    
+    // Check if backup is enabled in settings
+    QSettings settings;
+    bool backupEnabled = settings.value("deployBackupEnabled", true).toBool();
+    
+    if (backupEnabled) {
+        m_progressDialog->setLabelText(tr("Creating backup..."));
+        m_progressDialog->setRange(0, 0);
+        m_progressDialog->show();
+        QApplication::processEvents();
+        
+        bool backupSuccess = m_bgaDataManager->createBackup(
+            gamePath, 
+            m_projectDataManager->getLoadedGameProjectData()
+        );
+        
+        if (!backupSuccess) {
+            m_progressDialog->close();
+            QMessageBox::StandardButton reply = QMessageBox::question(
+                this, 
+                tr("Backup Failed"),
+                tr("Failed to create backup. Continue deployment anyway?"),
+                QMessageBox::Yes | QMessageBox::No
+            );
+            if (reply == QMessageBox::No) return;
+        }
+    }
+    
     m_progressDialog->setLabelText(tr("Deploying game (Copying & Patching)..."));
     m_progressDialog->setRange(0, 0);
     m_progressDialog->show();
-    
-    // Run synchronously for safety
-    m_progressDialog->close();
+    QApplication::processEvents();
     
     bool success = m_bgaDataManager->exportStringsToGameProject(
         m_engineName,
@@ -876,11 +928,71 @@ void FileTranslationWidget::onDeployProject()
         m_projectDataManager->getLoadedGameProjectData(),
         onlyTranslated
     );
+    
+    m_progressDialog->close();
 
     if (success) {
-        QMessageBox::information(this, tr("Success"), tr("Game Deployed successfully to:\n%1").arg(dir));
+        QString message = tr("Game Deployed successfully to:\n%1").arg(dir);
+        if (backupEnabled) {
+            message += tr("\n\nBackup saved in: %1/_nst_backup").arg(gamePath);
+        }
+        QMessageBox::information(this, tr("Success"), message);
     } else {
         QMessageBox::critical(this, tr("Error"), tr("Failed to deploy game. Check logs."));
+    }
+}
+
+void FileTranslationWidget::onDeployProjectCLI(const QString &targetDir, bool createBackup)
+{
+    if (m_projectDataManager->getLoadedGameProjectData().isEmpty()) {
+        std::cerr << "[NST Deploy] Error: No project loaded to deploy." << std::endl;
+        return;
+    }
+
+    QString gamePath = m_projectDataManager->getProjectPath();
+    if (!QFileInfo::exists(gamePath)) {
+        std::cerr << "[NST Deploy] Error: Cannot find original game files at: " 
+                  << gamePath.toStdString() << std::endl;
+        return;
+    }
+
+    // Determine output directory (empty = in-place deployment to original)
+    QString outputPath = targetDir.isEmpty() ? gamePath : targetDir;
+    bool inPlace = (outputPath == gamePath);
+    
+    std::cerr << "[NST Deploy] Starting deployment..." << std::endl;
+    std::cerr << "[NST Deploy]   Source: " << gamePath.toStdString() << std::endl;
+    std::cerr << "[NST Deploy]   Target: " << outputPath.toStdString() << std::endl;
+    std::cerr << "[NST Deploy]   In-place: " << (inPlace ? "yes" : "no") << std::endl;
+    std::cerr << "[NST Deploy]   Backup: " << (createBackup ? "yes" : "no") << std::endl;
+
+    // Create backup if requested
+    if (createBackup) {
+        std::cerr << "[NST Deploy] Creating backup..." << std::endl;
+        bool backupSuccess = m_bgaDataManager->createBackup(
+            gamePath, 
+            m_projectDataManager->getLoadedGameProjectData()
+        );
+        if (!backupSuccess) {
+            std::cerr << "[NST Deploy] Warning: Backup creation failed, but continuing..." << std::endl;
+        } else {
+            std::cerr << "[NST Deploy] Backup created successfully in _nst_backup folder" << std::endl;
+        }
+    }
+
+    // Deploy (export) with "Only Translated Files" mode
+    bool success = m_bgaDataManager->exportStringsToGameProject(
+        m_engineName,
+        gamePath,
+        outputPath,
+        m_projectDataManager->getLoadedGameProjectData(),
+        true  // onlyTranslated = true
+    );
+
+    if (success) {
+        std::cerr << "[NST Deploy] SUCCESS: Game deployed to " << outputPath.toStdString() << std::endl;
+    } else {
+        std::cerr << "[NST Deploy] FAILED: Could not deploy game. Check logs for details." << std::endl;
     }
 }
 

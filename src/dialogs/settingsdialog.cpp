@@ -122,6 +122,16 @@ void SettingsDialog::setAiFilterThreshold(double threshold)
     ui->aiFilterThresholdSpinBox->setValue(threshold);
 }
 
+bool SettingsDialog::isBackupEnabled() const
+{
+    return ui->enableBackupCheckBox->isChecked();
+}
+
+void SettingsDialog::setBackupEnabled(bool enabled)
+{
+    ui->enableBackupCheckBox->setChecked(enabled);
+}
+
 void SettingsDialog::setGoogleApiKey(const QString &apiKey)
 {
     ui->googleApiKeyEdit->setText(apiKey);

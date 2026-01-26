@@ -57,6 +57,10 @@ public:
     void setRelationsEnabled(bool enabled);
     void setAiFilterEnabled(bool enabled);
     void setAiFilterThreshold(double threshold);
+    
+    // Backup
+    bool isBackupEnabled() const;
+    void setBackupEnabled(bool enabled);
 
 private slots:
     void updateConfigPanel();

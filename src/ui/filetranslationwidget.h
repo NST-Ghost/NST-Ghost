@@ -52,6 +52,7 @@ public:
     void onOpenProject();  // Renamed from onLoadTranslationWorkspace
     void onSaveProject();  // Renamed from onSaveGameProject
     void onDeployProject(); // Renamed from onExportGameProject
+    void onDeployProjectCLI(const QString &targetDir = QString(), bool createBackup = true); // CLI deploy
 
     void onUndoTranslation();
     
@@ -60,6 +61,10 @@ public:
     bool isAiFilterEnabled() const;
     void setAiFilterThreshold(double threshold);
     double aiFilterThreshold() const;
+
+    // Use this path for deployment if set (avoids dialog)
+    void setDefaultDeploymentPath(const QString &path);
+    QString defaultDeploymentPath() const;
 
     void openFontManager(); // Added
     
@@ -137,6 +142,8 @@ private:
     QString m_llmApiKey;
     QString m_llmModel;
     QString m_llmBaseUrl;
+    
+    QString m_defaultDeploymentPath; // Path set via CLI/Config to use as default
     
     // Queues and Timers
     struct PendingTranslation {

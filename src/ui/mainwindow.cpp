@@ -18,6 +18,8 @@
 #include <QMouseEvent>
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include <QSettings>
+#include <iostream>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -235,7 +237,9 @@ void MainWindow::onOpenMockData()
     }
 }
 
-void MainWindow::openProjectFromCLI(const QString &engineName, const QString &projectPath)
+void MainWindow::openProjectFromCLI(const QString &engineName, const QString &projectPath,
+                                     bool deployAfterLoad, const QString &outputPath, 
+                                     int backupPreference)
 {
     if (engineName.isEmpty() || projectPath.isEmpty()) {
         qWarning() << "[NST] CLI Error: Both --engine and --project are required";
@@ -279,6 +283,44 @@ void MainWindow::openProjectFromCLI(const QString &engineName, const QString &pr
     if (m_titleBar) {
         m_titleBar->setRelationsVisible(showRelations);
     }
+    
+    // Set default deployment path from CLI if provided (so GUI deploy button won't ask)
+    if (!outputPath.isEmpty()) {
+         m_fileTranslationWidget->setDefaultDeploymentPath(outputPath);
+    } else {
+         // Default to project path if not specified? 
+         // User requested "set beforehand". If not set, maybe don't force it to allow selecting?
+         // But for consistency with CLI deploy behavior (in-place), maybe we should?
+         // Let's only set it if explicitly provided via --output for now, 
+         // OR if deployAfterLoad is true (since that implies we know where to go).
+         // Actually, let's keep it optional. If user wants to skip dialog, they use -o or -d.
+    }
+
+    // Handle deploy after load if requested
+    if (deployAfterLoad) {
+        // Determine final output path (empty = in-place deployment)
+        QString targetDir = outputPath.isEmpty() ? projectPath : outputPath;
+        
+        // Determine backup setting
+        // backupPreference: -1 = use settings, 0 = no backup, 1 = force backup
+        bool shouldBackup;
+        if (backupPreference == -1) {
+            // Use setting from QSettings
+            QSettings settings;
+            shouldBackup = settings.value("deployBackupEnabled", true).toBool();
+        } else {
+            shouldBackup = (backupPreference == 1);
+        }
+        
+        std::cerr << "[NST] CLI Deploy: target=" << targetDir.toStdString() 
+                  << ", backup=" << (shouldBackup ? "yes" : "no") << std::endl;
+        
+        // Schedule deploy after project is fully loaded
+        // Use a delayed singleShot to give time for project loading
+        QTimer::singleShot(500, this, [this, targetDir, shouldBackup]() {
+            m_fileTranslationWidget->onDeployProjectCLI(targetDir, shouldBackup);
+        });
+    }
 }
 
 void MainWindow::onSettingsActionTriggered()
@@ -293,6 +335,10 @@ void MainWindow::onSettingsActionTriggered()
     dialog.setLlmBaseUrl(m_llmBaseUrl);
     dialog.setLlmBaseUrl(m_llmBaseUrl);
     dialog.setRelationsEnabled(m_enableRelations);
+    
+    // Backup setting
+    QSettings settings;
+    dialog.setBackupEnabled(settings.value("deployBackupEnabled", true).toBool());
     
     // AI Filter
     if (m_fileTranslationWidget) {
@@ -310,6 +356,9 @@ void MainWindow::onSettingsActionTriggered()
         m_llmModel = dialog.llmModel();
         m_llmBaseUrl = dialog.llmBaseUrl();
         m_enableRelations = dialog.isRelationsEnabled();
+        
+        // Backup setting
+        settings.setValue("deployBackupEnabled", dialog.isBackupEnabled());
         
         // AI Filter
         if (m_fileTranslationWidget) {

@@ -292,9 +292,30 @@ int main(int argc, char *argv[])
         "Path to game project directory",
         "path"
     );
+    QCommandLineOption deployOption(
+        QStringList() << "d" << "deploy",
+        "Deploy translated game after loading project"
+    );
+    QCommandLineOption outputOption(
+        QStringList() << "o" << "output",
+        "Output directory for deployment (default: original game folder)",
+        "path"
+    );
+    QCommandLineOption backupOption(
+        "backup",
+        "Create backup before deployment (overrides settings)"
+    );
+    QCommandLineOption noBackupOption(
+        "no-backup",
+        "Skip backup creation (overrides settings)"
+    );
 
     parser.addOption(engineOption);
     parser.addOption(projectOption);
+    parser.addOption(deployOption);
+    parser.addOption(outputOption);
+    parser.addOption(backupOption);
+    parser.addOption(noBackupOption);
     
     // Process arguments - on Linux GUI apps, help/version are shown via message box
     // We manually print to stderr for CLI usage
@@ -319,6 +340,10 @@ int main(int argc, char *argv[])
 
     QString cliEngine = parser.value(engineOption);
     QString cliProject = parser.value(projectOption);
+    bool cliDeploy = parser.isSet(deployOption);
+    QString cliOutput = parser.value(outputOption);
+    bool cliBackup = parser.isSet(backupOption);
+    bool cliNoBackup = parser.isSet(noBackupOption);
 
     // Fix: Correct resource path for stylesheet (was :/style.qss, needed :/ui/style.qss)
     QFile file(":/ui/style.qss");
@@ -348,9 +373,32 @@ int main(int argc, char *argv[])
         std::cerr << "[NST] CLI mode: Opening project..." << std::endl;
         std::cerr << "[NST]   Engine: " << cliEngine.toStdString() << std::endl;
         std::cerr << "[NST]   Project: " << cliProject.toStdString() << std::endl;
-        QTimer::singleShot(0, &w, [&w, cliEngine, cliProject]() {
-            w.openProjectFromCLI(cliEngine, cliProject);
-        });
+        
+        // Parse CLI options
+        std::cerr << "[NST] CLI mode: Opening project..." << std::endl;
+        std::cerr << "[NST]   Engine: " << cliEngine.toStdString() << std::endl;
+        std::cerr << "[NST]   Project: " << cliProject.toStdString() << std::endl;
+        if (!cliOutput.isEmpty()) {
+            std::cerr << "[NST]   Output Preset: " << cliOutput.toStdString() << std::endl;
+        }
+
+        // Determine backup preference (CLI flags override settings)
+        // -1 = use settings, 0 = no backup, 1 = backup
+        int backupPreference = -1;
+        if (cliBackup) backupPreference = 1;
+        if (cliNoBackup) backupPreference = 0;
+        
+        if (cliDeploy) {
+            std::cerr << "[NST]   Deploy mode: enabled" << std::endl;
+            QTimer::singleShot(0, &w, [&w, cliEngine, cliProject, cliOutput, backupPreference]() {
+                w.openProjectFromCLI(cliEngine, cliProject, true, cliOutput, backupPreference);
+            });
+        } else {
+            // Even if not deploying immediately, pass the preferences for the session
+            QTimer::singleShot(0, &w, [&w, cliEngine, cliProject, cliOutput, backupPreference]() {
+                w.openProjectFromCLI(cliEngine, cliProject, false, cliOutput, backupPreference);
+            });
+        }
     }
 
     std::cerr << "[NST] Entering event loop..." << std::endl;

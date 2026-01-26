@@ -52,6 +52,8 @@ public:
     QComboBox *translatorModeComboBox;
     QLabel *label_enable_ai;
     QCheckBox *enableAiFilterCheckBox;
+    QLabel *label_backup;
+    QCheckBox *enableBackupCheckBox;
     QSpacerItem *verticalSpacer_general;
     QWidget *page_translation;
     QVBoxLayout *verticalLayout_translation;
@@ -179,6 +181,17 @@ public:
         enableAiFilterCheckBox->setObjectName("enableAiFilterCheckBox");
 
         formLayout_general->setWidget(3, QFormLayout::ItemRole::FieldRole, enableAiFilterCheckBox);
+
+        label_backup = new QLabel(generalGroupBox);
+        label_backup->setObjectName("label_backup");
+
+        formLayout_general->setWidget(4, QFormLayout::ItemRole::LabelRole, label_backup);
+
+        enableBackupCheckBox = new QCheckBox(generalGroupBox);
+        enableBackupCheckBox->setObjectName("enableBackupCheckBox");
+        enableBackupCheckBox->setChecked(true);
+
+        formLayout_general->setWidget(4, QFormLayout::ItemRole::FieldRole, enableBackupCheckBox);
 
 
         verticalLayout_general->addWidget(generalGroupBox);
@@ -418,6 +431,11 @@ public:
 
         label_enable_ai->setText(QCoreApplication::translate("SettingsDialog", "AI Features:", nullptr));
         enableAiFilterCheckBox->setText(QCoreApplication::translate("SettingsDialog", "Enable AI Context Filter", nullptr));
+        label_backup->setText(QCoreApplication::translate("SettingsDialog", "Deployment:", nullptr));
+        enableBackupCheckBox->setText(QCoreApplication::translate("SettingsDialog", "Create backup before deployment", nullptr));
+#if QT_CONFIG(tooltip)
+        enableBackupCheckBox->setToolTip(QCoreApplication::translate("SettingsDialog", "Backup original files to _nst_backup folder before deploying", nullptr));
+#endif // QT_CONFIG(tooltip)
         googleProGroupBox->setTitle(QCoreApplication::translate("SettingsDialog", "Google Cloud Translation API", nullptr));
         googleApiKeyLabel->setText(QCoreApplication::translate("SettingsDialog", "API Key:", nullptr));
         llmProviderGroup->setTitle(QCoreApplication::translate("SettingsDialog", "LLM Provider Settings", nullptr));
