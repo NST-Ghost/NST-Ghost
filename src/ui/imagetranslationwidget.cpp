@@ -429,8 +429,14 @@ void ImageTranslationWidget::onWorkerProcessingFinished(const QString &imagePath
     m_currentTranslationIndex = 0;
     m_inpaintedImagePath = inpaintedPath;
     
+    // Determine Service Name
+    QString serviceName = "Google Translate";
+    if (!m_llmProvider.isEmpty() && m_llmProvider != "None") {
+        serviceName = "LLM Translation";
+    }
+    
     ui->m_statusLabel->setText("Translating...");
-    m_translationManager->translate("Google Translate", textsToTranslate, settings);
+    m_translationManager->translate(serviceName, textsToTranslate, settings);
     
     ui->m_logConsole->append(QString("<font color='#00FF00'>[%1] Finished processing %2. found %3 detections.</font>").arg(QDateTime::currentDateTime().toString("HH:mm:ss")).arg(imagePath).arg(detections.size()));
 }
