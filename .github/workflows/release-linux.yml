@@ -345,143 +345,30 @@ jobs:
           
           tar -czf ../NST-${{ inputs.version }}-Linux-x86_64.tar.gz NST-${{ inputs.version }}/
       
+      - name: Install nFPM
+        run: |
+          echo "Installing nFPM for package generation..."
+          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_linux_amd64.tar.gz | tar -xz -C /tmp
+          sudo mv /tmp/nfpm /usr/local/bin/
+          nfpm --version
+
       - name: Create DEB package
         run: |
-          mkdir -p nst-deb/DEBIAN nst-deb/usr
-          cp -r AppDir/usr/* nst-deb/usr/
-          
-          cat > nst-deb/DEBIAN/control << EOF
-          Package: nst
-          Version: ${{ inputs.version }}
-          Section: utils
-          Priority: optional
-          Architecture: amd64
-          Depends: libc6 (>= 2.31), libstdc++6 (>= 10), libgl1, libxcb1, libxkbcommon0
-          Maintainer: NST Team <you@example.com>
-          Description: A tool for translating video games
-          EOF
-          
-          cat > nst-deb/DEBIAN/postinst << 'EOF'
-          #!/bin/bash
-          chmod +x /usr/bin/NST /usr/bin/libBGACore.so* /usr/bin/libQtLingo.so* 2>/dev/null || true
-          update-desktop-database /usr/share/applications 2>/dev/null || true
-          gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
-          exit 0
-          EOF
-          chmod +x nst-deb/DEBIAN/postinst
-          
-          dpkg-deb --build nst-deb NST-${{ inputs.version }}-Linux-x86_64.deb
+          VERSION=${{ inputs.version }} nfpm pkg \
+            --packager deb \
+            --config nfpm.yaml \
+            --target NST-${{ inputs.version }}-Linux-x86_64.deb
+          echo "DEB package created successfully"
+          ls -lh NST-${{ inputs.version }}-Linux-x86_64.deb
       
       - name: Create RPM package
         run: |
-          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
-          mkdir -p nst-rpm-source/nst-${{ inputs.version }}/usr
-          cp -r AppDir/usr/* nst-rpm-source/nst-${{ inputs.version }}/usr/
-          cd nst-rpm-source
-          tar -czf ~/rpmbuild/SOURCES/nst-${{ inputs.version }}.tar.gz nst-${{ inputs.version }}/
-          cd ..
-          
-          echo "=== Checking AppDir structure for RPM ==="
-          ls -la AppDir/usr/ || true
-          
-          # Build files list dynamically based on what exists
-          FILES_LIST="/usr/bin/*
-          /usr/share/applications/nst.desktop
-          /usr/share/icons/hicolor/*/apps/nst.*"
-          
-          # Check for optional directories
-          if [ -d "AppDir/usr/lib" ] && [ "$(ls -A AppDir/usr/lib 2>/dev/null)" ]; then
-            FILES_LIST="$FILES_LIST
-          %dir /usr/lib
-          /usr/lib/*"
-          fi
-          
-          if [ -d "AppDir/usr/plugins" ] && [ "$(ls -A AppDir/usr/plugins 2>/dev/null)" ]; then
-            FILES_LIST="$FILES_LIST
-          %dir /usr/plugins
-          /usr/plugins/*"
-          fi
-          
-          if [ -d "AppDir/usr/qml" ] && [ "$(ls -A AppDir/usr/qml 2>/dev/null)" ]; then
-            FILES_LIST="$FILES_LIST
-          %dir /usr/qml
-          /usr/qml/*"
-          fi
-          
-          if [ -d "AppDir/usr/translations" ] && [ "$(ls -A AppDir/usr/translations 2>/dev/null)" ]; then
-            FILES_LIST="$FILES_LIST
-          %dir /usr/translations
-          /usr/translations/*"
-          fi
-          
-          if [ -d "AppDir/usr/share/doc" ] && [ "$(ls -A AppDir/usr/share/doc 2>/dev/null)" ]; then
-            FILES_LIST="$FILES_LIST
-          /usr/share/doc/*"
-          fi
-          
-
-          # Python is no longer bundled - dependencies are system-based
-
-          
-          echo "=== Files to include in RPM ==="
-          echo "$FILES_LIST"
-          
-          cat > ~/rpmbuild/SPECS/nst.spec << EOF
-          Name: nst
-          Version: ${{ inputs.version }}
-          Release: 1%{?dist}
-          Summary: A tool for translating video games
-          License: MIT
-          URL: https://github.com/${{ github.repository }}
-          Source0: %{name}-%{version}.tar.gz
-          BuildArch: x86_64
-          Requires: glibc >= 2.31, libstdc++ >= 10, libGL, libxcb, libxkbcommon, fontconfig, freetype, dbus-libs
-          
-          %description
-          NST is a tool for translating video games.
-          It supports various game formats and provides an intuitive
-          interface for translation workflows.
-          
-          %prep
-          %setup -q
-          
-          %install
-          rm -rf \$RPM_BUILD_ROOT
-          mkdir -p \$RPM_BUILD_ROOT
-          cp -r usr \$RPM_BUILD_ROOT/
-          
-          %post
-          chmod +x /usr/bin/NST 2>/dev/null || true
-          chmod +x /usr/bin/libBGACore.so* 2>/dev/null || true
-          chmod +x /usr/bin/libQtLingo.so* 2>/dev/null || true
-          if command -v update-desktop-database >/dev/null 2>&1; then
-              update-desktop-database /usr/share/applications 2>/dev/null || true
-          fi
-          if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-              gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
-          fi
-          
-          %postun
-          if command -v update-desktop-database >/dev/null 2>&1; then
-              update-desktop-database /usr/share/applications 2>/dev/null || true
-          fi
-          if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-              gtk-update-icon-cache -f -t /usr/share/icons/hicolor 2>/dev/null || true
-          fi
-          
-          %files
-          $FILES_LIST
-          
-          %changelog
-          * $(date "+%a %b %d %Y") NST Team <you@example.com> - ${{ inputs.version }}-1
-          - Release version ${{ inputs.version }}
-          EOF
-          
-          echo "=== Generated RPM spec file ==="
-          cat ~/rpmbuild/SPECS/nst.spec
-          
-          rpmbuild -bb ~/rpmbuild/SPECS/nst.spec
-          find ~/rpmbuild/RPMS -name "*.rpm" -exec cp {} NST-${{ inputs.version }}-Linux-x86_64.rpm \;
+          VERSION=${{ inputs.version }} nfpm pkg \
+            --packager rpm \
+            --config nfpm.yaml \
+            --target NST-${{ inputs.version }}-Linux-x86_64.rpm
+          echo "RPM package created successfully"
+          ls -lh NST-${{ inputs.version }}-Linux-x86_64.rpm
       
       - name: Upload AppImage
         uses: actions/upload-artifact@v4

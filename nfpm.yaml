@@ -1,0 +1,81 @@
+# nFPM configuration for NST
+# Build both .deb and .rpm from single config
+# Usage in CI:
+#   VERSION=0.5.4 nfpm pkg -p deb -f nfpm.yaml
+#   VERSION=0.5.4 nfpm pkg -p rpm -f nfpm.yaml
+
+name: nst
+arch: amd64
+platform: linux
+version: "${VERSION}"
+release: 1
+section: utils
+priority: optional
+maintainer: NST Team <admin@chanomhub.com>
+description: A tool for translating video games.
+vendor: NST Ghost
+homepage: https://github.com/NST-Ghost/NST-Ghost
+license: GPL-3.0
+
+# Runtime dependencies
+depends:
+  - libc6 >= 2.31
+  - libstdc++6 >= 10
+
+# Recommended packages
+recommends:
+  - python3
+  - python3-numpy
+
+# Package contents - uses AppDir structure from CI
+contents:
+  # Everything from AppDir/usr/bin
+  - src: ./AppDir/usr/bin/
+    dst: /usr/bin/
+
+  # Libraries (if exists)
+  - src: ./AppDir/usr/lib/
+    dst: /usr/lib/
+    type: tree
+
+  # Qt plugins (if exists)  
+  - src: ./AppDir/usr/plugins/
+    dst: /usr/lib/nst/plugins/
+    type: tree
+
+  # Desktop integration
+  - src: ./AppDir/usr/share/applications/nst.desktop
+    dst: /usr/share/applications/nst.desktop
+
+  - src: ./AppDir/usr/share/icons/
+    dst: /usr/share/icons/
+    type: tree
+
+# Override dependencies per package type
+overrides:
+  rpm:
+    depends:
+      - glibc >= 2.31
+      - libstdc++ >= 10
+      - libGL
+      - libxcb
+      - libxkbcommon
+    recommends:
+      - python3
+      - python3-numpy
+
+  deb:
+    depends:
+      - libc6 (>= 2.31)
+      - libstdc++6 (>= 10)
+      - libgl1
+      - libxcb1
+      - libxkbcommon0
+    recommends:
+      - python3
+      - python3-numpy
+
+# Post-install script
+scripts:
+  postinstall: ./packaging/scripts/postinstall.sh
+  postremove: ./packaging/scripts/postremove.sh
