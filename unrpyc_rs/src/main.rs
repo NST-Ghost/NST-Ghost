@@ -1,27 +1,80 @@
-use clap::Parser;
-use std::path::PathBuf;
+use clap::{Parser, Subcommand};
+use std::path::{PathBuf, Path};
 use anyhow::{Context, Result};
 use unrpyc_rs::reader::{read_rpyc_file, decompress_data};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Input file path (e.g., script.rpyc)
-    #[arg(required = true)]
-    file: PathBuf,
+    #[command(subcommand)]
+    command: Option<Commands>,
 
-    /// Dump internal structure instead of full decompilation
-    #[arg(short, long)]
+    /// Input file (.rpyc)
+    input: Option<String>,
+
+    /// Dump internal structure
+    #[arg(long)]
     dump: bool,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Extract RPA archive
+    Extract {
+        /// Archive file (.rpa)
+        archive: String,
+        /// Output directory (optional)
+        #[arg(short, long)]
+        output: Option<String>,
+    },
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    println!("Processing file: {:?}", args.file);
+    if let Some(Commands::Extract { archive, output }) = args.command {
+        let rpa = unrpyc_rs::rpa::RpaArchive::open(&archive)?;
+        println!("Opened archive: {}", archive);
+        let files = rpa.list_files();
+        println!("Found {} files.", files.len());
+        
+        let out_dir = output.unwrap_or_else(|| {
+            let path = Path::new(&archive);
+            path.file_stem().unwrap().to_string_lossy().to_string() + "_extracted"
+        });
+        
+        std::fs::create_dir_all(&out_dir)?;
+        
+        let mut rpa = rpa; // Make mutable for extraction
+        for file in files {
+            println!("Extracting {}", file);
+            if let Some(data) = rpa.extract_file(&file)? {
+                let out_path = Path::new(&out_dir).join(&file);
+                if let Some(parent) = out_path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::write(out_path, data)?;
+            }
+        }
+        println!("Extraction complete to {}", out_dir);
+        return Ok(());
+    }
+
+    // Default behavior: Decompile .rpyc
+    // Manually ensure input is provided if not a subcommand
+    let input_path = match args.input {
+        Some(p) => p,
+        None => {
+             use clap::CommandFactory;
+             Args::command().print_help()?;
+             std::process::exit(1);
+        }
+    };
+    
+    println!("Processing file: {:?}", input_path);
 
     // 1. Read file
-    let raw_data = read_rpyc_file(&args.file).context("Failed to read rpyc file")?;
+    let raw_data = read_rpyc_file(&PathBuf::from(&input_path)).context("Failed to read rpyc file")?;
     println!("Read {} bytes of raw data (or extracted slot 1)", raw_data.len());
 
     // 2. Decompress
