@@ -1,5 +1,5 @@
 use anyhow::{bail, Context, Result};
-use std::io::{Read, Seek, SeekFrom};
+use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 use flate2::read::ZlibDecoder;

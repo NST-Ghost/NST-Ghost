@@ -37,8 +37,18 @@ fn main() -> Result<()> {
     if args.dump {
         println!("{:#?}", decoded);
     } else {
-        println!("Successfully unpickled data. Structure available.");
-        // TODO: Map to AST
+        println!("Successfully unpickled data. Mapping to AST...");
+        if let Some(stmts) = unrpyc_rs::ast::extract_statements(&decoded) {
+             println!("Found {} statements", stmts.len());
+             for (i, stmt) in stmts.iter().enumerate() {
+                 match unrpyc_rs::ast::parse_statement(stmt) {
+                     Ok(parsed) => println!("Stmt {}: {:?}", i, parsed),
+                     Err(e) => println!("Stmt {}: Failed: {}", i, e),
+                 }
+             }
+        } else {
+             println!("Could not extract statements from parsed value.");
+        }
     }
 
     Ok(())
