@@ -146,7 +146,8 @@ void ImageTranslationWidget::setupUi()
 
 void ImageTranslationWidget::setSettings(const QString &apiKey, const QString &targetLanguage, bool googleApi,
                                           const QString &llmProvider, const QString &llmApiKey,
-                                          const QString &llmModel, const QString &llmBaseUrl)
+                                          const QString &llmModel, const QString &llmBaseUrl,
+                                          int translationMode)
 {
     m_apiKey = apiKey;
     m_targetLanguage = targetLanguage;
@@ -155,6 +156,7 @@ void ImageTranslationWidget::setSettings(const QString &apiKey, const QString &t
     m_llmApiKey = llmApiKey;
     m_llmModel = llmModel;
     m_llmBaseUrl = llmBaseUrl;
+    m_translationMode = translationMode;
 }
 
 
@@ -429,10 +431,16 @@ void ImageTranslationWidget::onWorkerProcessingFinished(const QString &imagePath
     m_currentTranslationIndex = 0;
     m_inpaintedImagePath = inpaintedPath;
     
-    // Determine Service Name
+    // Determine Service Name based on explicit mode
     QString serviceName = "Google Translate";
-    if (!m_llmProvider.isEmpty() && m_llmProvider != "None") {
+    
+    // Mode 2 is LLM
+    if (m_translationMode == 2) {
         serviceName = "LLM Translation";
+    } else {
+        // Mode 0 (Quick) or 1 (Professional/GoogleAPI) -> Use Google Translate service
+        // The service manager handles the difference between Free/API based on settings.
+        serviceName = "Google Translate";
     }
     
     ui->m_statusLabel->setText("Translating...");
