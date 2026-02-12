@@ -22,21 +22,20 @@ struct SmartFilterManager::SmartFilterManagerPrivate {
 
 SmartFilterManager::SmartFilterManager(QObject *parent)
     : QObject(parent)
-#ifdef HAS_PYTHON
-    , d(std::make_unique<SmartFilterManagerPrivate>())
-#endif
 {
 #ifdef HAS_PYTHON
+    // Acquire GIL BEFORE creating Private struct, because py::object's
+    // default constructor calls inc_ref() on Py_None which requires the GIL.
+    py::gil_scoped_acquire acquire;
+    d = std::make_unique<SmartFilterManagerPrivate>();
+
     // Initialize Python connection
     try {
-        py::gil_scoped_acquire acquire;
         py::module_ sys = py::module_::import("sys");
         sys.attr("path").attr("append")(".");
-        sys.attr("path").attr("append")("scripts");
+        sys.attr("path").attr("append")("pylib");
         
-        py::module_ ai_mod = py::module_::import("scripts.ai_smart_filter");
-        // Fallback if imported as just ai_smart_filter (depends on path)
-        if (ai_mod.is_none()) ai_mod = py::module_::import("ai_smart_filter");
+        py::module_ ai_mod = py::module_::import("pylib.ai_smart_filter");
         
         d->m_pyFilter = ai_mod.attr("AISmartFilter")();
         

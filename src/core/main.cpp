@@ -139,7 +139,7 @@ static void configurePythonEnvironment(const char* argv0)
     struct stat buffer;
     if (stat(win_python_dll.c_str(), &buffer) == 0) {
         // Found bundled Python on Windows
-        std::string scripts_path = exe_dir_str + "/scripts";
+        std::string scripts_path = exe_dir_str + "/pylib";
         std::string site_packages = win_python_home + "/Lib/site-packages";
         std::string stdlib_zip = win_python_home + "/python311.zip";
         std::string stdlib_lib = win_python_home + "/Lib";

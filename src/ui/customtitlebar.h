@@ -15,7 +15,7 @@ public:
 
     void setTitle(const QString &title);
     void setIcon(const QIcon &icon);
-    void setRelationsVisible(bool visible);
+
     void setRealTimeVisible(bool visible);
     void setImageTransVisible(bool visible);
 
@@ -26,7 +26,6 @@ signals:
     void translateModeClicked(); // Switch to File Translation
     void realTimeModeClicked();  // Switch to Real-time Translation
     void imageTranslationClicked(); // Switch to Image Translation
-    void relationsModeClicked(); // Switch to Relations View
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -42,7 +41,6 @@ private:
     QPushButton *m_fileTransButton;
     QPushButton *m_realTimeButton;
     QPushButton *m_imageTransButton;
-    QPushButton *m_relationsButton;
     
     // Window Controls
     QPushButton *m_minimizeButton;

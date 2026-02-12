@@ -45,8 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     loadSettings();
 
-    // Customize Window Flags
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+    // Use default Qt window (no custom frameless handling)
+    setWindowTitle("NST Translation Tool");
     
     // Create Custom Title Bar
     m_titleBar = new CustomTitleBar(this);
@@ -75,22 +75,15 @@ MainWindow::MainWindow(QWidget *parent)
                                          m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl);
     m_stackedWidget->addWidget(m_fileTranslationWidget); 
     
-#ifdef HAS_PYTHON
-    // Page 1: Real-time Translation Widget (requires Python)
+    // Page 1: Real-time Translation Widget
     m_realTimeWidget = new RealTimeTranslationWidget(this);
     m_stackedWidget->addWidget(m_realTimeWidget);
 
-    // Page 2: Image Translation Widget (requires Python)
+    // Page 2: Image Translation Widget
     m_imageTranslationWidget = new ImageTranslationWidget(m_translationServiceManager, this);
     m_imageTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi, 
                                           m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl);
     m_stackedWidget->addWidget(m_imageTranslationWidget);
-#endif
-    
-    // Relations Widget (no Python required)
-    m_relationshipWidget = new RelationshipWidget(this);
-    m_stackedWidget->addWidget(m_relationshipWidget);
-    
     // Create a new container widget
     QWidget *mainContainer = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(mainContainer);
@@ -112,38 +105,15 @@ MainWindow::MainWindow(QWidget *parent)
     
     setCentralWidget(mainContainer);
     
-    // Connect Navigation
     connect(m_titleBar, &CustomTitleBar::translateModeClicked, this, [this]() {
         onNavigationChanged(0);
     });
-#ifdef HAS_PYTHON
     connect(m_titleBar, &CustomTitleBar::realTimeModeClicked, this, [this]() {
         onNavigationChanged(1);
     });
     connect(m_titleBar, &CustomTitleBar::imageTranslationClicked, this, [this]() {
         onNavigationChanged(2);
     });
-    connect(m_titleBar, &CustomTitleBar::relationsModeClicked, this, [this]() {
-        onNavigationChanged(3);
-    });
-#else
-    // Core build: Relations is at index 1 (no Realtime/Image widgets)
-    connect(m_titleBar, &CustomTitleBar::relationsModeClicked, this, [this]() {
-        onNavigationChanged(1);
-    });
-#endif
-    
-    // Enable mouse tracking for resizing and moving
-    setMouseTracking(true);
-    if (centralWidget()) {
-        centralWidget()->setMouseTracking(true);
-    }
-    
-#ifndef HAS_PYTHON
-    // Core build: hide Python-dependent navigation buttons
-    m_titleBar->setRealTimeVisible(false);
-    m_titleBar->setImageTransVisible(false);
-#endif
     
     // Set minimum size
     setMinimumSize(800, 600);
@@ -152,7 +122,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_menuBar, &MenuBar::openMockData, m_fileTranslationWidget, &FileTranslationWidget::openMockData);
     connect(m_menuBar, &MenuBar::newProject, this, &MainWindow::onNewProject);
     connect(m_menuBar, &MenuBar::openProject, m_fileTranslationWidget, &FileTranslationWidget::onOpenProject);
-    connect(m_fileTranslationWidget, &FileTranslationWidget::projectLoaded, m_relationshipWidget, &RelationshipWidget::loadRelations);
     
     // Changing strategy: Connect to FileTranslationWidget signal if it exists, or add one.
     // Let's assume for now I need to check FileTranslationWidget first.
@@ -221,13 +190,6 @@ void MainWindow::onNewProject()
     }
     
     m_fileTranslationWidget->onNewProject(engineName, projectPath);
-    
-    // Check Engine Capability for Relations
-    bool isRpgMaker = (m_engineName.startsWith("RPG Maker"));
-    bool showRelations = m_enableRelations && isRpgMaker;
-    if (m_titleBar) {
-        m_titleBar->setRelationsVisible(showRelations);
-    }
 }
 
 void MainWindow::onOpenMockData()
@@ -276,13 +238,6 @@ void MainWindow::openProjectFromCLI(const QString &engineName, const QString &pr
     // Open project (cliMode=true for auto-save without dialog)
     m_engineName = matchedEngine;
     m_fileTranslationWidget->onNewProject(matchedEngine, projectPath, true);
-    
-    // Update Relations visibility
-    bool isRpgMaker = matchedEngine.startsWith("RPG Maker");
-    bool showRelations = m_enableRelations && isRpgMaker;
-    if (m_titleBar) {
-        m_titleBar->setRelationsVisible(showRelations);
-    }
     
     // Set default deployment path from CLI if provided (so GUI deploy button won't ask)
     if (!outputPath.isEmpty()) {
@@ -333,8 +288,6 @@ void MainWindow::onSettingsActionTriggered()
     dialog.setLlmApiKey(m_llmApiKey);
     dialog.setLlmModel(m_llmModel);
     dialog.setLlmBaseUrl(m_llmBaseUrl);
-    dialog.setLlmBaseUrl(m_llmBaseUrl);
-    dialog.setRelationsEnabled(m_enableRelations);
     
     // Backup setting
     QSettings settings;
@@ -355,7 +308,6 @@ void MainWindow::onSettingsActionTriggered()
         m_llmApiKey = dialog.llmApiKey();
         m_llmModel = dialog.llmModel();
         m_llmBaseUrl = dialog.llmBaseUrl();
-        m_enableRelations = dialog.isRelationsEnabled();
         
         // Backup setting
         settings.setValue("deployBackupEnabled", dialog.isBackupEnabled());
@@ -368,13 +320,6 @@ void MainWindow::onSettingsActionTriggered()
 
         saveSettings();
         updateChildSettings();
-        
-        // Update TitleBar Visibility immediately
-        bool isRpgMaker = (m_engineName.startsWith("RPG Maker"));
-        bool showRelations = m_enableRelations && isRpgMaker;
-        if (m_titleBar) {
-             m_titleBar->setRelationsVisible(showRelations);
-        }
     }
 }
 
@@ -389,14 +334,12 @@ void MainWindow::loadSettings()
      m_llmApiKey = settings.value("llmApiKey").toString();
      m_llmModel = settings.value("llmModel").toString();
      m_llmBaseUrl = settings.value("llmBaseUrl").toString();
-     m_enableRelations = settings.value("enableRelations", true).toBool(); // Default true
 }
 
 void MainWindow::saveSettings()
 {
      QSettings settings;
      settings.setValue("googleApiKey", m_apiKey);
-     settings.setValue("enableRelations", m_enableRelations);
      settings.setValue("targetLanguage", m_targetLanguage);
      settings.setValue("googleApi", m_googleApi);
      settings.setValue("llmProvider", m_llmProvider);
@@ -411,12 +354,10 @@ void MainWindow::updateChildSettings()
         m_fileTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi,
                                              m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl);
     }
-#ifdef HAS_PYTHON
     if (m_imageTranslationWidget) {
         m_imageTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi,
                                               m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl);
     }
-#endif
 }
 
 void MainWindow::onFontsLoaded(const QJsonArray &fonts) {}
@@ -485,118 +426,32 @@ void MainWindow::onNavigationChanged(int index)
     m_stackedWidget->setCurrentIndex(index);
 }
 
+// Qt native window management - no custom mouse handling needed
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        m_resizeDirection = getResizeDirection(event->pos());
-        if (m_resizeDirection != ResizeNone) {
-            m_isDragging = true;
-            m_dragPosition = event->globalPosition().toPoint() - frameGeometry().topLeft();
-            m_originalGeometry = geometry();
-        } else {
-             // If we prefer CustomTitleBar to handle moving, we rely on its signals or this logic if it bubbles up.
-             m_isDragging = true;
-             m_dragPosition = event->globalPosition().toPoint() - frameGeometry().topLeft();
-             m_resizeDirection = ResizeNone; 
-        }
-    }
     QMainWindow::mousePressEvent(event);
 }
 
 void MainWindow::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        m_isDragging = false;
-        m_resizeDirection = ResizeNone;
-        unsetCursor();
-    }
     QMainWindow::mouseReleaseEvent(event);
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
-    updateCursorShape(event->pos());
-
-    if (m_isDragging) {
-        if (m_resizeDirection != ResizeNone) {
-            QPoint globalPos = event->globalPosition().toPoint();
-            QRect geom = m_originalGeometry;
-            
-            int left = geom.left();
-            int top = geom.top();
-            int right = geom.right();
-            int bottom = geom.bottom();
-            
-            // Note: globalPos is screen coordinate
-            if (m_resizeDirection & ResizeLeft)   left = globalPos.x();
-            if (m_resizeDirection & ResizeRight)  right = globalPos.x();
-            if (m_resizeDirection & ResizeTop)    top = globalPos.y();
-            if (m_resizeDirection & ResizeBottom) bottom = globalPos.y();
-            
-            QRect newGeom(QPoint(left, top), QPoint(right, bottom));
-            
-            // Enforce minimum size
-            if (newGeom.width() < minimumWidth()) {
-                 if (m_resizeDirection & ResizeLeft) newGeom.setLeft(right - minimumWidth());
-                 else newGeom.setRight(left + minimumWidth());
-            }
-            if (newGeom.height() < minimumHeight()) {
-                 if (m_resizeDirection & ResizeTop) newGeom.setTop(bottom - minimumHeight());
-                 else newGeom.setBottom(top + minimumHeight());
-            }
-
-            setGeometry(newGeom);
-        } else {
-             move(event->globalPosition().toPoint() - m_dragPosition);
-        }
-    }
     QMainWindow::mouseMoveEvent(event);
 }
 
+// Qt handles cursor and resize direction natively
 void MainWindow::updateCursorShape(const QPoint &pos)
 {
-    if (m_isDragging) return; 
-
-    int dir = getResizeDirection(pos);
-    switch (dir) {
-        case ResizeTopLeft:
-        case ResizeBottomRight:
-            setCursor(Qt::SizeFDiagCursor);
-            break;
-        case ResizeTopRight:
-        case ResizeBottomLeft:
-            setCursor(Qt::SizeBDiagCursor);
-            break;
-        case ResizeLeft:
-        case ResizeRight:
-            setCursor(Qt::SizeHorCursor);
-            break;
-        case ResizeTop:
-        case ResizeBottom:
-            setCursor(Qt::SizeVerCursor);
-            break;
-        default:
-            unsetCursor();
-            break;
-    }
+    Q_UNUSED(pos);
 }
 
 int MainWindow::getResizeDirection(const QPoint &pos)
 {
-    int dir = ResizeNone;
-    const int margin = 5; // Resize margin
-
-    int w = width();
-    int h = height();
-    int x = pos.x();
-    int y = pos.y();
-
-    if (x < margin) dir |= ResizeLeft;
-    if (x > w - margin) dir |= ResizeRight;
-    if (y < margin) dir |= ResizeTop;
-    if (y > h - margin) dir |= ResizeBottom;
-
-    return dir;
+    Q_UNUSED(pos);
+    return ResizeNone;
 }
 
 void MainWindow::mouseDoubleClickEvent(QMouseEvent *event)

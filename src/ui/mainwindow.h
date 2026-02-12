@@ -8,13 +8,9 @@
 #include "menubar.h"
 #include "customtitlebar.h"
 #include "filetranslationwidget.h"
-#include "relationshipwidget.h"
 #include "settingsdialog.h"
-
-#ifdef HAS_PYTHON
 #include "realtimetranslationwidget.h"
 #include "imagetranslationwidget.h"
-#endif
 #include "updatecontroller.h"
 #include "translationservicemanager.h"
 #include "fontmanagerdialog.h"
@@ -82,11 +78,8 @@ private:
     
     // Widgets
     FileTranslationWidget *m_fileTranslationWidget;
-#ifdef HAS_PYTHON
     RealTimeTranslationWidget *m_realTimeWidget;
     ImageTranslationWidget *m_imageTranslationWidget;
-#endif
-    RelationshipWidget *m_relationshipWidget;
     
     // Managers / Controllers owned by MainWindow but shared/used by children
     TranslationServiceManager *m_translationServiceManager;
@@ -97,7 +90,6 @@ private:
     QString m_targetLanguage;
     QString m_targetLanguageName;
     bool m_googleApi;
-    bool m_enableRelations; // New Setting
     QString m_engineName;   // Cached engine name for visibility usage
     QString m_llmProvider;
     QString m_llmApiKey;

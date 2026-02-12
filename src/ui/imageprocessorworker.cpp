@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <cstdlib>
 
+#ifdef HAS_PYTHON
 #if defined(slots)
 #undef slots
 #endif
@@ -16,22 +17,32 @@ namespace py = pybind11;
 struct ImageProcessorWorker::Private {
     py::object translator;
 };
+#else
+struct ImageProcessorWorker::Private {};
+#endif
 
 ImageProcessorWorker::ImageProcessorWorker(QObject *parent)
     : QObject(parent)
-    , d(new Private)
+    , d(nullptr)
 {
+#ifdef HAS_PYTHON
+    py::gil_scoped_acquire acquire;
+#endif
+    d = new Private;
 }
 
 ImageProcessorWorker::~ImageProcessorWorker()
 {
+#ifdef HAS_PYTHON
     // Must acquire GIL before destroying Python objects to avoid crash on exit
     py::gil_scoped_acquire acquire;
+#endif
     delete d;
 }
 
 void ImageProcessorWorker::initialize()
 {
+#ifdef HAS_PYTHON
     try {
         // Ensure we acquire GIL for Python operations
         py::gil_scoped_acquire acquire;
@@ -40,18 +51,17 @@ void ImageProcessorWorker::initialize()
         
         // Add paths for finding scripts module
         sys.attr("path").attr("append")(".");
-        sys.attr("path").attr("append")("scripts");
+        sys.attr("path").attr("append")("pylib");
         
         // Add APPDIR-based path for bundled distribution
         const char* appdir = std::getenv("APPDIR");
         if (appdir) {
-            // Insert /usr/bin first so "import scripts" works (scripts is a subdir)
+            // Insert /usr/bin first so "import pylib" works (pylib is a subdir)
             std::string binPath = std::string(appdir) + "/usr/bin";
             sys.attr("path").attr("insert")(0, binPath);
         }
         
-        py::module_ mod = py::module_::import("scripts.image_translator");
-        if (mod.is_none()) mod = py::module_::import("image_translator");
+        py::module_ mod = py::module_::import("pylib.image_translator");
         
         d->translator = mod.attr("ImageTranslator")();
         
@@ -69,10 +79,14 @@ void ImageProcessorWorker::initialize()
     } catch (...) {
         emit initialized(false, "Unknown error initializing Python backend", false, "");
     }
+#else
+    emit initialized(false, "Python support not available (built without HAS_PYTHON)", false, "");
+#endif
 }
 
 void ImageProcessorWorker::processImage(const QString &imagePath, const QString &sourceLang, bool useGcv, const QString &gcvKeyPath)
 {
+#ifdef HAS_PYTHON
     QString fileName = QFileInfo(imagePath).fileName();
     
     try {
@@ -152,4 +166,11 @@ void ImageProcessorWorker::processImage(const QString &imagePath, const QString 
     } catch (...) {
         emit errorOccurred("Unknown error during processing");
     }
+#else
+    Q_UNUSED(imagePath);
+    Q_UNUSED(sourceLang);
+    Q_UNUSED(useGcv);
+    Q_UNUSED(gcvKeyPath);
+    emit errorOccurred("Python support not available (built without HAS_PYTHON)");
+#endif
 }

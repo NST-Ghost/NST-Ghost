@@ -8,17 +8,16 @@ CustomTitleBar::CustomTitleBar(QWidget *parent)
     : QWidget(parent), m_isDrag(false)
 {
     m_layout = new QHBoxLayout(this);
-    m_layout->setContentsMargins(10, 0, 0, 0); // Left margin for icon/title
-    m_layout->setSpacing(5);
+    m_layout->setContentsMargins(10, 5, 10, 5);
+    m_layout->setSpacing(8);
 
+    // Icon and title labels (hidden, kept for API compatibility)
     m_iconLabel = new QLabel(this);
-    m_iconLabel->setFixedSize(20, 20);
-    m_iconLabel->setScaledContents(true);
-
+    m_iconLabel->setVisible(false);
     m_titleLabel = new QLabel(this);
-    m_titleLabel->setObjectName("titleBarTitle");
+    m_titleLabel->setVisible(false);
     
-    // Navigation Buttons
+    // Navigation Buttons (styled as tabs)
     m_fileTransButton = new QPushButton(this);
     m_fileTransButton->setObjectName("navButton");
     m_fileTransButton->setText("File Translate");
@@ -30,7 +29,6 @@ CustomTitleBar::CustomTitleBar(QWidget *parent)
     m_realTimeButton->setObjectName("navButton");
     m_realTimeButton->setText("Real-time");
     m_realTimeButton->setCheckable(true);
-    m_realTimeButton->setCheckable(true);
     m_realTimeButton->setCursor(Qt::PointingHandCursor);
 
     m_imageTransButton = new QPushButton(this);
@@ -39,64 +37,35 @@ CustomTitleBar::CustomTitleBar(QWidget *parent)
     m_imageTransButton->setCheckable(true);
     m_imageTransButton->setCursor(Qt::PointingHandCursor);
 
-    m_relationsButton = new QPushButton(this);
-    m_relationsButton->setObjectName("navButton");
-    m_relationsButton->setText("Relations");
-    m_relationsButton->setCheckable(true);
-    m_relationsButton->setCursor(Qt::PointingHandCursor);
     
-    // Exclusive checking
+    // Exclusive checking (tab behavior)
     QButtonGroup *navGroup = new QButtonGroup(this);
     navGroup->addButton(m_fileTransButton);
     navGroup->addButton(m_realTimeButton);
     navGroup->addButton(m_imageTransButton);
-    navGroup->addButton(m_relationsButton);
     navGroup->setExclusive(true);
     
-    // Window controls
+    // Window controls (hidden - OS handles these now)
     m_minimizeButton = new QPushButton(this);
-    m_minimizeButton->setObjectName("titleBarMinimize");
-    m_minimizeButton->setFixedSize(45, 30);
-    m_minimizeButton->setText("─");
-    m_minimizeButton->setToolTip("Minimize");
-
+    m_minimizeButton->setVisible(false);
     m_maximizeButton = new QPushButton(this);
-    m_maximizeButton->setObjectName("titleBarMaximize");
-    m_maximizeButton->setFixedSize(45, 30);
-    m_maximizeButton->setText("□");
-    m_maximizeButton->setToolTip("Maximize");
-
+    m_maximizeButton->setVisible(false);
     m_closeButton = new QPushButton(this);
-    m_closeButton->setObjectName("titleBarClose");
-    m_closeButton->setFixedSize(45, 30);
-    m_closeButton->setText("✕");
-    m_closeButton->setToolTip("Close");
+    m_closeButton->setVisible(false);
 
-    // Add widgets to layout
-    m_layout->addWidget(m_iconLabel);
-    m_layout->addWidget(m_titleLabel);
-    m_layout->addSpacing(20);
+    // Add only navigation buttons to layout
     m_layout->addWidget(m_fileTransButton);
     m_layout->addWidget(m_realTimeButton);
     m_layout->addWidget(m_imageTransButton);
-    m_layout->addWidget(m_relationsButton);
     m_layout->addStretch();
-    m_layout->addWidget(m_minimizeButton);
-    m_layout->addWidget(m_maximizeButton);
-    m_layout->addWidget(m_closeButton);
 
-    // Style adjustments
-    setFixedHeight(30);
+    // Height for navigation bar
+    setFixedHeight(36);
 
-    // Connect signals
-    connect(m_minimizeButton, &QPushButton::clicked, this, &CustomTitleBar::minimizeClicked);
-    connect(m_maximizeButton, &QPushButton::clicked, this, &CustomTitleBar::maximizeRestoreClicked);
-    connect(m_closeButton, &QPushButton::clicked, this, &CustomTitleBar::closeClicked);
-    
+    // Connect navigation signals
     connect(m_fileTransButton, &QPushButton::clicked, this, &CustomTitleBar::translateModeClicked);
     connect(m_realTimeButton, &QPushButton::clicked, this, &CustomTitleBar::realTimeModeClicked);
     connect(m_imageTransButton, &QPushButton::clicked, this, &CustomTitleBar::imageTranslationClicked);
-    connect(m_relationsButton, &QPushButton::clicked, this, &CustomTitleBar::relationsModeClicked);
 }
 
 void CustomTitleBar::setTitle(const QString &title)
@@ -109,10 +78,6 @@ void CustomTitleBar::setIcon(const QIcon &icon)
     m_iconLabel->setPixmap(icon.pixmap(20, 20));
 }
 
-void CustomTitleBar::setRelationsVisible(bool visible)
-{
-    m_relationsButton->setVisible(visible);
-}
 
 void CustomTitleBar::setRealTimeVisible(bool visible)
 {
@@ -124,42 +89,23 @@ void CustomTitleBar::setImageTransVisible(bool visible)
     m_imageTransButton->setVisible(visible);
 }
 
+// Mouse events - no longer needed, OS handles window movement
 void CustomTitleBar::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        m_clickPos = event->globalPosition().toPoint();
-        m_isDrag = true;
-    }
     QWidget::mousePressEvent(event);
 }
 
 void CustomTitleBar::mouseMoveEvent(QMouseEvent *event)
 {
-    if (m_isDrag && (event->globalPosition().toPoint() - m_clickPos).manhattanLength() > QApplication::startDragDistance()) {
-       // Drag logic is handled in MainWindow because we need to move the whole window
-       // But we still emit a signal or handle it if we want to move here.
-       // Actually, standard way is to handle move in MainWindow by checking where the press happened.
-       // However, often it's easier to just handle it here if we pass the parent window.
-       if (window()->isMaximized()) {
-           // Optional: Implement "snap out of maximize" behavior like Windows
-           return; 
-       }
-       window()->move(window()->pos() + event->globalPosition().toPoint() - m_clickPos);
-       m_clickPos = event->globalPosition().toPoint();
-    }
     QWidget::mouseMoveEvent(event);
 }
 
 void CustomTitleBar::mouseReleaseEvent(QMouseEvent *event)
 {
-    m_isDrag = false;
     QWidget::mouseReleaseEvent(event);
 }
 
 void CustomTitleBar::mouseDoubleClickEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        emit maximizeRestoreClicked();
-    }
     QWidget::mouseDoubleClickEvent(event);
 }

@@ -46,14 +46,19 @@ impl RpaArchive {
         let offset = u64::from_str_radix(offset_str, 16).context("Failed to parse offset")?;
         let key = u64::from_str_radix(key_str, 16).context("Failed to parse key")?;
         
+        println!("Debug: Offset={:#x}, Key={:#x}", offset, key);
+
         file.seek(SeekFrom::Start(offset))?;
         
         // Read zlib compressed index
+        println!("Debug: Reading zlib index from offset...");
         let mut decoder = ZlibDecoder::new(&file);
         let mut decompressed = Vec::new();
-        decoder.read_to_end(&mut decompressed)?;
+        decoder.read_to_end(&mut decompressed).context("Failed to decompress index")?;
+        println!("Debug: Decompressed {} bytes", decompressed.len());
         
         // Unpickle
+        println!("Debug: Unpickling index...");
         let index_val: Value = serde_pickle::from_slice(&decompressed, serde_pickle::DeOptions::new())
             .context("Failed to unpickle RPA index")?;
             

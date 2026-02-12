@@ -28,14 +28,20 @@ if(Qt6_VERSION_MAJOR EQUAL 6 AND Qt6_VERSION_MINOR GREATER_EQUAL 3)
     qt_standard_project_setup()
 endif()
 
-# Optional Python integration for AI features (Image/Realtime translation)
-option(NST_ENABLE_PYTHON "Enable Python integration for Image/Realtime translation" OFF)
+# Python integration for AI features (Image/Realtime translation)
+# Defaults to ON; auto-disables if pybind11 is not found
+option(NST_ENABLE_PYTHON "Enable Python integration for Image/Realtime translation" ON)
 
 if(NST_ENABLE_PYTHON)
-    find_package(pybind11 REQUIRED)
-    message(STATUS "Python integration ENABLED")
+    find_package(pybind11 QUIET)
+    if(NOT pybind11_FOUND)
+        message(WARNING "pybind11 not found — disabling Python integration. Install pybind11 for image translation support.")
+        set(NST_ENABLE_PYTHON OFF)
+    else()
+        message(STATUS "Python integration ENABLED")
+    endif()
 else()
-    message(STATUS "Python integration DISABLED (Core build)")
+    message(STATUS "Python integration DISABLED (explicitly set OFF)")
 endif()
 
 set(TS_FILES src/NST_en_US.ts)
@@ -51,12 +57,13 @@ set(PROJECT_SOURCES
     src/controllers/shortcutcontroller.cpp
     src/managers/bgadatamanager.cpp
     src/managers/translationservicemanager.cpp
-    src/ui/relationshipwidget.cpp
-    src/ui/relationshipwidget.h
-    src/ui/relationitem.cpp
-    src/ui/relationitem.h
-    src/core/rpgrelationanalyzer.cpp
-    src/core/rpgrelationanalyzer.h
+    src/ui/realtimetranslationwidget.cpp
+    src/ui/realtimetranslationwidget.h
+    src/ui/imagetranslationwidget.cpp
+    src/ui/imagetranslationwidget.h
+    src/ui/imagetranslationwidget.ui
+    src/ui/imageprocessorworker.cpp
+    src/ui/imageprocessorworker.h
     
     src/managers/smartfiltermanager.cpp
     src/ui/translationcontextmenu.cpp
@@ -100,18 +107,6 @@ set(PROJECT_SOURCES
     src/resources.qrc
 )
 
-# Python-dependent sources (only included when NST_ENABLE_PYTHON is ON)
-if(NST_ENABLE_PYTHON)
-    list(APPEND PROJECT_SOURCES
-        src/ui/realtimetranslationwidget.cpp
-        src/ui/realtimetranslationwidget.h
-        src/ui/imagetranslationwidget.cpp
-        src/ui/imagetranslationwidget.h
-        src/ui/imagetranslationwidget.ui
-        src/ui/imageprocessorworker.cpp
-        src/ui/imageprocessorworker.h
-    )
-endif()
 
 # Lua plugin sources (optional)
 if(LUA_FOUND)
@@ -191,9 +186,16 @@ target_include_directories(NST PRIVATE
 # Copy scripts to build directory on every build
 add_custom_command(TARGET NST POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/pylib
+        ${CMAKE_BINARY_DIR}/pylib
+    COMMENT "Syncing Python library (pylib) to build directory..."
+)
+# Also copy scripts (Lua) as before, just in case
+add_custom_command(TARGET NST POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_SOURCE_DIR}/scripts
         ${CMAKE_BINARY_DIR}/scripts
-    COMMENT "Syncing Python scripts to build directory..."
+    COMMENT "Syncing Lua scripts to build directory..."
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
