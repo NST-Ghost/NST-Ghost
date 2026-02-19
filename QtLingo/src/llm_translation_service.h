@@ -19,6 +19,7 @@ public:
     void setLlmModel(const QString &model) override;
     void setLlmBaseUrl(const QString &baseUrl);
     void setTargetLanguage(const QString &language) override;
+    void setSourceLanguage(const QString &language) override;
 
 private slots:
     void onNetworkReply(QNetworkReply *reply);
@@ -37,6 +38,7 @@ private:
     QString m_provider;
     QString m_model;
     QString m_targetLanguage;
+    QString m_sourceLanguage = "auto";
     QString m_currentSourceText;
 };
 

@@ -72,7 +72,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Page 0: File Translation Widget
     m_fileTranslationWidget = new FileTranslationWidget(m_translationServiceManager, this);
     m_fileTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi, 
-                                         m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl);
+                                         m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl,
+                                         m_sourceLanguage);
     // FileTranslationWidget uses the picker dialog for each action, so it might not strictly need m_translationMode 
     // passed in setSettings unless we want to set a default in that dialog.
     // For now, we'll leave it as is or update if needed.
@@ -85,7 +86,8 @@ MainWindow::MainWindow(QWidget *parent)
     // Page 2: Image Translation Widget
     m_imageTranslationWidget = new ImageTranslationWidget(m_translationServiceManager, this);
     m_imageTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi, 
-                                          m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode);
+                                          m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode,
+                                          m_sourceLanguage);
     m_stackedWidget->addWidget(m_imageTranslationWidget);
     // Create a new container widget
     QWidget *mainContainer = new QWidget(this);
@@ -291,6 +293,7 @@ void MainWindow::onSettingsActionTriggered()
     dialog.setLlmApiKey(m_llmApiKey);
     dialog.setLlmModel(m_llmModel);
     dialog.setLlmBaseUrl(m_llmBaseUrl);
+    dialog.setSourceLanguage(m_sourceLanguage);
     
     // Backup setting
     QSettings settings;
@@ -314,6 +317,7 @@ void MainWindow::onSettingsActionTriggered()
         m_llmApiKey = dialog.llmApiKey();
         m_llmModel = dialog.llmModel();
         m_llmBaseUrl = dialog.llmBaseUrl();
+        m_sourceLanguage = dialog.sourceLanguage();
         
         // Capture mode
         m_translationMode = dialog.translationMode();
@@ -343,6 +347,7 @@ void MainWindow::loadSettings()
      m_llmApiKey = settings.value("llmApiKey").toString();
      m_llmModel = settings.value("llmModel").toString();
      m_llmBaseUrl = settings.value("llmBaseUrl").toString();
+     m_sourceLanguage = settings.value("sourceLanguage", "auto").toString();
      
      m_translationMode = settings.value("translationMode", 0).toInt();
 }
@@ -357,6 +362,7 @@ void MainWindow::saveSettings()
      settings.setValue("llmApiKey", m_llmApiKey);
      settings.setValue("llmModel", m_llmModel);
      settings.setValue("llmBaseUrl", m_llmBaseUrl);
+     settings.setValue("sourceLanguage", m_sourceLanguage);
      settings.setValue("translationMode", m_translationMode);
 }
 
@@ -364,11 +370,13 @@ void MainWindow::updateChildSettings()
 {
     if (m_fileTranslationWidget) {
         m_fileTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi,
-                                             m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl);
+                                             m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl,
+                                             m_sourceLanguage);
     }
     if (m_imageTranslationWidget) {
         m_imageTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi,
-                                              m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode);
+                                              m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode,
+                                              m_sourceLanguage);
     }
 }
 

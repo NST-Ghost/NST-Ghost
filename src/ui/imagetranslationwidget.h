@@ -36,7 +36,8 @@ public:
     void setSettings(const QString &apiKey, const QString &targetLanguage, bool googleApi,
                      const QString &llmProvider, const QString &llmApiKey, 
                      const QString &llmModel, const QString &llmBaseUrl,
-                     int translationMode = 0); // Default to 0 (Quick)
+                     int translationMode = 0, // Default to 0 (Quick)
+                     const QString &sourceLanguage = "auto");
 
 public slots:
     void onAddImages();      // Multi-file dialog (replaces onLoadImage)
@@ -133,6 +134,7 @@ private:
     
     // New: Track active mode
     int m_translationMode = 0;
+    QString m_sourceLanguage = "auto";
 
     // GCV Controls (Programmatic)
     QCheckBox *m_chkUseGcv = nullptr;

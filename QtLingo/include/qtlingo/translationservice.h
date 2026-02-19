@@ -24,6 +24,7 @@ public:
 
     virtual void setApiKey(const QString &apiKey) { Q_UNUSED(apiKey); }
     virtual void setTargetLanguage(const QString &language) { Q_UNUSED(language); }
+    virtual void setSourceLanguage(const QString &language) { Q_UNUSED(language); }
 
     // Google Translate specific
     virtual void setGoogleTranslateMode(bool isApi) { Q_UNUSED(isApi); }

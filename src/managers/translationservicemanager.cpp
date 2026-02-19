@@ -51,6 +51,7 @@ void TranslationServiceManager::translate(const QString &serviceName, const QStr
 
     if (m_currentServiceName == "Google Translate") {
         m_currentService->setTargetLanguage(settings.value("targetLanguage").toString());
+        m_currentService->setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
         m_currentService->setGoogleTranslateMode(settings.value("googleApi").toBool());
         if (settings.value("googleApi").toBool()) {
             m_currentService->setApiKey(settings.value("googleApiKey").toString());
@@ -60,6 +61,7 @@ void TranslationServiceManager::translate(const QString &serviceName, const QStr
         m_currentService->setApiKey(settings.value("llmApiKey").toString());
         m_currentService->setLlmModel(settings.value("llmModel").toString());
         m_currentService->setTargetLanguage(settings.value("targetLanguage").toString());
+        m_currentService->setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
     }
 
     m_totalItems = sourceTexts.size();

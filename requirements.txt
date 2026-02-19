@@ -1,7 +1,6 @@
 numpy
 opencv-python-headless
 Pillow
-easyocr
-sentence-transformers
-simple-lama-inpainting
+paddlepaddle-gpu==3.0.0
+paddlex
 google-cloud-vision

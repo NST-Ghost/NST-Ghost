@@ -1,13 +1,17 @@
 #!/bin/bash
 # =============================================================================
-# NST AI Features Installer
+# NST AI Features Installer (PaddleX)
 # =============================================================================
-# This script installs the AI-powered features for NST using uv.
-# uv ensures correct Python version wheels are downloaded.
+# This script installs the AI-powered features for NST using PaddleX.
 #
 # Usage:
 #   ./install-ai-features.sh          # Install CPU version (default)
-#   ./install-ai-features.sh --gpu    # Install GPU version (requires CUDA)
+#   ./install-ai-features.sh --gpu    # Install GPU version (requires CUDA 11.8)
+#
+# Note for AMD Users:
+#   Currently, this script supports automatic installation for CPU and NVIDIA GPU (CUDA).
+#   For AMD GPUs (ROCm), please install the specific paddlepaddle-rocm version manually
+#   before running this script, or run this script in CPU mode first.
 # =============================================================================
 
 set -e
@@ -19,14 +23,14 @@ if [[ "$1" == "--gpu" ]] || [[ "$1" == "-g" ]]; then
 fi
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║           NST AI Features Installer                              ║"
+echo "║           NST AI Features Installer (PaddleX)                    ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║  This will install:                                              ║"
-echo "║  • EasyOCR        - Text detection from images                   ║"
+echo "║  • PaddleX         - OCR pipeline (PP-OCRv4)                    ║"
 if [ "$USE_GPU" = true ]; then
-echo "║  • PyTorch (GPU)  - AI framework with CUDA support               ║"
+echo "║  • PaddlePaddle-GPU - AI framework with CUDA 11.8 support       ║"
 else
-echo "║  • PyTorch (CPU)  - AI framework (no GPU required)               ║"
+echo "║  • PaddlePaddle     - AI framework (CPU only)                    ║"
 fi
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""
@@ -117,9 +121,9 @@ echo "✓ Python $BUNDLED_PY_VER environment ready"
 # Ask for confirmation
 echo ""
 if [ "$USE_GPU" = true ]; then
-    echo "This will download PyTorch GPU (~2GB) and EasyOCR."
+    echo "This will download PaddlePaddle-GPU (~1.5GB) and PaddleX."
 else
-    echo "This will download PyTorch CPU (~200MB) and EasyOCR."
+    echo "This will download PaddlePaddle (~200MB) and PaddleX."
 fi
 echo "Estimated time: 5-15 minutes depending on internet speed."
 echo ""
@@ -135,38 +139,31 @@ echo ""
 echo "📦 Installing packages..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Install PyTorch
+# Install PaddlePaddle
 echo ""
 if [ "$USE_GPU" = true ]; then
-    echo "[1/2] Installing PyTorch (GPU with CUDA)..."
-    # Use pip from venv directly since uv ignores --target flag
+    echo "[1/2] Installing PaddlePaddle-GPU (CUDA 11.8)..."
     "$TEMP_VENV/bin/pip" install \
         --target="$PY_SITE_PACKAGES" \
         --upgrade --no-user \
-        torch torchvision
+        paddlepaddle-gpu==3.0.0 \
+        -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
 else
-    echo "[1/2] Installing PyTorch (CPU)..."
+    echo "[1/2] Installing PaddlePaddle (CPU)..."
     "$TEMP_VENV/bin/pip" install \
         --target="$PY_SITE_PACKAGES" \
         --upgrade --no-user \
-        torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        paddlepaddle==3.0.0
 fi
 
-# Install EasyOCR (without deps to prevent overwriting torch CPU with CUDA)
+# Install PaddleX and dependencies
 echo ""
-echo "[2/2] Installing EasyOCR..."
-# First install easyocr without dependencies
-"$TEMP_VENV/bin/pip" install \
-    --target="$PY_SITE_PACKAGES" \
-    --upgrade --no-user --no-deps \
-    easyocr
-
-# Then install remaining easyocr dependencies (excluding torch/torchvision which we already have)
-echo "Installing EasyOCR dependencies..."
+echo "[2/2] Installing PaddleX and OCR dependencies..."
+# Install paddlex[ocr] to get all OCR-related dependencies
 "$TEMP_VENV/bin/pip" install \
     --target="$PY_SITE_PACKAGES" \
     --upgrade --no-user \
-    opencv-python-headless scipy numpy Pillow scikit-image python-bidi PyYAML Shapely pyclipper ninja
+    "paddlex[ocr]" opencv-python-headless numpy Pillow
 
 # Cleanup
 rm -rf "$TEMP_VENV"
@@ -179,6 +176,6 @@ echo "║  ✅ Installation Complete!                                       ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║  Please restart NST to enable AI features.                       ║"
 echo "║                                                                  ║"
-echo "║  Note: First OCR run will download language models (~100MB).    ║"
+echo "║  Note: First OCR run will download PP-OCRv4 models (~150MB).    ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""

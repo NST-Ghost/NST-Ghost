@@ -95,6 +95,7 @@ private:
     QString m_llmApiKey;
     QString m_llmModel;
     QString m_llmBaseUrl;
+    QString m_sourceLanguage = "auto";
     
     // New: Explicitly track the active mode (0=Quick, 1=GoogleAPI, 2=LLM)
     int m_translationMode = 0; 

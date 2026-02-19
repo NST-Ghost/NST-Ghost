@@ -695,6 +695,7 @@ void FileTranslationWidget::onTranslateSelectedTextWithService()
         settings["llmApiKey"] = m_llmApiKey;
         settings["llmModel"] = m_llmModel;
         settings["llmBaseUrl"] = m_llmBaseUrl;
+        settings["sourceLanguage"] = m_sourceLanguage;
 
         TranslationJob job;
         job.serviceName = serviceName;
@@ -1170,7 +1171,8 @@ bool FileTranslationWidget::isLikelyCode(const QString &text) const
 
 void FileTranslationWidget::setSettings(const QString &apiKey, const QString &targetLang, bool googleApi, 
                      const QString &llmProvider, const QString &llmApiKey, 
-                     const QString &llmModel, const QString &llmBaseUrl)
+                     const QString &llmModel, const QString &llmBaseUrl,
+                     const QString &sourceLanguage)
 {
     m_apiKey = apiKey;
     m_targetLanguage = targetLang;
@@ -1180,6 +1182,7 @@ void FileTranslationWidget::setSettings(const QString &apiKey, const QString &ta
     m_llmModel = llmModel;
     m_llmModel = llmModel;
     m_llmBaseUrl = llmBaseUrl;
+    m_sourceLanguage = sourceLanguage;
 }
 
 void FileTranslationWidget::openFontManager()

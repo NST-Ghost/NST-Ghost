@@ -35,6 +35,11 @@ void LLMTranslationService::setTargetLanguage(const QString &language)
     m_targetLanguage = language;
 }
 
+void LLMTranslationService::setSourceLanguage(const QString &language)
+{
+    m_sourceLanguage = language;
+}
+
 void LLMTranslationService::translate(const QString &sourceText)
 {
     m_currentSourceText = sourceText;
@@ -118,7 +123,8 @@ void LLMTranslationService::buildOpenAIRequest(QNetworkRequest &request, QJsonOb
     QJsonArray messages;
     QJsonObject message;
     message["role"] = "user";
-    message["content"] = QString("Translate the following text to %1. Return only the translated text without any explanation:\n\n%2").arg(m_targetLanguage, sourceText);
+    QString sourceLangStr = (m_sourceLanguage.isEmpty() || m_sourceLanguage == "auto") ? "" : QString(" from %1").arg(m_sourceLanguage);
+    message["content"] = QString("You are translating dialogue and UI text from a video game. Translate%1 to %2. Return ONLY the translated text using %2 script/characters. Do not mix writing systems. Do not add explanations.\n\n%3").arg(sourceLangStr, m_targetLanguage, sourceText);
     messages.append(message);
     requestBody["messages"] = messages;
 }
@@ -133,7 +139,8 @@ void LLMTranslationService::buildAnthropicRequest(QNetworkRequest &request, QJso
     QJsonArray messages;
     QJsonObject message;
     message["role"] = "user";
-    message["content"] = QString("Translate the following text to %1. Return only the translated text without any explanation:\n\n%2").arg(m_targetLanguage, sourceText);
+    QString sourceLangStr = (m_sourceLanguage.isEmpty() || m_sourceLanguage == "auto") ? "" : QString(" from %1").arg(m_sourceLanguage);
+    message["content"] = QString("You are translating dialogue and UI text from a video game. Translate%1 to %2. Return ONLY the translated text using %2 script/characters. Do not mix writing systems. Do not add explanations.\n\n%3").arg(sourceLangStr, m_targetLanguage, sourceText);
     messages.append(message);
     requestBody["messages"] = messages;
 }
@@ -147,7 +154,8 @@ void LLMTranslationService::buildGoogleRequest(QNetworkRequest &request, QJsonOb
     request.setUrl(url);
     QJsonObject content;
     QJsonObject part;
-    part["text"] = QString("Translate the following text to %1. Return only the translated text without any explanation:\n\n%2").arg(m_targetLanguage, sourceText);
+    QString sourceLangStr = (m_sourceLanguage.isEmpty() || m_sourceLanguage == "auto") ? "" : QString(" from %1").arg(m_sourceLanguage);
+    part["text"] = QString("You are translating dialogue and UI text from a video game. Translate%1 to %2. Return ONLY the translated text using %2 script/characters. Do not mix writing systems. Do not add explanations.\n\n%3").arg(sourceLangStr, m_targetLanguage, sourceText);
     QJsonArray parts;
     parts.append(part);
     content["parts"] = parts;

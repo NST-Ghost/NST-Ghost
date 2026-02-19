@@ -36,7 +36,8 @@ public:
     void openMockData();
     void setSettings(const QString &apiKey, const QString &targetLang, bool googleApi, 
                      const QString &llmProvider, const QString &llmApiKey, 
-                     const QString &llmModel, const QString &llmBaseUrl);
+                     const QString &llmModel, const QString &llmBaseUrl,
+                     const QString &sourceLanguage = "auto");
     
     // Accessor for ProjectDataManager
     ProjectDataManager* getProjectDataManager() const { return m_projectDataManager; }
@@ -142,6 +143,7 @@ private:
     QString m_llmApiKey;
     QString m_llmModel;
     QString m_llmBaseUrl;
+    QString m_sourceLanguage = "auto";
     
     QString m_defaultDeploymentPath; // Path set via CLI/Config to use as default
     

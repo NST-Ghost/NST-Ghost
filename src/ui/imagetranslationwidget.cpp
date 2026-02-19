@@ -147,7 +147,8 @@ void ImageTranslationWidget::setupUi()
 void ImageTranslationWidget::setSettings(const QString &apiKey, const QString &targetLanguage, bool googleApi,
                                           const QString &llmProvider, const QString &llmApiKey,
                                           const QString &llmModel, const QString &llmBaseUrl,
-                                          int translationMode)
+                                          int translationMode,
+                                          const QString &sourceLanguage)
 {
     m_apiKey = apiKey;
     m_targetLanguage = targetLanguage;
@@ -157,6 +158,7 @@ void ImageTranslationWidget::setSettings(const QString &apiKey, const QString &t
     m_llmModel = llmModel;
     m_llmBaseUrl = llmBaseUrl;
     m_translationMode = translationMode;
+    m_sourceLanguage = sourceLanguage;
 }
 
 
@@ -424,6 +426,11 @@ void ImageTranslationWidget::onWorkerProcessingFinished(const QString &imagePath
     settings["targetLanguage"] = ui->m_editTargetLang->text();
     settings["googleApi"] = m_googleApi;
     settings["googleApiKey"] = m_apiKey;
+    settings["sourceLanguage"] = m_sourceLanguage;
+    settings["llmProvider"] = m_llmProvider;
+    settings["llmApiKey"] = m_llmApiKey;
+    settings["llmModel"] = m_llmModel;
+    settings["llmBaseUrl"] = m_llmBaseUrl;
     
     // Store context
     m_detections = detections;
