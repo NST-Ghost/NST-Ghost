@@ -37,6 +37,16 @@ void GoogleTranslateService::setGoogleTranslateMode(bool isApi)
     m_isApi = isApi;
 }
 
+void GoogleTranslateService::configure(const QVariantMap &settings)
+{
+    setTargetLanguage(settings.value("targetLanguage").toString());
+    setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
+    m_isApi = settings.value("googleApi").toBool();
+    if (m_isApi) {
+        setApiKey(settings.value("googleApiKey").toString());
+    }
+}
+
 void GoogleTranslateService::translate(const QString &sourceText)
 {
     // Preprocess: Mask RPGM codes
@@ -94,22 +104,20 @@ void GoogleTranslateService::translate(const QString &sourceText)
 
 void GoogleTranslateService::batchTranslate(const QStringList &sourceTexts)
 {
-    // batchTranslate impl
-    RequestData reqData;
-    reqData.isBatch = true;
-    reqData.isApi = m_isApi;
-    reqData.batchSourceTexts = sourceTexts;
-    
-    // Preprocess Batch
-    QStringList maskedTexts;
-    for (const QString &text : sourceTexts) {
-        QMap<QString, QString> map;
-        maskedTexts.append(preprocessText(text, map));
-        reqData.batchTagMaps.append(map);
-    }
-
-    QNetworkReply *reply = nullptr;
     if (m_isApi) {
+        // API mode: use single JSON batch request (reliable mapping)
+        RequestData reqData;
+        reqData.isBatch = true;
+        reqData.isApi = true;
+        reqData.batchSourceTexts = sourceTexts;
+
+        QStringList maskedTexts;
+        for (const QString &text : sourceTexts) {
+            QMap<QString, QString> map;
+            maskedTexts.append(preprocessText(text, map));
+            reqData.batchTagMaps.append(map);
+        }
+
         if (m_apiKey.isEmpty()) {
             emit errorOccurred("API key is not set for Google Translate.");
             return;
@@ -129,32 +137,77 @@ void GoogleTranslateService::batchTranslate(const QStringList &sourceTexts)
 
         url.setQuery(query);
         QNetworkRequest request(url);
-        request.setAttribute(QNetworkRequest::User, QVariant(true)); // Mark as API request
-        request.setAttribute(static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1), QVariant(true)); // Mark as Batch
-        reply = m_networkManager->get(request);
-
+        request.setAttribute(QNetworkRequest::User, QVariant(true));
+        QNetworkReply *reply = m_networkManager->get(request);
+        if (reply) {
+            m_activeRequests.insert(reply, reqData);
+        }
     } else {
-        // Free Mode (Workaround: Join with \n)
-        QString joinedText = maskedTexts.join("\n");
-        
-        // Use Google Translate's free web interface
+        // Free mode: use concurrent pool of individual requests
+        // Cancel any inflight requests from previous batch
+        QList<QNetworkReply*> staleReplies;
+        for (auto it = m_activeRequests.constBegin(); it != m_activeRequests.constEnd(); ++it) {
+            if (it.value().batchIndex >= 0) {
+                staleReplies.append(it.key());
+            }
+        }
+        for (QNetworkReply *r : staleReplies) {
+            m_activeRequests.remove(r);
+            r->abort();
+            r->deleteLater();
+        }
+
+        m_batchState = BatchState();
+        m_batchState.totalCount = sourceTexts.size();
+        m_batchState.sourceTexts = sourceTexts;
+        m_batchState.results.resize(m_batchState.totalCount);
+        m_batchState.nextIndex = 0;
+        m_batchState.completedCount = 0;
+
+        // Preprocess all texts and store tag maps
+        for (const QString &text : sourceTexts) {
+            QMap<QString, QString> map;
+            preprocessText(text, map);
+            m_batchState.tagMaps.append(map);
+        }
+
+        dispatchNextFreeRequests();
+    }
+}
+
+void GoogleTranslateService::dispatchNextFreeRequests()
+{
+    int inflight = m_batchState.nextIndex - m_batchState.completedCount;
+    while (m_batchState.nextIndex < m_batchState.totalCount
+           && inflight < BatchState::POOL_SIZE) {
+        int idx = m_batchState.nextIndex++;
+        inflight++;
+
+        // Preprocess this text
+        QMap<QString, QString> tagMap;
+        QString maskedText = preprocessText(m_batchState.sourceTexts.at(idx), tagMap);
+        m_batchState.tagMaps[idx] = tagMap;
+
         QString urlString = QString("https://translate.googleapis.com/translate_a/single?client=gtx&sl=%1&tl=%2&dt=t&q=%3")
                             .arg(m_sourceLanguage)
                             .arg(m_targetLanguage)
-                            .arg(QString(QUrl::toPercentEncoding(joinedText)));
+                            .arg(QString(QUrl::toPercentEncoding(maskedText)));
 
         QUrl url(urlString);
         QNetworkRequest request(url);
         request.setHeader(QNetworkRequest::UserAgentHeader,
                          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-        request.setAttribute(QNetworkRequest::User, QVariant(false)); // Mark as free request
-        request.setAttribute(static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1), QVariant(true)); // Mark as Batch
-        
-        reply = m_networkManager->get(request);
-    }
-    
-    if (reply) {
-        m_activeRequests.insert(reply, reqData);
+
+        QNetworkReply *reply = m_networkManager->get(request);
+        if (reply) {
+            RequestData reqData;
+            reqData.isApi = false;
+            reqData.isBatch = false;  // Individual request
+            reqData.batchIndex = idx; // Track position in batch
+            reqData.sourceText = m_batchState.sourceTexts.at(idx);
+            reqData.tagMap = tagMap;
+            m_activeRequests.insert(reply, reqData);
+        }
     }
 }
 
@@ -255,29 +308,30 @@ void GoogleTranslateService::onNetworkReply(QNetworkReply *reply)
         } else {
             // Parse free API response
             QString fullTranslation = extractTranslationFromHtml(QString::fromUtf8(responseData));
-            
-            if (isBatchRequest) {
-                // Split by \n
-                QStringList splitted = fullTranslation.split('\n');
-                
-                QList<TranslationResult> results;
-                for (int i = 0; i < reqData.batchSourceTexts.size(); ++i) {
-                    TranslationResult r;
-                    r.sourceText = reqData.batchSourceTexts.at(i);
-                    if (i < splitted.size()) {
-                        QString rawTranslated = splitted.at(i);
-                        if (i < reqData.batchTagMaps.size()) {
-                            r.translatedText = postprocessText(rawTranslated, reqData.batchTagMaps[i]);
-                        } else {
-                            r.translatedText = rawTranslated;
-                        }
-                    } else {
-                        r.translatedText = ""; // Mismatch case
-                    }
-                    results.append(r);
+
+            if (reqData.batchIndex >= 0) {
+                // Concurrent pool result — store at correct index
+                // Safety: check bounds in case batch was reset by a new translate() call
+                if (reqData.batchIndex >= m_batchState.results.size()) {
+                    // Stale reply from a previous batch — ignore
+                    reply->deleteLater();
+                    return;
                 }
-                emit batchTranslationFinished(results);
+                TranslationResult r;
+                r.sourceText = reqData.sourceText;
+                r.translatedText = postprocessText(fullTranslation, reqData.tagMap);
+                m_batchState.results[reqData.batchIndex] = r;
+                m_batchState.completedCount++;
+
+                if (m_batchState.completedCount == m_batchState.totalCount) {
+                    // All done — emit full batch
+                    emit batchTranslationFinished(m_batchState.results);
+                } else {
+                    // Dispatch more if available
+                    dispatchNextFreeRequests();
+                }
             } else {
+                // Single free request
                 result.translatedText = postprocessText(fullTranslation, reqData.tagMap);
                 emit translationFinished(result);
             }
@@ -285,7 +339,30 @@ void GoogleTranslateService::onNetworkReply(QNetworkReply *reply)
 
     } else {
         qDebug() << "Network Error:" << reply->errorString();
-        emit errorOccurred(reply->errorString());
+
+        if (reqData.batchIndex >= 0) {
+            // Safety: check bounds in case batch was reset
+            if (reqData.batchIndex >= m_batchState.results.size()) {
+                reply->deleteLater();
+                return;
+            }
+            // Concurrent pool error — mark as completed with empty result
+            TranslationResult r;
+            r.sourceText = reqData.sourceText;
+            r.translatedText = "";
+            m_batchState.results[reqData.batchIndex] = r;
+            m_batchState.completedCount++;
+
+            qDebug() << "Batch item" << reqData.batchIndex << "failed:" << reply->errorString();
+
+            if (m_batchState.completedCount == m_batchState.totalCount) {
+                emit batchTranslationFinished(m_batchState.results);
+            } else {
+                dispatchNextFreeRequests();
+            }
+        } else {
+            emit errorOccurred(reply->errorString());
+        }
     }
 
     reply->deleteLater();

@@ -21,7 +21,8 @@ public:
     void setApiKey(const QString &apiKey) override;
     void setTargetLanguage(const QString &language) override;
     void setSourceLanguage(const QString &language);
-    void setGoogleTranslateMode(bool isApi) override;
+    void setGoogleTranslateMode(bool isApi);
+    void configure(const QVariantMap &settings) override;
 
 private slots:
     void onNetworkReply(QNetworkReply *reply);
@@ -31,18 +32,31 @@ private:
     QString preprocessText(const QString &text, QMap<QString, QString> &map);
     QString postprocessText(const QString &text, const QMap<QString, QString> &map);
 
-//    void translateWithApi(const QString &sourceText);
-//    void translateWithFreeApi(const QString &sourceText);
     QString extractTranslationFromHtml(const QString &html);
 
     struct RequestData {
         bool isApi;
         bool isBatch;
-        QString sourceText; // For single
-        QStringList batchSourceTexts; // For batch
-        QMap<QString, QString> tagMap; // For single
-        QList<QMap<QString, QString>> batchTagMaps; // For batch
+        int batchIndex = -1;          // index in concurrent pool (-1 = not pool)
+        QString sourceText;           // For single
+        QStringList batchSourceTexts; // For API batch
+        QMap<QString, QString> tagMap;           // For single
+        QList<QMap<QString, QString>> batchTagMaps; // For API batch
     };
+
+    // Concurrent pool for free mode batch translation
+    struct BatchState {
+        QStringList sourceTexts;
+        QList<QMap<QString, QString>> tagMaps;
+        QList<TranslationResult> results;
+        int totalCount = 0;
+        int completedCount = 0;
+        int nextIndex = 0;
+        static constexpr int POOL_SIZE = 5;
+    };
+    BatchState m_batchState;
+
+    void dispatchNextFreeRequests();
 
     QMap<QNetworkReply*, RequestData> m_activeRequests;
 

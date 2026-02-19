@@ -33,7 +33,6 @@ private slots:
     void onTranslationError(const QString &message);
 
 private:
-    QList<qtlingo::ITranslationService*> m_services;
     QQueue<QString> m_translationQueue;
     QStringList m_currentBatch; // Track current batch for error handling
     qtlingo::ITranslationService* m_currentService = nullptr;

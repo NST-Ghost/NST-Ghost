@@ -40,6 +40,15 @@ void LLMTranslationService::setSourceLanguage(const QString &language)
     m_sourceLanguage = language;
 }
 
+void LLMTranslationService::configure(const QVariantMap &settings)
+{
+    setApiKey(settings.value("llmApiKey").toString());
+    m_provider = settings.value("llmProvider").toString();
+    m_model = settings.value("llmModel").toString();
+    setTargetLanguage(settings.value("targetLanguage").toString());
+    setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
+}
+
 void LLMTranslationService::translate(const QString &sourceText)
 {
     m_currentSourceText = sourceText;

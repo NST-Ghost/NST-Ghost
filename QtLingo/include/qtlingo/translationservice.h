@@ -5,6 +5,7 @@
 #include <QString>
 #include <QStringList>
 #include <QObject>
+#include <QVariantMap>
 
 namespace qtlingo {
 
@@ -22,17 +23,13 @@ public:
     virtual QString serviceName() const = 0;
     virtual void translate(const QString &sourceText) = 0;
 
+    // Common settings (used by most services)
     virtual void setApiKey(const QString &apiKey) { Q_UNUSED(apiKey); }
     virtual void setTargetLanguage(const QString &language) { Q_UNUSED(language); }
     virtual void setSourceLanguage(const QString &language) { Q_UNUSED(language); }
 
-    // Google Translate specific
-    virtual void setGoogleTranslateMode(bool isApi) { Q_UNUSED(isApi); }
-
-    // LLM specific
-    virtual void setLlmProvider(const QString &provider) { Q_UNUSED(provider); }
-    virtual void setLlmModel(const QString &model) { Q_UNUSED(model); }
-    virtual void setLlmEndpoint(const QString &endpoint) { Q_UNUSED(endpoint); }
+    // Generic configuration — each service extracts what it needs from the map
+    virtual void configure(const QVariantMap &settings) { Q_UNUSED(settings); }
 
     // Batch Translation
     virtual bool supportsBatchTranslation() const { return false; }

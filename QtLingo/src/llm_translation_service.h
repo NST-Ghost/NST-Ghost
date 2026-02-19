@@ -15,11 +15,12 @@ public:
     void translate(const QString &sourceText) override;
 
     void setApiKey(const QString &apiKey) override;
-    void setLlmProvider(const QString &provider) override;
-    void setLlmModel(const QString &model) override;
+    void setLlmProvider(const QString &provider);
+    void setLlmModel(const QString &model);
     void setLlmBaseUrl(const QString &baseUrl);
     void setTargetLanguage(const QString &language) override;
     void setSourceLanguage(const QString &language) override;
+    void configure(const QVariantMap &settings) override;
 
 private slots:
     void onNetworkReply(QNetworkReply *reply);

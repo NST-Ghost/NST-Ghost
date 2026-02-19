@@ -11,7 +11,7 @@ TranslationServiceManager::TranslationServiceManager(QObject *parent)
 
 TranslationServiceManager::~TranslationServiceManager()
 {
-    qDeleteAll(m_services);
+    delete m_currentService;
 }
 
 QStringList TranslationServiceManager::getAvailableServices() const
@@ -30,48 +30,37 @@ void TranslationServiceManager::translate(const QString &serviceName, const QStr
     }
 
     m_currentServiceName = serviceName;
-    m_currentService = qtlingo::createTranslationService(m_currentServiceName, nullptr).release();
-    if (!m_currentService) {
-        emit errorOccurred(QString("Failed to create translation service: %1").arg(m_currentServiceName));
-        return;
-    }
 
-    // Disconnect previous connections if any
-    if (m_services.size() > 0) {
-        for(auto service : m_services) {
-            disconnect(service, nullptr, this, nullptr);
-            service->deleteLater();
+    // Reuse existing service if same type, otherwise create new one
+    if (!m_currentService || m_currentService->serviceName() != serviceName) {
+        // Cleanup old service
+        if (m_currentService) {
+            disconnect(m_currentService, nullptr, this, nullptr);
+            m_currentService->deleteLater();
+            m_currentService = nullptr;
         }
-        m_services.clear();
-    }
 
-    connect(m_currentService, &qtlingo::ITranslationService::translationFinished, this, &TranslationServiceManager::onTranslationDone);
-    connect(m_currentService, &qtlingo::ITranslationService::batchTranslationFinished, this, &TranslationServiceManager::onBatchTranslationDone);
-    connect(m_currentService, &qtlingo::ITranslationService::errorOccurred, this, &TranslationServiceManager::onTranslationError);
-
-    if (m_currentServiceName == "Google Translate") {
-        m_currentService->setTargetLanguage(settings.value("targetLanguage").toString());
-        m_currentService->setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
-        m_currentService->setGoogleTranslateMode(settings.value("googleApi").toBool());
-        if (settings.value("googleApi").toBool()) {
-            m_currentService->setApiKey(settings.value("googleApiKey").toString());
+        // Create new service with 'this' as parent for proper memory management
+        m_currentService = qtlingo::createTranslationService(serviceName, this).release();
+        if (!m_currentService) {
+            emit errorOccurred(QString("Failed to create translation service: %1").arg(serviceName));
+            return;
         }
-    } else if (m_currentServiceName == "LLM Translation") {
-        m_currentService->setLlmProvider(settings.value("llmProvider").toString());
-        m_currentService->setApiKey(settings.value("llmApiKey").toString());
-        m_currentService->setLlmModel(settings.value("llmModel").toString());
-        m_currentService->setTargetLanguage(settings.value("targetLanguage").toString());
-        m_currentService->setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
+
+        connect(m_currentService, &qtlingo::ITranslationService::translationFinished, this, &TranslationServiceManager::onTranslationDone);
+        connect(m_currentService, &qtlingo::ITranslationService::batchTranslationFinished, this, &TranslationServiceManager::onBatchTranslationDone);
+        connect(m_currentService, &qtlingo::ITranslationService::errorOccurred, this, &TranslationServiceManager::onTranslationError);
     }
+
+    // Always reconfigure with latest settings
+    m_currentService->configure(settings);
 
     m_totalItems = sourceTexts.size();
     m_processedItems = 0;
-    
+
     // Load persisted delay for this service
     QSettings qsettings("MySoft", "NST");
     m_currentDelay = qsettings.value("ServiceDelays/" + m_currentServiceName, 0).toInt();
-
-    m_services.append(m_currentService);
     
     // Populate queue
     m_translationQueue.clear();

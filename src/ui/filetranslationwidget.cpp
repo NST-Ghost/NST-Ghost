@@ -241,6 +241,16 @@ void FileTranslationWidget::setupTimers()
     m_resultProcessingTimer = new QTimer(this);
     m_resultProcessingTimer->setInterval(100);
     connect(m_resultProcessingTimer, &QTimer::timeout, this, &FileTranslationWidget::processIncomingResults);
+    
+    // Search refresh debounce timer (avoids re-scanning all rows during active translation)
+    m_searchRefreshTimer = new QTimer(this);
+    m_searchRefreshTimer->setInterval(500);
+    m_searchRefreshTimer->setSingleShot(true);
+    connect(m_searchRefreshTimer, &QTimer::timeout, this, [this]() {
+        if (m_searchController) {
+            m_searchController->onSearchQueryChanged(m_searchController->currentQuery());
+        }
+    });
 }
 
 FileTranslationWidget::~FileTranslationWidget()
@@ -538,13 +548,6 @@ void FileTranslationWidget::processIncomingResults()
             }
             if (modified) {
                 m_projectDataManager->getLoadedGameProjectData().insert(targetFilePath, textsArray);
-                if (targetFilePath == currentLoadedPath) {
-                     for(int r=0; r<m_translationModel->rowCount(); ++r) {
-                         if (m_translationModel->data(m_translationModel->index(r, 1)).toString() == sourceText) {
-                             m_translationModel->setData(m_translationModel->index(r, 2), translatedText);
-                         }
-                     }
-                }
             }
         }
         m_pendingTranslations.remove(sourceText);
@@ -555,8 +558,9 @@ void FileTranslationWidget::processIncomingResults()
             m_uiUpdateTimer->start();
         }
     }
-    if (m_searchController) {
-        m_searchController->onSearchQueryChanged(m_searchController->currentQuery());
+    // Defer search refresh with debounce to avoid re-scanning all rows every 100ms
+    if (m_searchController && !m_searchRefreshTimer->isActive()) {
+        m_searchRefreshTimer->start();
     }
 }
 

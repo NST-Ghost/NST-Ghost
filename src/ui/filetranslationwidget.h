@@ -179,6 +179,7 @@ private:
     };
     QQueue<QueuedTranslationResult> m_incomingResults;
     QTimer *m_resultProcessingTimer;
+    QTimer *m_searchRefreshTimer;
 };
 
 #endif // FILETRANSLATIONWIDGET_H
