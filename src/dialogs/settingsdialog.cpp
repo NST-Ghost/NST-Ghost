@@ -13,6 +13,9 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 {
     ui->setupUi(this);
     
+    // Connect translator mode to stacked widget
+    connect(ui->translatorModeComboBox, &QComboBox::currentIndexChanged, ui->engineStackedWidget, &QStackedWidget::setCurrentIndex);
+
     // Populate Source Language
     ui->sourceLanguageComboBox->addItem("Auto Detect", "auto");
     ui->sourceLanguageComboBox->addItem("English", "en");
@@ -188,22 +191,17 @@ void SettingsDialog::setLlmModel(const QString &model)
 
 bool SettingsDialog::isGoogleApi() const
 {
-    // Mode 1: Professional (Google API)
-    return ui->translatorModeComboBox->currentIndex() == 1;
+    // Mode 0: Google Translate. We consider it "API" mode if there's a key provided.
+    // Otherwise, we fall back to the free engine.
+    return ui->translatorModeComboBox->currentIndex() == 0 && !ui->googleApiKeyEdit->text().trimmed().isEmpty();
 }
 
 void SettingsDialog::setGoogleApi(bool isApi)
 {
-    // Legacy support: if true, set to Professional (index 1), else Quick (index 0)
-    // Ideally, we should have a generic setTranslationMode(int mode)
-    if (isApi) {
-        ui->translatorModeComboBox->setCurrentIndex(1);
-    } else {
-        // Default to Quick if not API, unless it was already setting something else?
-        // This setter suggests a binary choice in the old logic.
-        if (ui->translatorModeComboBox->currentIndex() != 2 && ui->translatorModeComboBox->currentIndex() != 3) {
-             ui->translatorModeComboBox->setCurrentIndex(0);
-        }
+    // If the user previously used any Google mode, set index to 0.
+    // As we combined them, we just set it to Google Translate if they weren't using LLM or Plugins.
+    if (ui->translatorModeComboBox->currentIndex() != 1 && ui->translatorModeComboBox->currentIndex() != 2) {
+         ui->translatorModeComboBox->setCurrentIndex(0);
     }
 }
 

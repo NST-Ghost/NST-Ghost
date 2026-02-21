@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <ui version="4.0">
  <class>SettingsDialog</class>
  <widget class="QDialog" name="SettingsDialog">
@@ -94,7 +94,6 @@
         <property name="currentIndex">
          <number>0</number>
         </property>
-        <!-- Page 0: General (Source/Target, Mode, AI Toggle) -->
         <widget class="QWidget" name="page_general">
          <layout class="QVBoxLayout" name="verticalLayout_general">
           <item>
@@ -117,7 +116,7 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="sourceLanguageComboBox"/>
+              <widget class="QComboBox" name="sourceLanguageComboBox" />
              </item>
              <item row="1" column="0">
               <widget class="QLabel" name="targetLanguageLabel">
@@ -127,61 +126,30 @@
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QComboBox" name="targetLanguageComboBox"/>
+              <widget class="QComboBox" name="targetLanguageComboBox" />
              </item>
              <item row="2" column="0">
-              <widget class="QLabel" name="activeModeLabel">
-               <property name="text">
-                <string>Active Mode:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="2" column="1">
-              <widget class="QComboBox" name="translatorModeComboBox">
-               <item>
-                <property name="text">
-                 <string>Quick (Google Free)</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Professional (Google API)</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>AI-Powered (LLM)</string>
-                </property>
-               </item>
-               <item>
-                <property name="text">
-                 <string>Plugins (Lua)</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="3" column="0">
               <widget class="QLabel" name="label_enable_ai">
                <property name="text">
                 <string>AI Features:</string>
                </property>
               </widget>
              </item>
-             <item row="3" column="1">
+             <item row="2" column="1">
               <widget class="QCheckBox" name="enableAiFilterCheckBox">
                <property name="text">
                 <string>Enable AI Context Filter</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="0">
+             <item row="3" column="0">
               <widget class="QLabel" name="label_backup">
                <property name="text">
                 <string>Deployment:</string>
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
+             <item row="3" column="1">
               <widget class="QCheckBox" name="enableBackupCheckBox">
                <property name="text">
                 <string>Create backup before deployment</string>
@@ -212,8 +180,6 @@
           </item>
          </layout>
         </widget>
-        
-        <!-- Page 1: Translation (Engine Configs) -->
         <widget class="QWidget" name="page_translation">
          <layout class="QVBoxLayout" name="verticalLayout_translation">
           <item>
@@ -235,97 +201,210 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_scroll_translation">
               <item>
-               <widget class="QGroupBox" name="googleProGroupBox">
+               <widget class="QGroupBox" name="translationModeGroupBox">
                 <property name="title">
-                 <string>Google Cloud Translation API</string>
+                 <string>Translation Mode</string>
                 </property>
-                <layout class="QFormLayout" name="formLayout_professional">
+                <layout class="QFormLayout" name="formLayout_translationMode">
                  <item row="0" column="0">
-                  <widget class="QLabel" name="googleApiKeyLabel">
+                  <widget class="QLabel" name="activeModeLabel">
                    <property name="text">
-                    <string>API Key:</string>
+                    <string>Active Mode:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="1">
-                  <widget class="QLineEdit" name="googleApiKeyEdit"/>
+                  <widget class="QComboBox" name="translatorModeComboBox">
+                   <item>
+                    <property name="text">
+                     <string>Google Translate</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>AI-Powered (LLM)</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>Plugins (Lua)</string>
+                    </property>
+                   </item>
+                  </widget>
                  </item>
                 </layout>
                </widget>
               </item>
               <item>
-               <widget class="QGroupBox" name="llmProviderGroup">
-                <property name="title">
-                 <string>LLM Provider Settings</string>
+               <widget class="QStackedWidget" name="engineStackedWidget">
+                <property name="currentIndex">
+                 <number>0</number>
                 </property>
-                <layout class="QFormLayout" name="formLayout_ai_powered">
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="llmProviderLabel">
-                   <property name="text">
-                    <string>Provider:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QComboBox" name="llmProviderComboBox">
-                   <item>
+                <widget class="QWidget" name="page_engine_google">
+                 <layout class="QVBoxLayout" name="verticalLayout_engine_pro">
+                  <property name="leftMargin">
+                   <number text="0" />
+                  </property>
+                  <property name="topMargin">
+                   <number text="0" />
+                  </property>
+                  <property name="rightMargin">
+                   <number text="0" />
+                  </property>
+                  <property name="bottomMargin">
+                   <number text="0" />
+                  </property>
+                  <item>
+                   <widget class="QLabel" name="label_google_fallback">
                     <property name="text">
-                     <string>Google AI</string>
+                     <string>Leave API Key blank to use the free Google engine.</string>
                     </property>
-                   </item>
-                   <item>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QGroupBox" name="googleProGroupBox">
+                    <property name="title">
+                     <string>Google Cloud Translation API</string>
+                    </property>
+                    <layout class="QFormLayout" name="formLayout_professional">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="googleApiKeyLabel">
+                       <property name="text">
+                        <string>API Key:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QLineEdit" name="googleApiKeyEdit" />
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="spacer_engine_pro">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="page_engine_llm">
+                 <layout class="QVBoxLayout" name="verticalLayout_engine_llm">
+                  <property name="leftMargin">
+                   <number text="0" />
+                  </property>
+                  <property name="topMargin">
+                   <number text="0" />
+                  </property>
+                  <property name="rightMargin">
+                   <number text="0" />
+                  </property>
+                  <property name="bottomMargin">
+                   <number text="0" />
+                  </property>
+                  <item>
+                   <widget class="QGroupBox" name="llmProviderGroup">
+                    <property name="title">
+                     <string>LLM Provider Settings</string>
+                    </property>
+                    <layout class="QFormLayout" name="formLayout_ai_powered">
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="llmProviderLabel">
+                       <property name="text">
+                        <string>Provider:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QComboBox" name="llmProviderComboBox">
+                       <item>
+                        <property name="text">
+                         <string>Google AI</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Anthropic</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="llmApiKeyLabel">
+                       <property name="text">
+                        <string>API Key:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QLineEdit" name="llmApiKeyEdit" />
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="llmModelLabel">
+                       <property name="text">
+                        <string>Model:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QComboBox" name="llmModelComboBox" />
+                     </item>
+                     <item row="3" column="0" colspan="2">
+                      <widget class="QGroupBox" name="llmAdvancedGroupBox">
+                       <property name="title">
+                        <string>Advanced</string>
+                       </property>
+                       <property name="checkable">
+                        <bool>true</bool>
+                       </property>
+                       <property name="checked">
+                        <bool>false</bool>
+                       </property>
+                       <layout class="QFormLayout" name="formLayout_advanced">
+                        <item row="0" column="0">
+                         <widget class="QLabel" name="llmBaseUrlLabel">
+                          <property name="text">
+                           <string>Base URL:</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QLineEdit" name="llmBaseUrlEdit" />
+                        </item>
+                       </layout>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="spacer_engine_llm">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="page_engine_plugins">
+                 <layout class="QVBoxLayout" name="verticalLayout_engine_plugins">
+                  <item>
+                   <widget class="QLabel" name="label_engine_plugins">
                     <property name="text">
-                     <string>Anthropic</string>
+                     <string>Plugin scripts manage their own configuration. Go to the Plugins tab.</string>
                     </property>
-                   </item>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <widget class="QLabel" name="llmApiKeyLabel">
-                   <property name="text">
-                    <string>API Key:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <widget class="QLineEdit" name="llmApiKeyEdit"/>
-                 </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="llmModelLabel">
-                   <property name="text">
-                    <string>Model:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="2" column="1">
-                  <widget class="QComboBox" name="llmModelComboBox"/>
-                 </item>
-                 <item row="3" column="0" colspan="2">
-                  <widget class="QGroupBox" name="llmAdvancedGroupBox">
-                   <property name="title">
-                    <string>Advanced</string>
-                   </property>
-                   <property name="checkable">
-                    <bool>true</bool>
-                   </property>
-                   <property name="checked">
-                    <bool>false</bool>
-                   </property>
-                   <layout class="QFormLayout" name="formLayout_advanced">
-                    <item row="0" column="0">
-                     <widget class="QLabel" name="llmBaseUrlLabel">
-                      <property name="text">
-                       <string>Base URL:</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="0" column="1">
-                     <widget class="QLineEdit" name="llmBaseUrlEdit"/>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                </layout>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="spacer_engine_plugins">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                   </spacer>
+                  </item>
+                 </layout>
+                </widget>
                </widget>
               </item>
               <item>
@@ -347,8 +426,6 @@
           </item>
          </layout>
         </widget>
-
-        <!-- Page 2: AI (UI) & Visuals -->
         <widget class="QWidget" name="page_ai_ui">
          <layout class="QVBoxLayout" name="verticalLayout_ai_ui">
           <item>
@@ -383,7 +460,7 @@
              <item row="1" column="0" colspan="2">
               <widget class="QLabel" name="aiInfoLabel">
                <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Details on how the AI interprets the image context.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Details on how the AI interprets the image context.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="wordWrap">
                 <bool>true</bool>
@@ -424,8 +501,6 @@
           </item>
          </layout>
         </widget>
-
-        <!-- Page 3: Plugins -->
         <widget class="QWidget" name="page_plugins">
          <layout class="QHBoxLayout" name="horizontalLayout_plugins">
           <item>
@@ -464,7 +539,7 @@
                  <height>228</height>
                 </rect>
                </property>
-               <layout class="QFormLayout" name="formLayout_plugins"/>
+               <layout class="QFormLayout" name="formLayout_plugins" />
               </widget>
              </widget>
             </item>
@@ -486,7 +561,7 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>buttonBox</sender>
