@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <QJsonArray>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 
 class QListWidgetItem;
 class QListWidget;
@@ -65,9 +67,11 @@ public:
 private slots:
     void updateConfigPanel();
     void updateLlmModelComboBox();
+    void fetchLlmModels();
 
 private:
     Ui::SettingsDialog *ui;
+    QNetworkAccessManager *m_networkManager;
     
     // Plugin UI members
 

@@ -320,6 +320,11 @@
                       <widget class="QComboBox" name="llmProviderComboBox">
                        <item>
                         <property name="text">
+                         <string>OpenAI</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
                          <string>Google AI</string>
                         </property>
                        </item>
@@ -348,7 +353,21 @@
                       </widget>
                      </item>
                      <item row="2" column="1">
-                      <widget class="QComboBox" name="llmModelComboBox" />
+                      <layout class="QHBoxLayout" name="horizontalLayout_model">
+                       <item>
+                        <widget class="QComboBox" name="llmModelComboBox" />
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="fetchModelsButton">
+                         <property name="text">
+                          <string>Fetch</string>
+                         </property>
+                         <property name="toolTip">
+                          <string>Fetch available models from the provider using the API key</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
                      </item>
                      <item row="3" column="0" colspan="2">
                       <widget class="QGroupBox" name="llmAdvancedGroupBox">

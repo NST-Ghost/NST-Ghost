@@ -6,10 +6,17 @@
 #include <QDoubleSpinBox>
 #include <QLabel>
 #include <QFormLayout> // Ensure this is also included explicitly if not already by UI header
+#include <QNetworkRequest>
+#include <QUrl>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QMessageBox>
 
 SettingsDialog::SettingsDialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::SettingsDialog)
+    , m_networkManager(new QNetworkAccessManager(this))
 {
     ui->setupUi(this);
     
@@ -40,6 +47,9 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     ui->targetLanguageComboBox->addItem("Thai", "th");
 
     connect(ui->llmProviderComboBox, &QComboBox::currentIndexChanged, this, &SettingsDialog::updateLlmModelComboBox);
+    
+    // Connect fetch models button
+    connect(ui->fetchModelsButton, &QPushButton::clicked, this, &SettingsDialog::fetchLlmModels);
 
     updateLlmModelComboBox();
     
@@ -232,12 +242,79 @@ void SettingsDialog::updateLlmModelComboBox()
     ui->llmModelComboBox->clear();
 
     if (provider == "OpenAI") {
-        ui->llmModelComboBox->addItems({"gpt-4o", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"});
+        ui->llmModelComboBox->addItems({"gpt-4o-mini", "gpt-4o", "o3-mini", "o1-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"});
     } else if (provider == "Anthropic") {
         ui->llmModelComboBox->addItems({"claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"});
     } else if (provider == "Google AI") {
         ui->llmModelComboBox->addItems({"gemini-1.5-pro-latest", "gemini-pro"});
     }
+}
+
+void SettingsDialog::fetchLlmModels()
+{
+    QString provider = ui->llmProviderComboBox->currentText();
+    QString apiKey = ui->llmApiKeyEdit->text().trimmed();
+
+    if (provider != "OpenAI") {
+        QMessageBox::information(this, "Fetch Models", "Dynamic model fetching is currently only implemented for OpenAI.");
+        return;
+    }
+
+    if (apiKey.isEmpty()) {
+        QMessageBox::warning(this, "Fetch Models", "Please enter an API Key first.");
+        return;
+    }
+
+    // Disable button to prevent spamming
+    ui->fetchModelsButton->setEnabled(false);
+    ui->fetchModelsButton->setText("Fetching...");
+
+    QNetworkRequest request(QUrl("https://api.openai.com/v1/models"));
+    request.setRawHeader("Authorization", QString("Bearer %1").arg(apiKey).toUtf8());
+
+    QNetworkReply *reply = m_networkManager->get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        ui->fetchModelsButton->setEnabled(true);
+        ui->fetchModelsButton->setText("Fetch");
+
+        if (reply->error() == QNetworkReply::NoError) {
+            QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+            if (doc.isObject() && doc.object().contains("data")) {
+                QJsonArray data = doc.object()["data"].toArray();
+                QStringList models;
+                for (const QJsonValue &val : data) {
+                    if (val.isObject() && val.toObject().contains("id")) {
+                        QString id = val.toObject()["id"].toString();
+                        // Filter for typical chat/completion models to reduce clutter
+                        if (id.startsWith("gpt-") || id.startsWith("o1") || id.startsWith("o3")) {
+                            models.append(id);
+                        }
+                    }
+                }
+                
+                if (!models.isEmpty()) {
+                    models.sort();
+                    ui->llmModelComboBox->clear();
+                    
+                    // Always put the most cost-effective recommendation at the top
+                    if (models.contains("gpt-4o-mini")) {
+                        models.removeAll("gpt-4o-mini");
+                        ui->llmModelComboBox->addItem("gpt-4o-mini");
+                    }
+                    
+                    ui->llmModelComboBox->addItems(models);
+                    QMessageBox::information(this, "Fetch Models", QString("Successfully fetched %1 models.").arg(models.size() + 1));
+                } else {
+                    QMessageBox::warning(this, "Fetch Models", "No compatible models found in the API response.");
+                }
+            } else {
+                 QMessageBox::warning(this, "Fetch Models", "Failed to parse API response.");
+            }
+        } else {
+            QMessageBox::warning(this, "Fetch Models", "Network Error: " + reply->errorString());
+        }
+        reply->deleteLater();
+    });
 }
 
 // --- Plugin Manager Implementation ---
