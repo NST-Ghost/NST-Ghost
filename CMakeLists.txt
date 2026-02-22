@@ -74,6 +74,8 @@ set(PROJECT_SOURCES
     src/plugins/LuaTranslationPlugin/luatranslationservice.cpp
     src/managers/projectdatamanager.cpp
     src/ui/mainwindow.h
+    src/ui/globalstatuswidget.cpp
+    src/ui/globalstatuswidget.h
     src/ui/menubar.h
     src/dialogs/scripteditordialog.cpp
     src/dialogs/scripteditordialog.h

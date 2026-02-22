@@ -402,6 +402,7 @@ void ImageTranslationWidget::onWorkerProcessingFinished(const QString &imagePath
                  }
                  // All done
                  m_isBatchProcessing = false;
+                 emit translationStateChanged(false);
                  ui->m_btnTranslate->setEnabled(true);
                  ui->m_btnTranslateAll->setEnabled(true);
                  ui->m_btnStop->setVisible(false);
@@ -413,6 +414,7 @@ void ImageTranslationWidget::onWorkerProcessingFinished(const QString &imagePath
             ui->m_btnTranslateAll->setEnabled(true);
             ui->m_btnStop->setVisible(false);
              ui->m_btnSave->setEnabled(true);
+             emit translationStateChanged(false);
         }
         return;
     }
@@ -487,6 +489,8 @@ void ImageTranslationWidget::onTranslate()
     ui->m_btnStop->setVisible(true);
     ui->m_btnSave->setEnabled(false);
     
+    emit translationStateChanged(true);
+    
     int idx = m_currentQueueIndex;
     m_imageQueue[idx].status = ImageItem::Processing;
     updateListItemStatus(idx, ImageItem::Processing);
@@ -499,6 +503,7 @@ void ImageTranslationWidget::onTranslate()
          ui->m_btnTranslateAll->setEnabled(true);
          ui->m_btnStop->setVisible(false);
          ui->m_statusLabel->setText("Failed to start processing.");
+         emit translationStateChanged(false);
          return;
     }
     
@@ -513,6 +518,7 @@ void ImageTranslationWidget::onTranslateAll()
     }
     
     m_isBatchProcessing = true;
+    emit translationStateChanged(true);
     m_cancelRequested = false;
     ui->m_btnTranslate->setEnabled(false);
     ui->m_btnTranslateAll->setEnabled(false);
@@ -532,6 +538,7 @@ void ImageTranslationWidget::onTranslateAll()
     
     // If nothing pending
     m_isBatchProcessing = false;
+    emit translationStateChanged(false);
     ui->m_btnTranslate->setEnabled(true);
     ui->m_btnTranslateAll->setEnabled(true);
     ui->m_btnStop->setVisible(false);
@@ -563,6 +570,10 @@ void ImageTranslationWidget::onTranslationFinished(const qtlingo::TranslationRes
         ui->m_btnTranslate->setEnabled(true);
         ui->m_btnTranslateAll->setEnabled(true);
         ui->m_btnSave->setEnabled(true);
+        
+        if (!m_isBatchProcessing) {
+             emit translationStateChanged(false);
+        }
         return;
     }
     
@@ -585,6 +596,11 @@ void ImageTranslationWidget::onTranslationFinished(const qtlingo::TranslationRes
         m_currentViewMode = Translated;
         m_viewGroup->button(Translated)->setChecked(true);
         updateViewMode();
+        
+        // Single translation finished
+        if (!m_isBatchProcessing) {
+            emit translationStateChanged(false);
+        }
         
         // Continue Batch Processing
         if (m_isBatchProcessing && !m_cancelRequested) {
@@ -609,6 +625,7 @@ void ImageTranslationWidget::onTranslationFinished(const qtlingo::TranslationRes
              
              if (!foundNext) {
                  m_isBatchProcessing = false;
+                 emit translationStateChanged(false);
                  ui->m_statusLabel->setText("Batch Processing Finished.");
                  ui->m_btnStop->setVisible(false);
              }
@@ -620,6 +637,7 @@ void ImageTranslationWidget::onTranslationError(const QString &message)
 {
      ui->m_statusLabel->setText("Translation Error: " + message);
      ui->m_btnTranslate->setEnabled(true);
+     emit translationStateChanged(false);
 }
 
 // Removed legacy: onDetectText, onOverlayModeChanged, drawDetections, drawOverlayMode

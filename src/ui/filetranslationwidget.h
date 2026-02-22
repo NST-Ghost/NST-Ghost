@@ -71,6 +71,7 @@ public:
     
 signals:
     void projectLoaded(const QString &projectPath);
+    void translationStateChanged(bool active);
 
 public slots:
     void openSearchDialog();

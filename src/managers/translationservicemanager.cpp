@@ -44,6 +44,7 @@ void TranslationServiceManager::translate(const QString &serviceName, const QStr
         m_currentService = qtlingo::createTranslationService(serviceName, this).release();
         if (!m_currentService) {
             emit errorOccurred(QString("Failed to create translation service: %1").arg(serviceName));
+            emit progressUpdated(sourceTexts.size(), sourceTexts.size());
             return;
         }
 
@@ -119,8 +120,8 @@ void TranslationServiceManager::processNextTranslation()
     if (m_currentService->supportsBatchTranslation()) {
         // Build a batch based on both max item count and max total string length
         // to prevent LLMs from truncating huge prompts.
-        int maxItems = 20; 
-        int maxChars = 2000; // Roughly 500-1000 tokens of input
+        int maxItems = 100; 
+        int maxChars = 15000; // Roughly 4000 tokens of input
         int currentChars = 0;
         
         m_currentBatch.clear();
@@ -175,29 +176,41 @@ void TranslationServiceManager::onTranslationError(const QString &message)
     // Persist the new delay
     QSettings settings("MySoft", "NST");
     settings.setValue("ServiceDelays/" + m_currentServiceName, m_currentDelay);
-    
-    emit errorOccurred(message);
+    // Do not emit errorOccurred here, because it will be overwritten by the retries below
+    // in the single status bar.
     
     m_retryCount++;
     if (m_retryCount >= 3) {
-        emit errorOccurred("Max retries reached. Skipping this translation block to avoid infinite loop.");
+        emit errorOccurred(QString("Max retries reached: %1").arg(message));
         
         if (m_currentService->supportsBatchTranslation()) {
             int count = m_currentBatch.size();
             for(int i=0; i<count; ++i) {
-                if (!m_translationQueue.isEmpty()) m_translationQueue.dequeue();
+                if (!m_translationQueue.isEmpty()) {
+                    QString source = m_translationQueue.dequeue();
+                    qtlingo::TranslationResult res;
+                    res.sourceText = source;
+                    res.translatedText = QString("[Error] %1").arg(message);
+                    emit translationFinished(res);
+                }
                 m_processedItems++; // Count as processed so the progress bar moves forward
             }
             m_currentBatch.clear();
         } else {
-            if (!m_translationQueue.isEmpty()) m_translationQueue.dequeue();
+            if (!m_translationQueue.isEmpty()) {
+                QString source = m_translationQueue.dequeue();
+                qtlingo::TranslationResult res;
+                res.sourceText = source;
+                res.translatedText = QString("[Error] %1").arg(message);
+                emit translationFinished(res);
+            }
             m_processedItems++;
         }
         
         emit progressUpdated(m_processedItems, m_totalItems);
         m_retryCount = 0; // Reset for the next item
     } else {
-        emit errorOccurred(QString("Retrying (Attempt %1 of 3)...").arg(m_retryCount));
+        emit errorOccurred(QString("Attempt %1 of 3 Failed: %2").arg(m_retryCount).arg(message));
     }
     
     m_isProcessing = false;

@@ -566,11 +566,12 @@ void FileTranslationWidget::processIncomingResults()
 
 void FileTranslationWidget::onTranslationServiceError(const QString &message)
 {
-    // statusBar()->showMessage(...)
+    // statusBar()->showMessage(...) is handled by MainWindow now
     qWarning() << "Translation Service Error:" << message;
-    m_isTranslating = false;
-    m_spinnerTimer->stop();
-    m_translationQueue.clear();
+    
+    // Do not clear the queue or stop translating here.
+    // TranslationServiceManager handles its own retry loops and will eventually emit progressUpdated
+    // when it finishes or gives up on a batch, allowing processNextTranslationJob() to continue smoothly.
 }
 
 void FileTranslationWidget::onTranslationTableViewCustomContextMenuRequested(const QPoint &pos)
@@ -1158,10 +1159,15 @@ void FileTranslationWidget::onUnmarkAsIgnored()
 
 void FileTranslationWidget::processNextTranslationJob()
 {
-    if (m_isTranslating || m_translationQueue.isEmpty()) return;
+    if (m_translationQueue.isEmpty()) {
+        emit translationStateChanged(false);
+        return;
+    }
+    if (m_isTranslating) return;
     TranslationJob job = m_translationQueue.dequeue();
     m_currentTranslatingFileIndex = job.fileIndex;
     m_isTranslating = true;
+    emit translationStateChanged(true);
     m_translationServiceManager->translate(job.serviceName, job.sourceTexts, job.settings);
 }
 

@@ -113,6 +113,7 @@ private:
     
 signals:
     void processImageRequested(const QString &path, const QString &sourceLang, bool useGcv, const QString &gcvKeyPath);
+    void translationStateChanged(bool active);
     
 private slots:
     void onDevModeToggled(bool checked);

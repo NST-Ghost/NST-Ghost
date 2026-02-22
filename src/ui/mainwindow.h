@@ -11,6 +11,7 @@
 #include "settingsdialog.h"
 #include "realtimetranslationwidget.h"
 #include "imagetranslationwidget.h"
+#include "globalstatuswidget.h"
 #include "updatecontroller.h"
 #include "translationservicemanager.h"
 #include "fontmanagerdialog.h"
@@ -80,6 +81,7 @@ private:
     FileTranslationWidget *m_fileTranslationWidget;
     RealTimeTranslationWidget *m_realTimeWidget;
     ImageTranslationWidget *m_imageTranslationWidget;
+    GlobalStatusWidget *m_globalStatusWidget;
     
     // Managers / Controllers owned by MainWindow but shared/used by children
     TranslationServiceManager *m_translationServiceManager;

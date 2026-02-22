@@ -4,6 +4,7 @@
 #include "qtlingo/translationservice.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QPointer>
 
 namespace qtlingo {
 
@@ -46,8 +47,10 @@ private:
     QString m_currentSourceText;
 
     // Batch tracking
+    bool m_forceMaxCompletionTokens = false;
     bool m_isBatchMode = false;
     QStringList m_currentBatchTexts;
+    QPointer<QNetworkReply> m_currentReply;
 };
 
 } // namespace qtlingo

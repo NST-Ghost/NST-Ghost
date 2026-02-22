@@ -51,7 +51,15 @@ SmartFilterManager::SmartFilterManager(QObject *parent)
     loadPatterns();
 }
 
-SmartFilterManager::~SmartFilterManager() = default;
+SmartFilterManager::~SmartFilterManager()
+{
+#ifdef HAS_PYTHON
+    if (d) {
+        py::gil_scoped_acquire acquire;
+        d.reset();
+    }
+#endif
+}
 
 void SmartFilterManager::learn(const QString &text)
 {

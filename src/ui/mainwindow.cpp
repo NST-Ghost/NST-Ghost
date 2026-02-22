@@ -43,6 +43,17 @@ MainWindow::MainWindow(QWidget *parent)
        statusBar()->showMessage("Translation Service Error: " + message, 5000); 
     });
 
+    // Initialize global status BEFORE children widget creation
+    m_globalStatusWidget = new GlobalStatusWidget(this);
+    statusBar()->addPermanentWidget(m_globalStatusWidget);
+    
+    connect(m_globalStatusWidget, &GlobalStatusWidget::tableStatusClicked, this, [this]() {
+        onNavigationChanged(0);
+    });
+    connect(m_globalStatusWidget, &GlobalStatusWidget::imageStatusClicked, this, [this]() {
+        onNavigationChanged(2);
+    });
+
     loadSettings();
 
     // Use default Qt window (no custom frameless handling)
@@ -89,6 +100,13 @@ MainWindow::MainWindow(QWidget *parent)
                                           m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode,
                                           m_sourceLanguage);
     m_stackedWidget->addWidget(m_imageTranslationWidget);
+    
+    // Connect status tracking
+    connect(m_fileTranslationWidget, &FileTranslationWidget::translationStateChanged,
+            m_globalStatusWidget, &GlobalStatusWidget::setTableTranslationActive);
+    connect(m_imageTranslationWidget, &ImageTranslationWidget::translationStateChanged,
+            m_globalStatusWidget, &GlobalStatusWidget::setImageTranslationActive);
+
     // Create a new container widget
     QWidget *mainContainer = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout(mainContainer);
