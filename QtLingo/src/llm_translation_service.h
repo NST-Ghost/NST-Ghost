@@ -13,6 +13,9 @@ public:
     LLMTranslationService(QObject *parent = nullptr);
     QString serviceName() const override { return "LLM Translation"; }
     void translate(const QString &sourceText) override;
+    
+    bool supportsBatchTranslation() const override { return true; }
+    void batchTranslate(const QStringList &sourceTexts) override;
 
     void setApiKey(const QString &apiKey) override;
     void setLlmProvider(const QString &provider);
@@ -41,6 +44,10 @@ private:
     QString m_targetLanguage;
     QString m_sourceLanguage = "auto";
     QString m_currentSourceText;
+
+    // Batch tracking
+    bool m_isBatchMode = false;
+    QStringList m_currentBatchTexts;
 };
 
 } // namespace qtlingo

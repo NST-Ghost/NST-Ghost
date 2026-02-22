@@ -84,6 +84,7 @@ void TranslationServiceManager::onBatchTranslationDone(const QList<qtlingo::Tran
         if (!m_translationQueue.isEmpty()) m_translationQueue.dequeue();
     }
     m_currentBatch.clear();
+    m_retryCount = 0;
 
     for (const auto &result : results) {
         emit translationFinished(result);
@@ -116,12 +117,21 @@ void TranslationServiceManager::processNextTranslation()
     m_isProcessing = true;
 
     if (m_currentService->supportsBatchTranslation()) {
-        // Batch mode: Take up to 30 items
-        int batchSize = 30; 
+        // Build a batch based on both max item count and max total string length
+        // to prevent LLMs from truncating huge prompts.
+        int maxItems = 20; 
+        int maxChars = 2000; // Roughly 500-1000 tokens of input
+        int currentChars = 0;
+        
         m_currentBatch.clear();
         
-        for (int i = 0; i < batchSize && i < m_translationQueue.size(); ++i) {
-            m_currentBatch.append(m_translationQueue.at(i));
+        for (int i = 0; i < m_translationQueue.size() && m_currentBatch.size() < maxItems; ++i) {
+            QString text = m_translationQueue.at(i);
+            if (currentChars + text.length() > maxChars && !m_currentBatch.isEmpty()) {
+                break; // Stop adding if we exceed the approximate char limit, unless it's the first item
+            }
+            m_currentBatch.append(text);
+            currentChars += text.length();
         }
         
         m_currentService->batchTranslate(m_currentBatch);
@@ -137,6 +147,7 @@ void TranslationServiceManager::onTranslationDone(const qtlingo::TranslationResu
     if (!m_translationQueue.isEmpty()) {
         m_translationQueue.dequeue(); // Remove the successfully processed item
     }
+    m_retryCount = 0;
 
     // Gradually decrease delay on success
     m_currentDelay = qMax(0, m_currentDelay - m_delayStep / 5);
@@ -165,11 +176,32 @@ void TranslationServiceManager::onTranslationError(const QString &message)
     QSettings settings("MySoft", "NST");
     settings.setValue("ServiceDelays/" + m_currentServiceName, m_currentDelay);
     
-    // We don't dequeue, so the failed item remains at the head
     emit errorOccurred(message);
     
+    m_retryCount++;
+    if (m_retryCount >= 3) {
+        emit errorOccurred("Max retries reached. Skipping this translation block to avoid infinite loop.");
+        
+        if (m_currentService->supportsBatchTranslation()) {
+            int count = m_currentBatch.size();
+            for(int i=0; i<count; ++i) {
+                if (!m_translationQueue.isEmpty()) m_translationQueue.dequeue();
+                m_processedItems++; // Count as processed so the progress bar moves forward
+            }
+            m_currentBatch.clear();
+        } else {
+            if (!m_translationQueue.isEmpty()) m_translationQueue.dequeue();
+            m_processedItems++;
+        }
+        
+        emit progressUpdated(m_processedItems, m_totalItems);
+        m_retryCount = 0; // Reset for the next item
+    } else {
+        emit errorOccurred(QString("Retrying (Attempt %1 of 3)...").arg(m_retryCount));
+    }
+    
     m_isProcessing = false;
-    // Schedule a retry after the new delay
+    // Schedule a retry (or start the next block) after the new delay
     if (!m_translationQueue.isEmpty()) {
         m_processTimer.start(m_currentDelay);
     }

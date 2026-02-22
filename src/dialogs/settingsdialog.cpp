@@ -195,6 +195,10 @@ void SettingsDialog::setLlmModel(const QString &model)
         int index = ui->llmModelComboBox->findText(model);
         if (index != -1) {
             ui->llmModelComboBox->setCurrentIndex(index);
+        } else if (!model.isEmpty()) {
+            // Model was fetched dynamically before and is not in the default list, add it back.
+            ui->llmModelComboBox->insertItem(0, model);
+            ui->llmModelComboBox->setCurrentIndex(0);
         }
     }
 }

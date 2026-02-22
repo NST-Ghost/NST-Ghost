@@ -45,6 +45,7 @@ private:
     const int m_maxDelay = 5000; // 5 seconds
     const int m_delayStep = 500;  // 500 ms
     bool m_isProcessing = false;
+    int m_retryCount = 0;
 };
 
 #endif // TRANSLATIONSERVICEMANAGER_H
