@@ -1,7 +1,6 @@
 #include "App.h"
 #include "AppNavigation.h"
 #include "../pages/FileTranslationPage.h"
-#include "../pages/ImageTranslationPage.h"
 #include "../pages/SettingsPage.h"
 #include "../styles/Theme.h"
 
@@ -68,10 +67,6 @@ void App::setupPages()
     // File Translation Page
     m_fileTranslationPage = new FileTranslationPage(m_translationService, this);
     m_pageStack->addWidget(m_fileTranslationPage);
-    
-    // Image Translation Page
-    m_imageTranslationPage = new ImageTranslationPage(m_translationService, this);
-    m_pageStack->addWidget(m_imageTranslationPage);
     
     // Settings Page
     m_settingsPage = new SettingsPage(this);

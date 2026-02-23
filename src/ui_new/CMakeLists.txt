@@ -12,8 +12,6 @@ set(UI_NEW_SOURCES
     # Pages
     pages/FileTranslationPage.cpp
     pages/FileTranslationPage.h
-    pages/ImageTranslationPage.cpp
-    pages/ImageTranslationPage.h
     pages/SettingsPage.cpp
     pages/SettingsPage.h
     
@@ -22,8 +20,6 @@ set(UI_NEW_SOURCES
     viewmodels/BaseViewModel.h
     viewmodels/FileTranslationViewModel.cpp
     viewmodels/FileTranslationViewModel.h
-    viewmodels/ImageTranslationViewModel.cpp
-    viewmodels/ImageTranslationViewModel.h
     
     # Components - Translation
     components/translation/FileListView.cpp
@@ -32,12 +28,6 @@ set(UI_NEW_SOURCES
     components/translation/TranslationTable.h
     components/translation/ProgressIndicator.cpp
     components/translation/ProgressIndicator.h
-    
-    # Components - Image
-    components/image/ImageViewer.cpp
-    components/image/ImageViewer.h
-    components/image/ImageQueue.cpp
-    components/image/ImageQueue.h
     
     # Styles
     styles/Theme.cpp
@@ -58,7 +48,6 @@ set(UI_NEW_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/viewmodels
     ${CMAKE_CURRENT_SOURCE_DIR}/components
     ${CMAKE_CURRENT_SOURCE_DIR}/components/translation
-    ${CMAKE_CURRENT_SOURCE_DIR}/components/image
     ${CMAKE_CURRENT_SOURCE_DIR}/styles
 )
 

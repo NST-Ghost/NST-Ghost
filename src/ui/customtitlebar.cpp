@@ -30,19 +30,11 @@ CustomTitleBar::CustomTitleBar(QWidget *parent)
     m_realTimeButton->setText("Real-time");
     m_realTimeButton->setCheckable(true);
     m_realTimeButton->setCursor(Qt::PointingHandCursor);
-
-    m_imageTransButton = new QPushButton(this);
-    m_imageTransButton->setObjectName("navButton");
-    m_imageTransButton->setText("Image Trans");
-    m_imageTransButton->setCheckable(true);
-    m_imageTransButton->setCursor(Qt::PointingHandCursor);
-
     
     // Exclusive checking (tab behavior)
     QButtonGroup *navGroup = new QButtonGroup(this);
     navGroup->addButton(m_fileTransButton);
     navGroup->addButton(m_realTimeButton);
-    navGroup->addButton(m_imageTransButton);
     navGroup->setExclusive(true);
     
     // Window controls (hidden - OS handles these now)
@@ -56,7 +48,6 @@ CustomTitleBar::CustomTitleBar(QWidget *parent)
     // Add only navigation buttons to layout
     m_layout->addWidget(m_fileTransButton);
     m_layout->addWidget(m_realTimeButton);
-    m_layout->addWidget(m_imageTransButton);
     m_layout->addStretch();
 
     // Height for navigation bar
@@ -65,7 +56,6 @@ CustomTitleBar::CustomTitleBar(QWidget *parent)
     // Connect navigation signals
     connect(m_fileTransButton, &QPushButton::clicked, this, &CustomTitleBar::translateModeClicked);
     connect(m_realTimeButton, &QPushButton::clicked, this, &CustomTitleBar::realTimeModeClicked);
-    connect(m_imageTransButton, &QPushButton::clicked, this, &CustomTitleBar::imageTranslationClicked);
 }
 
 void CustomTitleBar::setTitle(const QString &title)
@@ -82,11 +72,6 @@ void CustomTitleBar::setIcon(const QIcon &icon)
 void CustomTitleBar::setRealTimeVisible(bool visible)
 {
     m_realTimeButton->setVisible(visible);
-}
-
-void CustomTitleBar::setImageTransVisible(bool visible)
-{
-    m_imageTransButton->setVisible(visible);
 }
 
 // Mouse events - no longer needed, OS handles window movement

@@ -14,32 +14,18 @@ GlobalStatusWidget::GlobalStatusWidget(QWidget *parent)
     m_tableIndicator->setFixedSize(10, 10);
     m_tableLabel = new QLabel("Table: Inactive", this);
 
-    // Image Translation Status
-    m_imageIndicator = new QLabel(this);
-    m_imageIndicator->setFixedSize(10, 10);
-    m_imageLabel = new QLabel("Image: Inactive", this);
-
     layout->addWidget(m_tableIndicator);
     layout->addWidget(m_tableLabel);
-    layout->addSpacing(20);
-    layout->addWidget(m_imageIndicator);
-    layout->addWidget(m_imageLabel);
+    layout->addStretch(); // Add stretch to absorb remaining space
 
     // Initialize to inactive (gray)
     setTableTranslationActive(false);
-    setImageTranslationActive(false);
 }
 
 void GlobalStatusWidget::setTableTranslationActive(bool active)
 {
     updateStatusIndicator(m_tableIndicator, active);
     m_tableLabel->setText(active ? "Text: Translating..." : "Text: Ready");
-}
-
-void GlobalStatusWidget::setImageTranslationActive(bool active)
-{
-    updateStatusIndicator(m_imageIndicator, active);
-    m_imageLabel->setText(active ? "Image: Translating..." : "Image: Ready");
 }
 
 void GlobalStatusWidget::updateStatusIndicator(QLabel *indicator, bool active)
@@ -61,15 +47,9 @@ void GlobalStatusWidget::mousePressEvent(QMouseEvent *event)
     
     if (clickedWidget == m_tableIndicator || clickedWidget == m_tableLabel) {
         emit tableStatusClicked();
-    } else if (clickedWidget == m_imageIndicator || clickedWidget == m_imageLabel) {
-        emit imageStatusClicked();
     } else {
         // Broad click handling based on half screen if they just click the general area
-        if (event->pos().x() < width() / 2) {
-             emit tableStatusClicked();
-        } else {
-             emit imageStatusClicked();
-        }
+        emit tableStatusClicked();
     }
     
     QWidget::mousePressEvent(event);

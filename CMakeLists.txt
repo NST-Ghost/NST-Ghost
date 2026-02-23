@@ -59,11 +59,6 @@ set(PROJECT_SOURCES
     src/managers/translationservicemanager.cpp
     src/ui/realtimetranslationwidget.cpp
     src/ui/realtimetranslationwidget.h
-    src/ui/imagetranslationwidget.cpp
-    src/ui/imagetranslationwidget.h
-    src/ui/imagetranslationwidget.ui
-    src/ui/imageprocessorworker.cpp
-    src/ui/imageprocessorworker.h
     
     src/managers/smartfiltermanager.cpp
     src/ui/translationcontextmenu.cpp

@@ -34,7 +34,6 @@ private:
     QButtonGroup *m_buttonGroup = nullptr;
     
     QPushButton *m_btnFileTranslation = nullptr;
-    QPushButton *m_btnImageTranslation = nullptr;
     QPushButton *m_btnSettings = nullptr;
 };
 

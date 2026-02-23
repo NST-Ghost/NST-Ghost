@@ -33,15 +33,12 @@ void AppNavigation::setupUI()
     m_buttonGroup->setExclusive(true);
     
     m_btnFileTranslation = createNavButton("📄 File Translation", "file");
-    m_btnImageTranslation = createNavButton("🖼️ Image Translation", "image");
     m_btnSettings = createNavButton("⚙️ Settings", "settings");
     
     m_buttonGroup->addButton(m_btnFileTranslation, 0);
-    m_buttonGroup->addButton(m_btnImageTranslation, 1);
-    m_buttonGroup->addButton(m_btnSettings, 2);
+    m_buttonGroup->addButton(m_btnSettings, 1);
     
     m_layout->addWidget(m_btnFileTranslation);
-    m_layout->addWidget(m_btnImageTranslation);
     
     m_layout->addStretch();
     

@@ -50,9 +50,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_globalStatusWidget, &GlobalStatusWidget::tableStatusClicked, this, [this]() {
         onNavigationChanged(0);
     });
-    connect(m_globalStatusWidget, &GlobalStatusWidget::imageStatusClicked, this, [this]() {
-        onNavigationChanged(2);
-    });
 
     loadSettings();
 
@@ -93,19 +90,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Page 1: Real-time Translation Widget
     m_realTimeWidget = new RealTimeTranslationWidget(this);
     m_stackedWidget->addWidget(m_realTimeWidget);
-
-    // Page 2: Image Translation Widget
-    m_imageTranslationWidget = new ImageTranslationWidget(m_translationServiceManager, this);
-    m_imageTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi, 
-                                          m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode,
-                                          m_sourceLanguage);
-    m_stackedWidget->addWidget(m_imageTranslationWidget);
     
     // Connect status tracking
     connect(m_fileTranslationWidget, &FileTranslationWidget::translationStateChanged,
             m_globalStatusWidget, &GlobalStatusWidget::setTableTranslationActive);
-    connect(m_imageTranslationWidget, &ImageTranslationWidget::translationStateChanged,
-            m_globalStatusWidget, &GlobalStatusWidget::setImageTranslationActive);
 
     // Create a new container widget
     QWidget *mainContainer = new QWidget(this);
@@ -133,9 +121,6 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(m_titleBar, &CustomTitleBar::realTimeModeClicked, this, [this]() {
         onNavigationChanged(1);
-    });
-    connect(m_titleBar, &CustomTitleBar::imageTranslationClicked, this, [this]() {
-        onNavigationChanged(2);
     });
     
     // Set minimum size
@@ -390,11 +375,6 @@ void MainWindow::updateChildSettings()
         m_fileTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi,
                                              m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl,
                                              m_sourceLanguage);
-    }
-    if (m_imageTranslationWidget) {
-        m_imageTranslationWidget->setSettings(m_apiKey, m_targetLanguage, m_googleApi,
-                                              m_llmProvider, m_llmApiKey, m_llmModel, m_llmBaseUrl, m_translationMode,
-                                              m_sourceLanguage);
     }
 }
 

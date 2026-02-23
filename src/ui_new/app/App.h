@@ -13,7 +13,6 @@ namespace nst::ui {
 
 class AppNavigation;
 class FileTranslationPage;
-class ImageTranslationPage;
 class SettingsPage;
 
 /**
@@ -29,7 +28,6 @@ class App : public QMainWindow
 public:
     enum class Page {
         FileTranslation = 0,
-        ImageTranslation,
         Settings
     };
 
@@ -67,7 +65,6 @@ private:
 
     // Pages
     FileTranslationPage *m_fileTranslationPage = nullptr;
-    ImageTranslationPage *m_imageTranslationPage = nullptr;
     SettingsPage *m_settingsPage = nullptr;
 
     // Shared Services (owned by App)

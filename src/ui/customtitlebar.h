@@ -17,7 +17,6 @@ public:
     void setIcon(const QIcon &icon);
 
     void setRealTimeVisible(bool visible);
-    void setImageTransVisible(bool visible);
 
 signals:
     void minimizeClicked();
@@ -25,7 +24,6 @@ signals:
     void closeClicked();
     void translateModeClicked(); // Switch to File Translation
     void realTimeModeClicked();  // Switch to Real-time Translation
-    void imageTranslationClicked(); // Switch to Image Translation
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
@@ -40,7 +38,6 @@ private:
     // Navigation Buttons
     QPushButton *m_fileTransButton;
     QPushButton *m_realTimeButton;
-    QPushButton *m_imageTransButton;
     
     // Window Controls
     QPushButton *m_minimizeButton;
