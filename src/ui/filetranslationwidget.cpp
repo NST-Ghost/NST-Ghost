@@ -562,6 +562,11 @@ void FileTranslationWidget::processIncomingResults()
     if (m_searchController && !m_searchRefreshTimer->isActive()) {
         m_searchRefreshTimer->start();
     }
+
+    // Signal completion if queues are empty (for CLI Headless mode)
+    if (m_translationQueue.isEmpty() && m_incomingResults.isEmpty()) {
+        emit taskFinished();
+    }
 }
 
 void FileTranslationWidget::onTranslationServiceError(const QString &message)
@@ -1000,6 +1005,8 @@ void FileTranslationWidget::onDeployProjectCLI(const QString &targetDir, bool cr
     } else {
         std::cerr << "[NST Deploy] FAILED: Could not deploy game. Check logs for details." << std::endl;
     }
+
+    emit taskFinished();
 }
 
 void FileTranslationWidget::onUndoTranslation()
@@ -1136,6 +1143,89 @@ void FileTranslationWidget::onTranslateSelectedFiles()
         processNextTranslationJob();
     } else {
         QMessageBox::information(this, "Info", "No translatable text found in selected files (or all filtered out).");
+    }
+}
+
+void FileTranslationWidget::onTranslateAllCLI()
+{
+    QStringList availableServices = m_translationServiceManager->getAvailableServices();
+    if (availableServices.isEmpty()) {
+        qWarning() << "[NST] CLI Translate: No translation services available.";
+        return;
+    }
+
+    // Default to the first service (usually Google or the preferred one)
+    QString serviceName = availableServices.first();
+    qDebug() << "[NST] CLI Translate: Using service:" << serviceName;
+
+    // Collect settings
+    QVariantMap settings;
+    settings["googleApiKey"] = m_apiKey;
+    settings["targetLanguage"] = m_targetLanguage;
+    settings["googleApi"] = m_googleApi;
+    settings["llmProvider"] = m_llmProvider;
+    settings["llmApiKey"] = m_llmApiKey;
+    settings["llmModel"] = m_llmModel;
+    settings["llmBaseUrl"] = m_llmBaseUrl;
+
+    int queuedCount = 0;
+
+    // Iterate through all files in the model
+    for (int i = 0; i < m_fileListModel->rowCount(); ++i) {
+        QModelIndex fileIdx = m_fileListModel->index(i, 0);
+        QStandardItem *item = m_fileListModel->itemFromIndex(fileIdx);
+        if (!item) continue;
+
+        QString filePath = item->data(Qt::UserRole).toString();
+        if (!m_projectDataManager->getLoadedGameProjectData().contains(filePath)) continue;
+
+        const QJsonArray &entries = m_projectDataManager->getLoadedGameProjectData()[filePath];
+        QStringList sourceTexts;
+
+        // Batch filter optimization
+        QStringList allSources;
+        for (int j = 0; j < entries.size(); ++j) {
+            QJsonObject obj = entries[j].toObject();
+            QString source = obj["source"].toString();
+            if (source.isEmpty()) continue;
+            allSources.append(source);
+        }
+        
+        if (allSources.isEmpty()) continue;
+
+        QList<bool> skipFlags = m_smartFilterManager->shouldSkipBatch(allSources);
+
+        for (int j = 0; j < allSources.size(); ++j) {
+             if (skipFlags.value(j, false)) continue; 
+             if (isLikelyCode(allSources[j])) continue;
+             
+             sourceTexts.append(allSources[j]);
+        }
+
+        if (!sourceTexts.isEmpty()) {
+            TranslationJob job;
+            job.serviceName = serviceName;
+            job.sourceTexts = sourceTexts;
+            job.settings = settings;
+            job.fileIndex = fileIdx;
+
+            // Update Item Text to show status
+            QString originalText = item->data(Qt::UserRole + 1).toString();
+            if (originalText.isEmpty()) {
+                item->setData(item->text(), Qt::UserRole + 1);
+            }
+            item->setText("⏳ " + item->data(Qt::UserRole + 1).toString());
+
+            m_translationQueue.enqueue(job);
+            queuedCount++;
+        }
+    }
+
+    if (queuedCount > 0) {
+        qDebug() << "[NST] CLI Translate: Queued" << queuedCount << "files.";
+        processNextTranslationJob();
+    } else {
+        qDebug() << "[NST] CLI Translate: No translatable text found.";
     }
 }
 

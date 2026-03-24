@@ -190,3 +190,59 @@ BGADataManager: After QJsonDocument::fromJson
 BGADataManager: Extracted 3110 entries.
 BGADataManager: After extracting entries
 BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy Journey with the Dragon Mother V0.318/
+BGADataManager: Analyzer output payload size:4743474bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/STRAYDOGFIANCE_EN_v1.1/
+BGADataManager: Analyzer output payload size:1839790bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 9614 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/STRAYDOGFIANCE_EN_v1.1/
+BGADataManager: Analyzer output payload size:1839790bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 9614 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/STRAYDOGFIANCE_EN_v1.1
+BGADataManager: Analyzer output payload size:1839789bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 9614 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/STRAYDOGFIANCE_EN_v1.1/
+BGADataManager: Analyzer output payload size:1839790bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 9614 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/STRAYDOGFIANCE_EN_v1.1/
+BGADataManager: Analyzer output payload size:1839790bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 9614 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/STRAYDOGFIANCE_EN_v1.1/
+BGADataManager: Analyzer output payload size:1970283bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 9607 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.

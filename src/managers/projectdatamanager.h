@@ -16,14 +16,14 @@ class ProjectDataManager : public QObject
 {
     Q_OBJECT
 public:
-    explicit ProjectDataManager(QStandardItemModel *fileListModel, QStandardItemModel *translationModel, QObject *parent = nullptr);
+    explicit ProjectDataManager(QStandardItemModel *fileListModel = nullptr, QStandardItemModel *translationModel = nullptr, QObject *parent = nullptr);
 
     QMap<QString, QJsonArray> &getLoadedGameProjectData();
     QString &getCurrentLoadedFilePath();
 
     void clearAllData();
 
-    void updateTranslation(const QString &source, const QString &translation);
+    void updateTranslation(const QString &source, const QString &translation, const QString &filePath = QString());
     void saveGameProject();
     void exportGameProject(const QString &targetDir);
     void setProjectPath(const QString &path);
@@ -36,7 +36,7 @@ public:
     bool loadTranslationWorkspace(const QString &filePath);
 
 public slots:
-    void onLoadingFinished(const QJsonArray &extractedTextsArray);
+    void onLoadingFinished(const QJsonArray &extractedTextsArray, bool sync = false);
     void onFileSelected(const QModelIndex &index);
 
 private slots:

@@ -12,6 +12,7 @@
 
 // Now we can include Qt headers
 #include "mainwindow.h"
+#include "translationcore.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -21,6 +22,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QDir>
+#include <QDateTime>
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <cstdlib>
@@ -268,13 +270,28 @@ int main(int argc, char *argv[])
     std::cerr << "[NST] GIL released, starting Qt..." << std::endl;
 #endif
 
-    std::cerr << "[NST] Creating QApplication..." << std::endl;
-    QApplication a(argc, argv);
-    std::cerr << "[NST] QApplication created" << std::endl;
+    // Pre-parse command line to check for headless mode
+    bool headless = false;
+    for (int i = 1; i < argc; ++i) {
+        QString arg = argv[i];
+        if (arg == "-e" || arg == "--engine" || arg == "-p" || arg == "--project") {
+            headless = true;
+            break;
+        }
+    }
 
-    // Set application info for CLI
-    QCoreApplication::setApplicationName("NST");
-    QCoreApplication::setApplicationVersion("1.0.0");
+    QCoreApplication* app;
+    if (headless) {
+        std::cerr << "[NST] Starting in Headless (CLI) mode" << std::endl;
+        app = new QCoreApplication(argc, argv);
+    } else {
+        std::cerr << "[NST] Starting in GUI mode" << std::endl;
+        app = new QApplication(argc, argv);
+    }
+
+    // Set application info
+    app->setApplicationName("NST");
+    app->setApplicationVersion("1.0.0");
 
     // Parse command line arguments
     QCommandLineParser parser;
@@ -309,6 +326,10 @@ int main(int argc, char *argv[])
         "no-backup",
         "Skip backup creation (overrides settings)"
     );
+    QCommandLineOption translateOption(
+        QStringList() << "t" << "translate",
+        "Translate all files after loading project"
+    );
 
     parser.addOption(engineOption);
     parser.addOption(projectOption);
@@ -316,10 +337,10 @@ int main(int argc, char *argv[])
     parser.addOption(outputOption);
     parser.addOption(backupOption);
     parser.addOption(noBackupOption);
+    parser.addOption(translateOption);
     
-    // Process arguments - on Linux GUI apps, help/version are shown via message box
-    // We manually print to stderr for CLI usage
-    parser.parse(a.arguments());
+    // We must use parse() or process() to get results
+    parser.parse(app->arguments());
     
     if (parser.isSet("help")) {
         std::cerr << parser.helpText().toStdString() << std::endl;
@@ -330,77 +351,123 @@ int main(int argc, char *argv[])
                   << " " << QCoreApplication::applicationVersion().toStdString() << std::endl;
         return 0;
     }
-    
-    // Check for unknown options
-    if (!parser.unknownOptionNames().isEmpty()) {
-        std::cerr << "Unknown options: " << parser.unknownOptionNames().join(", ").toStdString() << std::endl;
-        std::cerr << parser.helpText().toStdString() << std::endl;
-        return 1;
-    }
 
     QString cliEngine = parser.value(engineOption);
     QString cliProject = parser.value(projectOption);
     bool cliDeploy = parser.isSet(deployOption);
+    bool cliTranslate = parser.isSet(translateOption);
     QString cliOutput = parser.value(outputOption);
     bool cliBackup = parser.isSet(backupOption);
     bool cliNoBackup = parser.isSet(noBackupOption);
 
-    // Fix: Correct resource path for stylesheet (was :/style.qss, needed :/ui/style.qss)
-    QFile file(":/ui/style.qss");
-    if (file.open(QFile::ReadOnly | QFile::Text)) {
-        QTextStream stream(&file);
-        a.setStyleSheet(stream.readAll());
-        file.close();
-    }
-
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "NST_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
-            break;
-        }
-    }
-    
-    std::cerr << "[NST] Creating MainWindow..." << std::endl;
-    MainWindow w;
-    std::cerr << "[NST] Showing MainWindow..." << std::endl;
-    w.show();
-
-    // CLI mode: auto-open project if --engine and --project provided
-    if (!cliEngine.isEmpty() && !cliProject.isEmpty()) {
-        std::cerr << "[NST] CLI mode: Opening project..." << std::endl;
-        std::cerr << "[NST]   Engine: " << cliEngine.toStdString() << std::endl;
-        std::cerr << "[NST]   Project: " << cliProject.toStdString() << std::endl;
+    if (headless && !cliEngine.isEmpty() && !cliProject.isEmpty()) {
+        std::cerr << "[NST] Debug: Creating TranslationCore..." << std::endl;
+        TranslationCore* core = new TranslationCore(app);
+        std::cerr << "[NST] Debug: TranslationCore created." << std::endl;
         
-        // Parse CLI options
-        std::cerr << "[NST] CLI mode: Opening project..." << std::endl;
-        std::cerr << "[NST]   Engine: " << cliEngine.toStdString() << std::endl;
-        std::cerr << "[NST]   Project: " << cliProject.toStdString() << std::endl;
-        if (!cliOutput.isEmpty()) {
-            std::cerr << "[NST]   Output Preset: " << cliOutput.toStdString() << std::endl;
-        }
+        std::cerr << "[NST] Debug: Loading settings..." << std::endl;
+        QSettings settings;
+        QVariantMap translationSettings;
+        translationSettings["googleApiKey"] = settings.value("apiKey").toString();
+        translationSettings["targetLanguage"] = settings.value("targetLanguage", "en").toString();
+        translationSettings["googleApi"] = settings.value("googleApi", true).toBool();
+        translationSettings["llmProvider"] = settings.value("llmProvider").toString();
+        translationSettings["llmApiKey"] = settings.value("llmApiKey").toString();
+        translationSettings["llmModel"] = settings.value("llmModel").toString();
+        translationSettings["llmBaseUrl"] = settings.value("llmBaseUrl").toString();
+        translationSettings["sourceLanguage"] = settings.value("sourceLanguage", "auto").toString();
+        core->setTranslationSettings(translationSettings);
+        std::cerr << "[NST] Debug: Settings loaded." << std::endl;
 
-        // Determine backup preference (CLI flags override settings)
-        // -1 = use settings, 0 = no backup, 1 = backup
-        int backupPreference = -1;
-        if (cliBackup) backupPreference = 1;
-        if (cliNoBackup) backupPreference = 0;
-        
-        if (cliDeploy) {
-            std::cerr << "[NST]   Deploy mode: enabled" << std::endl;
-            QTimer::singleShot(0, &w, [&w, cliEngine, cliProject, cliOutput, backupPreference]() {
-                w.openProjectFromCLI(cliEngine, cliProject, true, cliOutput, backupPreference);
-            });
+        int backupPref = -1;
+        if (cliBackup) backupPref = 1;
+        if (cliNoBackup) backupPref = 0;
+        bool shouldBackup = (backupPref == 1) || (backupPref == -1 && settings.value("deployBackupEnabled", true).toBool());
+
+        std::cerr << "[NST] Debug: Connecting signals..." << std::endl;
+        QObject::connect(core, &TranslationCore::translationFinished, [core, cliDeploy, cliProject, cliOutput, shouldBackup]() {
+            std::cerr << "[NST] Translation finished." << std::endl;
+            if (cliDeploy) {
+                std::cerr << "[NST] Starting deployment..." << std::endl;
+                QString target = cliOutput.isEmpty() ? cliProject : cliOutput;
+                if (core->deployProject(target, shouldBackup)) {
+                    std::cerr << "[NST] Deployment successful." << std::endl;
+                } else {
+                    std::cerr << "[NST] Deployment failed." << std::endl;
+                }
+            }
+            
+            // Save workspace to a separate .nst file instead of overwriting game data
+            QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+            QString workspaceFile = QDir(cliProject).filePath("project_" + timestamp + ".nst");
+            if (core->saveWorkspace(workspaceFile)) {
+                std::cerr << "[NST] Workspace saved to: " << workspaceFile.toStdString() << std::endl;
+            } else {
+                std::cerr << "[NST] Failed to save workspace." << std::endl;
+            }
+            
+            QCoreApplication::quit();
+        });
+
+        QObject::connect(core, &TranslationCore::errorOccurred, [](const QString &msg) {
+            std::cerr << "[NST] ERROR: " << msg.toStdString() << std::endl;
+        });
+        std::cerr << "[NST] Debug: Signals connected." << std::endl;
+
+        std::cerr << "[NST] Debug: Calling core->loadProject..." << std::endl;
+        if (core->loadProject(cliEngine, cliProject)) {
+            std::cerr << "[NST] Debug: core->loadProject success." << std::endl;
+            if (cliTranslate) {
+                std::cerr << "[NST] Starting translation..." << std::endl;
+                core->translateAll();
+            } else if (cliDeploy) {
+                QString target = cliOutput.isEmpty() ? cliProject : cliOutput;
+                if (core->deployProject(target, shouldBackup)) {
+                    std::cerr << "[NST] Deployment successful." << std::endl;
+                } else {
+                    std::cerr << "[NST] Deployment failed." << std::endl;
+                }
+                
+                // Save workspace
+                QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+                QString workspaceFile = QDir(cliProject).filePath("project_" + timestamp + ".nst");
+                core->saveWorkspace(workspaceFile);
+                std::cerr << "[NST] Workspace saved to: " << workspaceFile.toStdString() << std::endl;
+                
+                QCoreApplication::quit();
+            } else {
+                std::cerr << "[NST] Project loaded. No actions specified." << std::endl;
+                QCoreApplication::quit();
+            }
         } else {
-            // Even if not deploying immediately, pass the preferences for the session
-            QTimer::singleShot(0, &w, [&w, cliEngine, cliProject, cliOutput, backupPreference]() {
-                w.openProjectFromCLI(cliEngine, cliProject, false, cliOutput, backupPreference);
-            });
+            return 1;
         }
-    }
 
-    std::cerr << "[NST] Entering event loop..." << std::endl;
-    return a.exec();
+        return app->exec();
+    } else {
+        // GUI Mode
+        QApplication* guiApp = qobject_cast<QApplication*>(app);
+        
+        QFile file(":/ui/style.qss");
+        if (file.open(QFile::ReadOnly | QFile::Text)) {
+            QTextStream stream(&file);
+            guiApp->setStyleSheet(stream.readAll());
+            file.close();
+        }
+
+        QTranslator translator;
+        const QStringList uiLanguages = QLocale::system().uiLanguages();
+        for (const QString &locale : uiLanguages) {
+            const QString baseName = "NST_" + QLocale(locale).name();
+            if (translator.load(":/i18n/" + baseName)) {
+                guiApp->installTranslator(&translator);
+                break;
+            }
+        }
+        
+        MainWindow w;
+        w.show();
+
+        return guiApp->exec();
+    }
 }

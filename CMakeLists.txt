@@ -48,6 +48,8 @@ set(TS_FILES src/NST_en_US.ts)
 
 set(PROJECT_SOURCES
     src/core/main.cpp
+    src/core/translationcore.cpp
+    src/core/translationcore.h
     src/ui/mainwindow.cpp
     src/ui/menubar.cpp
     src/dialogs/loadprojectdialog.cpp

@@ -33,6 +33,7 @@ public:
     // backupPreference: -1 = use settings, 0 = no backup, 1 = force backup
     void openProjectFromCLI(const QString &engineName, const QString &projectPath, 
                             bool deployAfterLoad = false, 
+                            bool translateAfterLoad = false,
                             const QString &outputPath = QString(), 
                             int backupPreference = -1);
 
@@ -54,6 +55,7 @@ private slots:
     void onHideCompleted(bool checked);
 
     // Navigation slots
+private slots:
     void onNavigationChanged(int index);
     
     // Smart Filter slots (delegated)
@@ -62,7 +64,10 @@ private slots:
 
     void onSaveProject();    // Renamed
     void onDeployProject();  // Renamed
-
+signals:
+    void projectLoaded(const QString &projectPath);
+    void translationStateChanged(bool active);
+    void taskFinished(); // Signal when CLI task is done
 private:
     void loadSettings();
     void saveSettings();

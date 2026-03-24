@@ -54,6 +54,7 @@ public:
     void onSaveProject();  // Renamed from onSaveGameProject
     void onDeployProject(); // Renamed from onExportGameProject
     void onDeployProjectCLI(const QString &targetDir = QString(), bool createBackup = true); // CLI deploy
+    void onTranslateAllCLI(); // CLI translate all
 
     void onUndoTranslation();
     
@@ -72,6 +73,7 @@ public:
 signals:
     void projectLoaded(const QString &projectPath);
     void translationStateChanged(bool active);
+    void taskFinished(); // Signal when CLI task (translate/deploy) is done
 
 public slots:
     void openSearchDialog();

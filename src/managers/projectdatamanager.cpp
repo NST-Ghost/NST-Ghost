@@ -37,53 +37,57 @@ void ProjectDataManager::clearAllData()
 
     m_loadedGameProjectData.clear();
     m_currentLoadedFilePath.clear();
-    m_fileListModel->clear();
-    m_translationModel->clear();
+    if (m_fileListModel) m_fileListModel->clear();
+    if (m_translationModel) m_translationModel->clear();
 
     // Reconnect the signal for the future usage
     connect(&m_processingFutureWatcher, &QFutureWatcher<QPair<QMap<QString, QJsonArray>, QStringList>>::finished, this, &ProjectDataManager::onProcessingFinished);
 }
 
-void ProjectDataManager::onLoadingFinished(const QJsonArray &extractedTextsArray)
+void ProjectDataManager::onLoadingFinished(const QJsonArray &extractedTextsArray, bool sync)
 {
-    qDebug() << "ProjectDataManager: onLoadingFinished called with " << extractedTextsArray.size() << " entries. Starting background processing.";
+    qDebug() << "ProjectDataManager: onLoadingFinished called with " << extractedTextsArray.size() << " entries. Sync =" << sync;
 
-    QFuture<QPair<QMap<QString, QJsonArray>, QStringList>> future = QtConcurrent::run([extractedTextsArray]() {
-        qDebug() << "ProjectDataManager (background): Starting processing of" << extractedTextsArray.size() << "entries.";
+    auto processFunc = [extractedTextsArray]() {
         QMap<QString, QJsonArray> fileMap;
-        QSet<QString> filePaths;
-
-        // Log first 5 entries for inspection
-        for (int i = 0; i < 5 && i < extractedTextsArray.size(); ++i) {
-            qDebug() << "ProjectDataManager (background): Sample entry" << i << ":" << extractedTextsArray.at(i).toObject();
-        }
+        QStringList filePaths;
+        QSet<QString> uniquePaths;
 
         for (const QJsonValue &value : extractedTextsArray) {
             QJsonObject obj = value.toObject();
             QString filePath = obj["path"].toString();
-            if (filePath.isEmpty()) {
-                // Let's log if we find an empty file path
-                if (filePaths.isEmpty()) { // Log only a few times to avoid spam
-                     qDebug() << "ProjectDataManager (background): Found entry with empty 'path' key. Object:" << obj;
-                }
-                continue;
-            }
+            if (filePath.isEmpty()) continue;
 
             fileMap[filePath].append(obj);
-            filePaths.insert(filePath);
+            if (!uniquePaths.contains(filePath)) {
+                uniquePaths.insert(filePath);
+                filePaths.append(filePath);
+            }
         }
 
-        // Sort by filename
-        QStringList sortedPaths = filePaths.values();
-        std::sort(sortedPaths.begin(), sortedPaths.end(), [](const QString &a, const QString &b) {
+        std::sort(filePaths.begin(), filePaths.end(), [](const QString &a, const QString &b) {
             return QFileInfo(a).fileName() < QFileInfo(b).fileName();
         });
 
-        qDebug() << "ProjectDataManager (background): Finished processing. Found" << sortedPaths.size() << "unique files.";
-        return qMakePair(fileMap, sortedPaths);
-    });
+        return qMakePair(fileMap, filePaths);
+    };
 
-    m_processingFutureWatcher.setFuture(future);
+    if (sync) {
+        auto result = processFunc();
+        m_loadedGameProjectData = result.first;
+        if (m_fileListModel) {
+            m_fileListModel->clear();
+            for (const QString &path : result.second) {
+                QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
+                item->setData(path, Qt::UserRole);
+                m_fileListModel->appendRow(item);
+            }
+        }
+        emit processingFinished();
+    } else {
+        QFuture<QPair<QMap<QString, QJsonArray>, QStringList>> future = QtConcurrent::run(processFunc);
+        m_processingFutureWatcher.setFuture(future);
+    }
 }
 
 void ProjectDataManager::onProcessingFinished()
@@ -157,21 +161,35 @@ void ProjectDataManager::onFileSelected(const QModelIndex &index)
     }
 }
 
-void ProjectDataManager::updateTranslation(const QString &source, const QString &translation)
+void ProjectDataManager::updateTranslation(const QString &source, const QString &translation, const QString &filePath)
 {
-    if (m_currentLoadedFilePath.isEmpty() || !m_loadedGameProjectData.contains(m_currentLoadedFilePath))
+    QString targetPath = filePath.isEmpty() ? m_currentLoadedFilePath : filePath;
+    if (targetPath.isEmpty() || !m_loadedGameProjectData.contains(targetPath))
         return;
 
-    QJsonArray &textsArray = m_loadedGameProjectData[m_currentLoadedFilePath];
+    QJsonArray textsArray = m_loadedGameProjectData[targetPath];
+    bool modified = false;
     for (int i = 0; i < textsArray.size(); ++i) {
         QJsonObject obj = textsArray.at(i).toObject();
         if (obj["source"].toString() == source) {
             obj["text"] = translation;
             textsArray.replace(i, obj);
+            modified = true;
         }
     }
-    // Also update map
-    m_loadedGameProjectData[m_currentLoadedFilePath] = textsArray;
+    
+    if (modified) {
+        m_loadedGameProjectData[targetPath] = textsArray;
+        
+        // Also update UI if model is present and we're looking at this file
+        if (m_translationModel && targetPath == m_currentLoadedFilePath) {
+            for (int i = 0; i < m_translationModel->rowCount(); ++i) {
+                if (m_translationModel->data(m_translationModel->index(i, 1)).toString() == source) {
+                    m_translationModel->setData(m_translationModel->index(i, 2), translation);
+                }
+            }
+        }
+    }
 }
 
 void ProjectDataManager::saveGameProject()

@@ -604,17 +604,20 @@ impl RpgmAnalyzer {
             match current {
                 Value::Object(obj) => {
                     if index == parts.len() - 1 {
-                        // Last part - update the value
-                        if obj.contains_key(part) {
-                            obj.insert(part.to_string(), Value::String(new_value.to_string()));
-                            return true;
-                        }
-                        false
+                        // Last part - update or insert the value
+                        obj.insert(part.to_string(), Value::String(new_value.to_string()));
+                        return true;
                     } else {
                         // Navigate deeper
                         match obj.get_mut(part) {
                             Some(v) => Self::update_value_recursive(v, parts, index + 1, new_value),
-                            None => false,
+                            None => {
+                                // If path doesn't exist, create it (only if it's not the last part)
+                                // Actually for RPGM we expect the structure to exist, 
+                                // but being robust helps.
+                                obj.insert(part.to_string(), Value::Object(Map::new()));
+                                Self::update_value_recursive(obj.get_mut(part).unwrap(), parts, index + 1, new_value)
+                            },
                         }
                     }
                 }
@@ -710,6 +713,25 @@ impl RpgmAnalyzer {
                                 if ext == "json" {
                                     files.push(entry.into_path());
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if files.is_empty() {
+            // Fallback: Recursive scan of the provided path for any JSON files (excluding common non-game files)
+            for entry in WalkDir::new(project_path)
+                .into_iter()
+                .filter_map(|e| e.ok())
+            {
+                if entry.file_type().is_file() {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "json" {
+                            let name = entry.file_name().to_string_lossy().to_lowercase();
+                            if name != "package.json" && name != "project.json" {
+                                files.push(entry.into_path());
                             }
                         }
                     }

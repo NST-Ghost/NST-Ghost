@@ -146,6 +146,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_menuBar, &MenuBar::exportSmartFilterRules, this, &MainWindow::onExportSmartFilterRules);
     connect(m_menuBar, &MenuBar::importSmartFilterRules, this, &MainWindow::onImportSmartFilterRules);
 
+    // CLI Task Signal
+    connect(m_fileTranslationWidget, &FileTranslationWidget::taskFinished, this, &MainWindow::taskFinished);
+
     m_updateController = new UpdateController(this);
     m_updateController->checkForUpdates();
 
@@ -208,7 +211,8 @@ void MainWindow::onOpenMockData()
 }
 
 void MainWindow::openProjectFromCLI(const QString &engineName, const QString &projectPath,
-                                     bool deployAfterLoad, const QString &outputPath, 
+                                     bool deployAfterLoad, bool translateAfterLoad,
+                                     const QString &outputPath, 
                                      int backupPreference)
 {
     if (engineName.isEmpty() || projectPath.isEmpty()) {
@@ -250,13 +254,14 @@ void MainWindow::openProjectFromCLI(const QString &engineName, const QString &pr
     // Set default deployment path from CLI if provided (so GUI deploy button won't ask)
     if (!outputPath.isEmpty()) {
          m_fileTranslationWidget->setDefaultDeploymentPath(outputPath);
-    } else {
-         // Default to project path if not specified? 
-         // User requested "set beforehand". If not set, maybe don't force it to allow selecting?
-         // But for consistency with CLI deploy behavior (in-place), maybe we should?
-         // Let's only set it if explicitly provided via --output for now, 
-         // OR if deployAfterLoad is true (since that implies we know where to go).
-         // Actually, let's keep it optional. If user wants to skip dialog, they use -o or -d.
+    }
+
+    // Handle translate after load if requested
+    if (translateAfterLoad) {
+        std::cerr << "[NST] CLI Translate: queued..." << std::endl;
+        QTimer::singleShot(1000, this, [this]() {
+            m_fileTranslationWidget->onTranslateAllCLI();
+        });
     }
 
     // Handle deploy after load if requested
@@ -265,10 +270,8 @@ void MainWindow::openProjectFromCLI(const QString &engineName, const QString &pr
         QString targetDir = outputPath.isEmpty() ? projectPath : outputPath;
         
         // Determine backup setting
-        // backupPreference: -1 = use settings, 0 = no backup, 1 = force backup
         bool shouldBackup;
         if (backupPreference == -1) {
-            // Use setting from QSettings
             QSettings settings;
             shouldBackup = settings.value("deployBackupEnabled", true).toBool();
         } else {
@@ -279,8 +282,11 @@ void MainWindow::openProjectFromCLI(const QString &engineName, const QString &pr
                   << ", backup=" << (shouldBackup ? "yes" : "no") << std::endl;
         
         // Schedule deploy after project is fully loaded
-        // Use a delayed singleShot to give time for project loading
-        QTimer::singleShot(500, this, [this, targetDir, shouldBackup]() {
+        // If translation is also happening, we need more delay or wait for signal.
+        // For CLI simplicity, we'll use a longer delay if translating.
+        int delay = translateAfterLoad ? 5000 : 1500; 
+        
+        QTimer::singleShot(delay, this, [this, targetDir, shouldBackup]() {
             m_fileTranslationWidget->onDeployProjectCLI(targetDir, shouldBackup);
         });
     }

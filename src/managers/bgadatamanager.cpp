@@ -11,6 +11,7 @@
 #include <QFileInfo>
 #include <QSet>
 #include <QDateTime>
+#include <iostream>
 
 BGADataManager::BGADataManager(QObject *parent)
     : QObject(parent)
@@ -51,6 +52,7 @@ QJsonArray BGADataManager::loadStringsFromGameProject(const QString &engineName,
         return extractedTextsArray;
     }
 
+    std::cerr << "[BGA] Analyzing game project at: " << projectPath.toStdString() << " using engine: " << engineName.toStdString() << std::endl;
     emit progressUpdated(25, "Analyzing game project...");
     logStream << "BGADataManager: Calling analyzer->analyze for project: " << projectPath << "\n";
     core::AnalyzerOutput output = analyzer->analyze(projectPath);
@@ -209,31 +211,32 @@ bool BGADataManager::exportStringsToGameProject(const QString &engineName, const
         }
     }
 
-    // Step 2: Create modified data with new paths
-    // Create a NEW QJsonArray of all texts, but with paths adjusted to targetDir.
+    // Step 2: Create modified data with paths pointing to the COPIED files
     QJsonArray allTexts;
     for (const QJsonArray &fileTexts : filteredData.values()) {
         for (const QJsonValue &val : fileTexts) {
             QJsonObject obj = val.toObject();
             QString originalPath = obj["path"].toString();
             QString relativePath = projectDir.relativeFilePath(originalPath);
-            QString newPath = targetDirectory.filePath(relativePath);
+            QString targetFilePath = targetDirectory.filePath(relativePath);
             
-            // Normalize separators
-            newPath = QDir::toNativeSeparators(newPath);
+            // Normalize separators and use the NEW path for the analyzer to patch
+            targetFilePath = QDir::toNativeSeparators(targetFilePath);
             
-            obj["path"] = newPath;
+            obj["path"] = targetFilePath;
             allTexts.append(obj);
         }
     }
 
-    // Step 3: Use Analyzer to save (patch) the copied files
+    // Step 3: Use Analyzer to patch the COPIED files
     std::unique_ptr<core::IGameAnalyzer> analyzer = core::createAnalyzer(engineName);
     if (!analyzer) {
         emit errorOccurred(QString("Failed to create analyzer for engine: %1").arg(engineName));
         return false;
     }
 
+    // Pass the list of texts with updated paths. 
+    // The analyzer->save implementation for RPGM uses the path inside each entry.
     if (!analyzer->save(targetDir, allTexts)) {
         emit errorOccurred(QString("Failed to patch exported project in: %1").arg(targetDir));
         return false;
