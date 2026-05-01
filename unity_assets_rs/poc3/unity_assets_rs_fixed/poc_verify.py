@@ -68,7 +68,7 @@ CLASS_NAMES = {
 
 objects = []
 errors  = 0
-for i in range(obj_count):
+for _ in range(obj_count):
     a = (pos + 3) & ~3; pos = a          # per-object align (correct)
     path_id    = struct.unpack_from('<q', data, pos)[0]; pos += 8
     byte_start = struct.unpack_from('<Q', data, pos)[0]; pos += 8
