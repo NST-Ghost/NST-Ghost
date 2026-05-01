@@ -246,3 +246,119 @@ BGADataManager: After QJsonDocument::fromJson
 BGADataManager: Extracted 9607 entries.
 BGADataManager: After extracting entries
 BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4601563bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4601563bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4601563bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4601563bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4601563bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4601563bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4694208bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Fantasy_Journey_with_the_Dragon_Mother/
+BGADataManager: Analyzer output payload size:4694208bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 20266 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: renpy
+BGADataManager: Calling analyzer->analyze for project: demo-renpy/BlueHoleProject-pc/
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: renpy
+BGADataManager: Calling analyzer->analyze for project: demo-renpy/BlueHoleProject-pc/
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: renpy
+BGADataManager: Calling analyzer->analyze for project: demo-renpy/BlueHoleProject-pc/
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: renpy
+BGADataManager: Calling analyzer->analyze for project: demo-renpy/BlueHoleProject-pc/
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: RENPY
+BGADataManager: Calling analyzer->analyze for project: /home/jop/work/NST/demo-renpy/BlueHoleProject-pc
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: renpy
+BGADataManager: Calling analyzer->analyze for project: demo-renpy/BlueHoleProject-pc/
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/work/NST/demo-renpy/BlueHoleProject-pc
+BGADataManager: Analyzer output payload size:161bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RENPY
+BGADataManager: Calling analyzer->analyze for project: /home/jop/work/NST/demo-renpy/BlueHoleProject-pc
+BGADataManager: Analyzer output payload size:0bytes
+BGADataManager: No data extracted from project.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/work/NST/demo-renpy/BlueHoleProject-pc
+BGADataManager: Analyzer output payload size:161bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 0 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: renpy
+BGADataManager: Calling analyzer->analyze for project: demo-renpy/BlueHoleProject-pc/
+BGADataManager: Analyzer output payload size:3078346bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 16908 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.

@@ -1,23 +1,26 @@
 #include "core/analyzerfactory.h"
-#include "core/bga_rust_bridge.h"
-
-// Legacy C++ implementations (kept for fallback if needed)
-// #include "core/engines/rpgm/rpganalyzer.h"
-// #include "core/engines/unity/unityanalyzer.h"
-// #include "core/engines/renpy/renpyanalyzer.h"
+#include "core/engines/rpgm/rpganalyzer.h"
+#include "core/engines/renpy/renpyanalyzer.h"
+#include "core/engines/unity/unityanalyzer.h"
 
 namespace core {
 
 std::unique_ptr<IGameAnalyzer> createAnalyzer(const QString &engineName)
 {
-    // Use Rust backend for all engines
-    return createRustAnalyzer(engineName);
+    QString name = engineName.toLower();
+    if (name == "rpgm") {
+        return std::make_unique<engines::rpgm::RpgmAnalyzer>();
+    } else if (name == "renpy") {
+        return std::make_unique<engines::renpy::RenpyAnalyzer>();
+    } else if (name == "unity") {
+        return std::make_unique<engines::unity::UnityAnalyzer>();
+    }
+    return nullptr;
 }
 
 QStringList availableAnalyzers()
 {
-    // Get available analyzers from Rust library
-    return availableRustAnalyzers();
+    return { "rpgm", "renpy", "unity" };
 }
 
 } // namespace core

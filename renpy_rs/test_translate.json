@@ -1,0 +1,18 @@
+{
+  "archive": "demo-renpy/TrappedwithJester-1.0-pc/game/archive.rpa",
+  "target_lang": "Thai",
+  "total": 1,
+  "translated": 1,
+  "blocks": [
+    {
+      "file": "script.rpy",
+      "line": 130,
+      "label": "start",
+      "type": "narration",
+      "speaker": null,
+      "source": "Your head hurts...",
+      "translation": "คุณรู้สึกปวดหัว...",
+      "voice": null
+    }
+  ]
+}

@@ -339,18 +339,8 @@ int main(int argc, char *argv[])
     parser.addOption(noBackupOption);
     parser.addOption(translateOption);
     
-    // We must use parse() or process() to get results
-    parser.parse(app->arguments());
-    
-    if (parser.isSet("help")) {
-        std::cerr << parser.helpText().toStdString() << std::endl;
-        return 0;
-    }
-    if (parser.isSet("version")) {
-        std::cerr << QCoreApplication::applicationName().toStdString() 
-                  << " " << QCoreApplication::applicationVersion().toStdString() << std::endl;
-        return 0;
-    }
+    // Use process() which automatically handles help/version and exits if needed
+    parser.process(*app);
 
     QString cliEngine = parser.value(engineOption);
     QString cliProject = parser.value(projectOption);
@@ -359,6 +349,7 @@ int main(int argc, char *argv[])
     QString cliOutput = parser.value(outputOption);
     bool cliBackup = parser.isSet(backupOption);
     bool cliNoBackup = parser.isSet(noBackupOption);
+
 
     if (headless && !cliEngine.isEmpty() && !cliProject.isEmpty()) {
         std::cerr << "[NST] Debug: Creating TranslationCore..." << std::endl;

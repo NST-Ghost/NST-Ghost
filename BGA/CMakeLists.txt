@@ -11,46 +11,55 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
 # =============================================================================
-# Rust Library Build (bga_rs)
+# Rust Libraries Build
 # =============================================================================
-set(BGA_RS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/bga_rs)
+set(RPGM_RS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../rpgm_rs)
+set(RENPY_RS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../renpy_rs)
+
 if(MSVC)
-    set(BGA_RS_LIBRARY ${BGA_RS_DIR}/target/release/bga_rs.lib)
+    set(RPGM_RS_LIBRARY ${RPGM_RS_DIR}/target/release/rpgm_rs.lib)
+    set(RENPY_RS_LIBRARY ${RENPY_RS_DIR}/target/release/renpy_rs.lib)
 else()
-    set(BGA_RS_LIBRARY ${BGA_RS_DIR}/target/release/libbga_rs.a)
+    set(RPGM_RS_LIBRARY ${RPGM_RS_DIR}/target/release/librpgm_rs.a)
+    set(RENPY_RS_LIBRARY ${RENPY_RS_DIR}/target/release/librenpy_rs.a)
 endif()
 
-# Custom command to build the Rust library
+# Custom commands to build Rust libraries
 add_custom_command(
-    OUTPUT ${BGA_RS_LIBRARY}
+    OUTPUT ${RPGM_RS_LIBRARY}
     COMMAND cargo build --release
-    WORKING_DIRECTORY ${BGA_RS_DIR}
-    COMMENT "Building Rust BGA library..."
+    WORKING_DIRECTORY ${RPGM_RS_DIR}
+    COMMENT "Building Rust rpgm_rs library..."
     VERBATIM
 )
 
-# Custom target for Rust build
-add_custom_target(bga_rust ALL DEPENDS ${BGA_RS_LIBRARY})
+add_custom_command(
+    OUTPUT ${RENPY_RS_LIBRARY}
+    COMMAND cargo build --release
+    WORKING_DIRECTORY ${RENPY_RS_DIR}
+    COMMENT "Building Rust renpy_rs library..."
+    VERBATIM
+)
+
+# Custom target for Rust builds
+add_custom_target(rust_engines ALL DEPENDS ${RPGM_RS_LIBRARY} ${RENPY_RS_LIBRARY})
 
 # =============================================================================
-# Source files (C++ with Rust bridge)
+# Source files (C++ Analyzers)
 # =============================================================================
 set(CORE_SOURCES
     core/src/analyzerfactory.cpp
-    core/src/bga_rust_bridge.cpp
-    # Legacy C++ implementations (can be removed once Rust is fully tested)
     core/src/engines/rpgm/rpganalyzer.cpp
-    core/src/engines/unity/unityanalyzer.cpp
     core/src/engines/renpy/renpyanalyzer.cpp
+    core/src/engines/unity/unityanalyzer.cpp
 )
 
 set(CORE_HEADERS
     core/include/core/analyzerfactory.h
     core/include/core/gameanalyzer.h
-    core/include/core/bga_rust_bridge.h
     core/include/core/engines/rpgm/rpganalyzer.h
-    core/include/core/engines/unity/unityanalyzer.h
     core/include/core/engines/renpy/renpyanalyzer.h
+    core/include/core/engines/unity/unityanalyzer.h
 )
 
 # =============================================================================
@@ -59,7 +68,7 @@ set(CORE_HEADERS
 add_library(BGACore SHARED ${CORE_SOURCES} ${CORE_HEADERS})
 
 # Ensure Rust is built before BGACore
-add_dependencies(BGACore bga_rust)
+add_dependencies(BGACore rust_engines)
 
 # Export symbols on Windows
 set_target_properties(BGACore PROPERTIES
@@ -71,7 +80,8 @@ set_target_properties(BGACore PROPERTIES
 # =============================================================================
 target_link_libraries(BGACore PRIVATE 
     Qt6::Core
-    ${BGA_RS_LIBRARY}
+    ${RPGM_RS_LIBRARY}
+    ${RENPY_RS_LIBRARY}
 )
 
 # Platform-specific linking for Rust static library
