@@ -6,7 +6,7 @@ Proves all 5 Rust fixes work by reading resources.assets in pure Python.
 Usage:
     python3 poc_verify.py resources.assets
 """
-import struct, sys, json
+import struct, sys
 from collections import Counter
 
 path = sys.argv[1] if len(sys.argv) > 1 else "resources.assets"
