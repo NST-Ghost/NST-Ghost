@@ -10,7 +10,8 @@ import struct, sys, json
 from collections import Counter
 
 path = sys.argv[1] if len(sys.argv) > 1 else "resources.assets"
-data = open(path, 'rb').read()
+with open(path, 'rb') as f:
+    data = f.read()
 print(f"File: {path}  ({len(data):,} bytes)\n")
 
 # ── Header (big-endian) ───────────────────────────────────────────────────────
