@@ -13,6 +13,8 @@
 // Now we can include Qt headers
 #include "mainwindow.h"
 #include "translationcore.h"
+#include "projectmanagerwidget.h"
+#include "projectregistry.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -456,9 +458,36 @@ int main(int argc, char *argv[])
             }
         }
         
-        MainWindow w;
-        w.show();
+        ProjectRegistry registry;
+        ProjectManagerWidget pmWidget(&registry);
+        
+        // We use a pointer so MainWindow can be re-created if necessary, 
+        // or just keep it hidden. Let's keep it hidden.
+        MainWindow *w = new MainWindow();
 
-        return guiApp->exec();
+        QObject::connect(&pmWidget, &ProjectManagerWidget::projectSelected, [w, &pmWidget](const QString &nstFilePath) {
+            pmWidget.hide();
+            w->loadProjectFile(nstFilePath);
+            w->show();
+        });
+
+        QObject::connect(&pmWidget, &ProjectManagerWidget::newProjectRequested, [w, &pmWidget]() {
+            pmWidget.hide();
+            w->show();
+            w->onNewProject(); 
+        });
+
+        QObject::connect(w, &MainWindow::returnToProjectManager, [w, &pmWidget, &registry]() {
+            w->hide();
+            registry.refreshAll();
+            pmWidget.show();
+        });
+
+        pmWidget.resize(1000, 650);
+        pmWidget.show();
+
+        int ret = guiApp->exec();
+        delete w;
+        return ret;
     }
 }

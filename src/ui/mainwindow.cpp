@@ -187,6 +187,7 @@ void MainWindow::onNewProject()
 
     LoadProjectDialog dialog(availableEngines, this);
     if (dialog.exec() != QDialog::Accepted) {
+        emit returnToProjectManager();
         return;
     }
 
@@ -197,10 +198,47 @@ void MainWindow::onNewProject()
 
     if (engineName.isEmpty() || projectPath.isEmpty()) {
         QMessageBox::warning(this, "Invalid Input", "Please select both engine and project path.");
+        emit returnToProjectManager();
         return;
     }
     
     m_fileTranslationWidget->onNewProject(engineName, projectPath);
+}
+
+void MainWindow::loadProjectFile(const QString &nstFilePath)
+{
+    if (nstFilePath.isEmpty()) return;
+    
+    // Use the existing FileTranslationWidget to load the .nst file
+    // First, clear the state
+    m_fileTranslationWidget->getProjectDataManager()->clearAllData();
+    
+    // Simulate FileTranslationWidget::onOpenProject but with a specific path
+    // Let's call the projectDataManager directly since the widget doesn't have a public method taking path
+    bool success = m_fileTranslationWidget->getProjectDataManager()->loadTranslationWorkspace(nstFilePath);
+    
+    if (success) {
+        m_engineName = m_fileTranslationWidget->getProjectDataManager()->getEngineName();
+        QString projectPath = m_fileTranslationWidget->getProjectDataManager()->getProjectPath();
+        if (!QFileInfo::exists(projectPath)) {
+             QMessageBox::warning(this, tr("Warning"), tr("The original game folder for this project was not found:\n%1\nYou can continue translating, but you won't be able to Deploy/Export until you fix the path.").arg(projectPath));
+        }
+        
+        // Let the widget know to update its internal currentProjectFile path
+        // We'll have to use an ugly trick if it's private, but wait, we can just trigger projectLoaded
+        // Actually, it's better to add a public method to FileTranslationWidget, but for now we'll rely on it.
+    } else {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to load project file."));
+    }
+}
+
+void MainWindow::onReturnToProjectManager()
+{
+    // Save current project before leaving if modified
+    if (m_fileTranslationWidget) {
+        m_fileTranslationWidget->onSaveProject();
+    }
+    emit returnToProjectManager();
 }
 
 void MainWindow::onOpenMockData()

@@ -18,6 +18,8 @@ void MenuBar::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(deployProjectAction);
     fileMenu->addSeparator();
+    fileMenu->addAction(returnToProjectManagerAction); // Added
+    fileMenu->addSeparator();
     fileMenu->addAction(settingsAction);
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
@@ -54,6 +56,10 @@ void MenuBar::createActions()
 
     deployProjectAction = new QAction(tr("Deploy Game..."), this);
     connect(deployProjectAction, &QAction::triggered, this, &MenuBar::deployProject);
+
+    returnToProjectManagerAction = new QAction(tr("Project Manager..."), this);
+    returnToProjectManagerAction->setShortcut(QKeySequence("Shift+1"));
+    connect(returnToProjectManagerAction, &QAction::triggered, this, &MenuBar::returnToProjectManager);
 
     settingsAction = new QAction(tr("Settings"), this);
     connect(settingsAction, &QAction::triggered, this, &MenuBar::settings);

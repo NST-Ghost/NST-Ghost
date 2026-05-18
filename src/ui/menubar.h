@@ -17,6 +17,7 @@ signals:
     void saveProject();     // Kept same name, logic changes
     void deployProject();   // Renamed from exportProject
     void exit();
+    void returnToProjectManager(); // Added
     void fontManager();
     void pluginManager();
     void featureManager();  // Feature Manager dialog
@@ -44,6 +45,7 @@ private:
     QAction *settingsAction;
     QAction *saveProjectAction;
     QAction *deployProjectAction;   // Renamed
+    QAction *returnToProjectManagerAction; // Added
     QAction *exitAction;
     QAction *fontManagerAction;
     QAction *pluginManagerAction;

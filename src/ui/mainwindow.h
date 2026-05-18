@@ -39,6 +39,7 @@ public:
 
 public slots:
     void onNewProject(); // Renamed
+    void loadProjectFile(const QString &nstFilePath);
 
 private slots:
 // Restore missing slots
@@ -64,7 +65,10 @@ private slots:
 
     void onSaveProject();    // Renamed
     void onDeployProject();  // Renamed
+    void onReturnToProjectManager(); // Added
+
 signals:
+    void returnToProjectManager(); // Added
     void projectLoaded(const QString &projectPath);
     void translationStateChanged(bool active);
     void taskFinished(); // Signal when CLI task is done

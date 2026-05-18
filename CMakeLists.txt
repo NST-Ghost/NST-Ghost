@@ -62,6 +62,11 @@ set(PROJECT_SOURCES
     src/ui/realtimetranslationwidget.cpp
     src/ui/realtimetranslationwidget.h
     
+    src/managers/projectregistry.cpp
+    src/managers/projectregistry.h
+    src/dialogs/projectmanagerwidget.cpp
+    src/dialogs/projectmanagerwidget.h
+    
     src/managers/smartfiltermanager.cpp
     src/ui/translationcontextmenu.cpp
     src/controllers/updatecontroller.cpp
