@@ -19,6 +19,27 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     , m_networkManager(new QNetworkAccessManager(this))
 {
     ui->setupUi(this);
+    ui->llmProviderComboBox->clear();
+    ui->llmProviderComboBox->addItems({
+        "OpenAI",
+        "Custom (OpenAI-compatible)",
+        "AI21",
+        "AI/ML API",
+        "Azure OpenAI",
+        "Chutes",
+        "Claude",
+        "Cohere",
+        "DeepSeek",
+        "Electron Hub",
+        "Fireworks AI",
+        "Groq",
+        "Google AI Studio",
+        "Google Vertex AI",
+        "MistralAI",
+        "Moonshot AI",
+        "NanoGPT"
+    });
+    ui->llmModelComboBox->setEditable(true);
     
     // Connect translator mode to stacked widget
     connect(ui->translatorModeComboBox, &QComboBox::currentIndexChanged, ui->engineStackedWidget, &QStackedWidget::setCurrentIndex);
@@ -85,9 +106,7 @@ QString SettingsDialog::targetLanguageName() const
 
 QString SettingsDialog::llmProvider() const
 {
-    QString provider = ui->llmProviderComboBox->currentText();
-    if (provider == "Google") return "Google";
-    return provider;
+    return ui->llmProviderComboBox->currentText();
 }
 
 QString SettingsDialog::llmApiKey() const
@@ -169,7 +188,8 @@ void SettingsDialog::setTargetLanguage(const QString &language)
 void SettingsDialog::setLlmProvider(const QString &provider)
 {
     QString providerText = provider;
-    if (provider == "Google") providerText = "Google AI";
+    if (provider == "Anthropic") providerText = "Claude";
+    if (provider == "Google" || provider == "Google AI") providerText = "Google AI Studio";
     int index = ui->llmProviderComboBox->findText(providerText);
     if (index != -1) {
         ui->llmProviderComboBox->setCurrentIndex(index);
@@ -246,11 +266,33 @@ void SettingsDialog::updateLlmModelComboBox()
     ui->llmModelComboBox->clear();
 
     if (provider == "OpenAI") {
-        ui->llmModelComboBox->addItems({"gpt-4o-mini", "gpt-4o", "o3-mini", "o1-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"});
-    } else if (provider == "Anthropic") {
-        ui->llmModelComboBox->addItems({"claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"});
-    } else if (provider == "Google AI") {
-        ui->llmModelComboBox->addItems({"gemini-1.5-pro-latest", "gemini-pro"});
+        ui->llmModelComboBox->addItems({"gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "o3-mini", "o1-mini"});
+    } else if (provider == "Claude") {
+        ui->llmModelComboBox->addItems({"claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest"});
+    } else if (provider == "Google AI Studio") {
+        ui->llmModelComboBox->addItems({"gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"});
+    } else if (provider == "Google Vertex AI") {
+        ui->llmModelComboBox->addItems({"gemini-1.5-flash", "gemini-1.5-pro"});
+    } else if (provider == "Groq") {
+        ui->llmModelComboBox->addItems({"llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"});
+    } else if (provider == "DeepSeek") {
+        ui->llmModelComboBox->addItems({"deepseek-chat", "deepseek-reasoner"});
+    } else if (provider == "MistralAI") {
+        ui->llmModelComboBox->addItems({"mistral-large-latest", "mistral-small-latest", "open-mistral-nemo"});
+    } else if (provider == "Cohere") {
+        ui->llmModelComboBox->addItems({"command-a-03-2025", "command-r-plus", "command-r"});
+    } else if (provider == "Fireworks AI") {
+        ui->llmModelComboBox->addItems({"accounts/fireworks/models/llama-v3p1-8b-instruct", "accounts/fireworks/models/llama-v3p1-70b-instruct"});
+    } else if (provider == "Moonshot AI") {
+        ui->llmModelComboBox->addItems({"moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"});
+    } else if (provider == "AI21") {
+        ui->llmModelComboBox->addItems({"jamba-large", "jamba-mini"});
+    } else if (provider == "AI/ML API") {
+        ui->llmModelComboBox->addItems({"deepseek/deepseek-chat", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "mistralai/Mistral-Large-Instruct-2411"});
+    }
+
+    if (ui->llmModelComboBox->count() == 0) {
+        ui->llmModelComboBox->setEditText(QString());
     }
 }
 
@@ -259,8 +301,26 @@ void SettingsDialog::fetchLlmModels()
     QString provider = ui->llmProviderComboBox->currentText();
     QString apiKey = ui->llmApiKeyEdit->text().trimmed();
 
-    if (provider != "OpenAI") {
-        QMessageBox::information(this, "Fetch Models", "Dynamic model fetching is currently only implemented for OpenAI.");
+    auto baseUrlForProvider = [this, provider]() -> QString {
+        const QString customBaseUrl = ui->llmBaseUrlEdit->text().trimmed();
+        if (!customBaseUrl.isEmpty()) return customBaseUrl;
+        if (provider == "OpenAI") return "https://api.openai.com/v1";
+        if (provider == "AI21") return "https://api.ai21.com/studio/v1";
+        if (provider == "AI/ML API") return "https://api.aimlapi.com/v1";
+        if (provider == "Chutes") return "https://llm.chutes.ai/v1";
+        if (provider == "Cohere") return "https://api.cohere.ai/compatibility/v1";
+        if (provider == "DeepSeek") return "https://api.deepseek.com";
+        if (provider == "Electron Hub") return "https://api.electronhub.ai/v1";
+        if (provider == "Fireworks AI") return "https://api.fireworks.ai/inference/v1";
+        if (provider == "Groq") return "https://api.groq.com/openai/v1";
+        if (provider == "MistralAI") return "https://api.mistral.ai/v1";
+        if (provider == "Moonshot AI") return "https://api.moonshot.ai/v1";
+        if (provider == "NanoGPT") return "https://nano-gpt.com/api/v1";
+        return QString();
+    };
+
+    if (provider == "Claude" || provider == "Google AI Studio" || provider == "Google Vertex AI" || provider == "Azure OpenAI") {
+        QMessageBox::information(this, "Fetch Models", "Dynamic model fetching is currently available for OpenAI-compatible providers only.");
         return;
     }
 
@@ -273,7 +333,16 @@ void SettingsDialog::fetchLlmModels()
     ui->fetchModelsButton->setEnabled(false);
     ui->fetchModelsButton->setText("Fetching...");
 
-    QNetworkRequest request(QUrl("https://api.openai.com/v1/models"));
+    QString baseUrl = baseUrlForProvider();
+    if (baseUrl.isEmpty()) {
+        ui->fetchModelsButton->setEnabled(true);
+        ui->fetchModelsButton->setText("Fetch");
+        QMessageBox::warning(this, "Fetch Models", "Please enter a Base URL for this provider first.");
+        return;
+    }
+    while (baseUrl.endsWith('/')) baseUrl.chop(1);
+
+    QNetworkRequest request(QUrl(baseUrl + "/models"));
     request.setRawHeader("Authorization", QString("Bearer %1").arg(apiKey).toUtf8());
 
     QNetworkReply *reply = m_networkManager->get(request);
@@ -289,8 +358,7 @@ void SettingsDialog::fetchLlmModels()
                 for (const QJsonValue &val : data) {
                     if (val.isObject() && val.toObject().contains("id")) {
                         QString id = val.toObject()["id"].toString();
-                        // Filter for typical chat/completion models to reduce clutter
-                        if (id.startsWith("gpt-") || id.startsWith("o1") || id.startsWith("o3")) {
+                        if (!id.isEmpty()) {
                             models.append(id);
                         }
                     }
@@ -300,14 +368,8 @@ void SettingsDialog::fetchLlmModels()
                     models.sort();
                     ui->llmModelComboBox->clear();
                     
-                    // Always put the most cost-effective recommendation at the top
-                    if (models.contains("gpt-4o-mini")) {
-                        models.removeAll("gpt-4o-mini");
-                        ui->llmModelComboBox->addItem("gpt-4o-mini");
-                    }
-                    
                     ui->llmModelComboBox->addItems(models);
-                    QMessageBox::information(this, "Fetch Models", QString("Successfully fetched %1 models.").arg(models.size() + 1));
+                    QMessageBox::information(this, "Fetch Models", QString("Successfully fetched %1 models.").arg(models.size()));
                 } else {
                     QMessageBox::warning(this, "Fetch Models", "No compatible models found in the API response.");
                 }

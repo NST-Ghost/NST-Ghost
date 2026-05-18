@@ -30,18 +30,26 @@ private slots:
     void onNetworkReply(QNetworkReply *reply);
 
 private:
-    void buildOpenAIRequest(QNetworkRequest &request, QJsonObject &requestBody, const QString &sourceText);
-    void buildAnthropicRequest(QNetworkRequest &request, QJsonObject &requestBody, const QString &sourceText);
-    void buildGoogleRequest(QNetworkRequest &request, QJsonObject &requestBody, const QString &sourceText);
+    void buildChatCompletionRequest(QNetworkRequest &request, QJsonObject &requestBody, const QString &sourceText);
+    void buildClaudeRequest(QNetworkRequest &request, QJsonObject &requestBody, const QString &sourceText);
+    void buildGoogleRequest(QNetworkRequest &request, QJsonObject &requestBody, const QString &sourceText, bool vertex);
 
-    QString parseOpenAIResponse(const QJsonObject &jsonObj);
-    QString parseAnthropicResponse(const QJsonObject &jsonObj);
+    QString parseChatCompletionResponse(const QJsonObject &jsonObj);
+    QString parseClaudeResponse(const QJsonObject &jsonObj);
     QString parseGoogleResponse(const QJsonObject &jsonObj);
+    QString buildPrompt(const QString &sourceText) const;
+    QString chatCompletionBaseUrl() const;
+    QString chatCompletionEndpoint() const;
+    bool isChatCompletionProvider() const;
+    bool isClaudeProvider() const;
+    bool isGoogleAiStudioProvider() const;
+    bool isGoogleVertexProvider() const;
 
     QNetworkAccessManager *m_networkManager;
     QString m_apiKey;
     QString m_provider;
     QString m_model;
+    QString m_baseUrl;
     QString m_targetLanguage;
     QString m_sourceLanguage = "auto";
     QString m_currentSourceText;

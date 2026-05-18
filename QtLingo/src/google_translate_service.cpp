@@ -77,6 +77,7 @@ void GoogleTranslateService::translate(const QString &sourceText)
         if (m_sourceLanguage != "auto") query.addQueryItem("source", m_sourceLanguage);
         url.setQuery(query);
         QNetworkRequest request(url);
+        request.setTransferTimeout(60000);
         request.setAttribute(QNetworkRequest::User, QVariant(true));
         reply = m_networkManager->get(request);
     } else {
@@ -87,6 +88,7 @@ void GoogleTranslateService::translate(const QString &sourceText)
                             .arg(QString(QUrl::toPercentEncoding(maskedText)));
         QUrl url(urlString);
         QNetworkRequest request(url);
+        request.setTransferTimeout(60000);
         request.setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         request.setAttribute(QNetworkRequest::User, QVariant(false));
         reply = m_networkManager->get(request);
@@ -137,6 +139,7 @@ void GoogleTranslateService::batchTranslate(const QStringList &sourceTexts)
 
         url.setQuery(query);
         QNetworkRequest request(url);
+        request.setTransferTimeout(120000);
         request.setAttribute(QNetworkRequest::User, QVariant(true));
         QNetworkReply *reply = m_networkManager->get(request);
         if (reply) {
@@ -195,6 +198,7 @@ void GoogleTranslateService::dispatchNextFreeRequests()
 
         QUrl url(urlString);
         QNetworkRequest request(url);
+        request.setTransferTimeout(60000);
         request.setHeader(QNetworkRequest::UserAgentHeader,
                          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
 

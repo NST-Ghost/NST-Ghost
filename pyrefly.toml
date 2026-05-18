@@ -1,0 +1,20 @@
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
+
+search-path = [
+    "src",
+    "pylib",
+]
+
+ignore-missing-imports = [
+    "sentence_transformers",
+    "paddle",
+    "paddlex",
+    "google.cloud",
+    "google.oauth2",
+    "js2py",
+    "simple_lama_inpainting",
+    "PIL",
+]

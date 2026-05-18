@@ -1,6 +1,5 @@
 /// Ren'Py .rpy text extractor
 /// Produces structured entries that preserve enough context to reconstruct tl files.
-
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -10,16 +9,39 @@ static RE_LABEL: Lazy<Regex> = Lazy::new(|| Regex::new(r"^label\s+(\w+)\s*:").un
 static RE_VOICE: Lazy<Regex> = Lazy::new(|| Regex::new(r#"^\s+voice\s+"([^"]+)""#).unwrap());
 static RE_DIALOG: Lazy<Regex> =
     Lazy::new(|| Regex::new(r#"^\s+(\w+)\s+"((?:[^"\\]|\\.)*)""#).unwrap());
-static RE_NARR: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^\s+"((?:[^"\\]|\\.)*)""#).unwrap());
-static RE_MENU: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r#"^\s+"((?:[^"\\]|\\.)*)"(\s*:)"#).unwrap());
+static RE_NARR: Lazy<Regex> = Lazy::new(|| Regex::new(r#"^\s+"((?:[^"\\]|\\.)*)""#).unwrap());
+static RE_MENU: Lazy<Regex> = Lazy::new(|| Regex::new(r#"^\s+"((?:[^"\\]|\\.)*)"(\s*:)"#).unwrap());
 
 const SKIP_KEYWORDS: &[&str] = &[
-    "label", "define", "default", "show", "hide", "play", "stop", "image",
-    "scene", "with", "translate", "if", "elif", "else", "return", "python",
-    "jump", "call", "pass", "menu", "window", "nvl", "voice", "pause",
-    "queue", "layeredimage", "transform", "style", "init",
+    "label",
+    "define",
+    "default",
+    "show",
+    "hide",
+    "play",
+    "stop",
+    "image",
+    "scene",
+    "with",
+    "translate",
+    "if",
+    "elif",
+    "else",
+    "return",
+    "python",
+    "jump",
+    "call",
+    "pass",
+    "menu",
+    "window",
+    "nvl",
+    "voice",
+    "pause",
+    "queue",
+    "layeredimage",
+    "transform",
+    "style",
+    "init",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

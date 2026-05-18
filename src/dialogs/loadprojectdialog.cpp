@@ -168,7 +168,9 @@ QFrame *LoadProjectDialog::createEngineFrame(const QString &engine, int index)
     // Engine icon
     QLabel *iconLabel = new QLabel();
     QPixmap icon = loadEngineIcon(engineUpper);
-    iconLabel->setPixmap(icon.scaled(150, 150, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    if (!icon.isNull()) {
+        iconLabel->setPixmap(icon.scaled(150, 150, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }
 
     QWidget *imageContainer = new QWidget();
     imageContainer->setFixedWidth(200);
@@ -210,9 +212,9 @@ QString LoadProjectDialog::defaultEngineFrameStyle() const
 
 QPixmap LoadProjectDialog::loadEngineIcon(const QString &engine) const
 {
-    if (engine == "RPGM") return QPixmap(":/icons/rpgm_icon.png");
-    if (engine == "UNITY") return QPixmap(":/icons/unity_icon.png");
-    if (engine == "RENPY") return QPixmap(":/icons/renpy_icon.png");
+    if (engine == "RPGM") return QPixmap(":/ui/icons/rpgm_icon.png");
+    if (engine == "UNITY") return QPixmap(":/ui/icons/unity_icon.png");
+    if (engine == "RENPY") return QPixmap(":/ui/icons/renpy_icon.png");
     return QPixmap(); // Return an empty pixmap as a safe fallback
 }
 

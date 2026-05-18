@@ -15,10 +15,11 @@ SearchDialog::SearchDialog(QWidget *parent)
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint); // Reverted to FramelessWindowHint
 
     m_lineEdit = new QLineEdit(this);
-    m_lineEdit->setPlaceholderText("Search...");
+    m_lineEdit->setPlaceholderText("Search text, \"phrase\", /regex/, source:, trans:, key:, file:, status:todo");
 
     m_resultsTreeWidget = new QTreeWidget(this);
-    m_resultsTreeWidget->setHeaderHidden(true);
+    m_resultsTreeWidget->setHeaderLabels(QStringList() << "Matches");
+    m_resultsTreeWidget->header()->setStretchLastSection(true);
 
     m_placeholderLabel = new QLabel("Start typing to search...", this);
     m_placeholderLabel->setAlignment(Qt::AlignCenter);
@@ -37,8 +38,8 @@ SearchDialog::SearchDialog(QWidget *parent)
     // Apply styling to the dialog itself
     setStyleSheet("SearchDialog { background-color: #2d2d2d; border: 1px solid #007acc; border-radius: 5px; }"
                   "QLineEdit { padding: 5px; border: 1px solid #3a3d41; border-radius: 3px; background-color: #3a3d41; color: #d4d4d4; }"
-                  "QTreeWidget { border: none; background-color: #2d2d2d; }"
-                  "QTreeWidget::item { padding: 3px; }"
+                  "QTreeWidget { border: none; background-color: #2d2d2d; color: #d4d4d4; }"
+                  "QTreeWidget::item { padding: 4px; }"
                   "QTreeWidget::item:selected { background-color: #007acc; color: #ffffff; }");
 
     m_animation = new QPropertyAnimation(m_placeholderLabel, "windowOpacity", this);
@@ -115,6 +116,7 @@ void SearchDialog::displaySearchResults(const QList<QPair<QString, QPair<int, QS
     m_placeholderLabel->hide();
 
     QMap<QString, QTreeWidgetItem*> fileItems;
+    QMap<QString, int> fileCounts;
 
     for (const auto &result : results) {
         const QString &filePath = result.first;
@@ -125,18 +127,25 @@ void SearchDialog::displaySearchResults(const QList<QPair<QString, QPair<int, QS
             QTreeWidgetItem *fileItem = new QTreeWidgetItem(m_resultsTreeWidget);
             fileItem->setText(0, QFileInfo(filePath).fileName());
             fileItem->setData(0, Qt::UserRole, filePath); // Store full path
+            fileItem->setToolTip(0, filePath);
             fileItems.insert(filePath, fileItem);
         }
 
+        fileCounts[filePath] += 1;
         QTreeWidgetItem *fileItem = fileItems.value(filePath);
         QTreeWidgetItem *matchItem = new QTreeWidgetItem(fileItem);
-        matchItem->setText(0, QString("Line %1: %2").arg(row + 1).arg(matchingText));
+        matchItem->setText(0, QString("#%1  %2").arg(row + 1).arg(matchingText));
         matchItem->setData(0, Qt::UserRole, row); // Store row for later use
+    }
+
+    for (auto it = fileItems.constBegin(); it != fileItems.constEnd(); ++it) {
+        it.value()->setText(0, QString("%1 (%2)").arg(QFileInfo(it.key()).fileName()).arg(fileCounts.value(it.key())));
     }
 
     if (m_resultsTreeWidget->topLevelItemCount() > 0) {
         m_resultsTreeWidget->show();
         m_resultsTreeWidget->expandAll();
+        m_resultsTreeWidget->resizeColumnToContents(0);
     } else {
         // No results found, display a message
         QTreeWidgetItem *noResultsItem = new QTreeWidgetItem(m_resultsTreeWidget);
@@ -158,7 +167,6 @@ void SearchDialog::onResultSelected(QTreeWidgetItem *item, int column)
         item->setExpanded(!item->isExpanded());
     }
 }
-
 
 
 

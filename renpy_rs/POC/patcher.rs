@@ -5,7 +5,6 @@
 ///   - Block IDs (hashes) are identical → Ren'Py can match them
 ///   - Python blocks (fonts, character defines) are preserved
 ///   - Voice lines and markup are untouched
-
 use std::collections::HashMap;
 use std::io::{self};
 
@@ -75,7 +74,10 @@ pub fn patch_tl_file(
                     // Original is on the comment line: "    # [speaker ]"text""
                     let orig = extract_original_from_block(&lines, i + 1);
                     let has_voice = block_has_voice(&lines, i + 1);
-                    state = State::InDialogBlock { original: orig, has_voice };
+                    state = State::InDialogBlock {
+                        original: orig,
+                        has_voice,
+                    };
                     i += 1;
                     continue;
                 }
@@ -93,7 +95,10 @@ pub fn patch_tl_file(
                 output.push('\n');
             }
 
-            State::InDialogBlock { original, has_voice } => {
+            State::InDialogBlock {
+                original,
+                has_voice,
+            } => {
                 // Comment line: keep as-is (shows original for reference)
                 if line.trim_start().starts_with("# ") || line.trim().is_empty() {
                     output.push_str(&line_out);
@@ -118,7 +123,11 @@ pub fn patch_tl_file(
                         .cloned()
                         .unwrap_or_else(|| original.clone());
 
-                    let new_text = if new_text.is_empty() { original.clone() } else { new_text };
+                    let new_text = if new_text.is_empty() {
+                        original.clone()
+                    } else {
+                        new_text
+                    };
 
                     let new_line = if let Some(spk) = speaker {
                         format!("{}{}  \"{}\"", prefix, spk, escape_rpy(&new_text))
@@ -177,8 +186,16 @@ pub fn patch_tl_file(
                                 .get(orig)
                                 .cloned()
                                 .unwrap_or_else(|| orig.to_string());
-                            let new_text = if new_text.is_empty() { orig.to_string() } else { new_text };
-                            output.push_str(&format!("{}new \"{}\"\n", indent, escape_rpy(&new_text)));
+                            let new_text = if new_text.is_empty() {
+                                orig.to_string()
+                            } else {
+                                new_text
+                            };
+                            output.push_str(&format!(
+                                "{}new \"{}\"\n",
+                                indent,
+                                escape_rpy(&new_text)
+                            ));
                             i += 1;
                         }
                     }
@@ -209,8 +226,10 @@ fn extract_original_from_block(lines: &[&str], from: usize) -> String {
         if t.starts_with("# ") {
             // Strip "# [speaker ]" prefix
             let rest = &t[2..]; // after "# "
-            // might be: '"text"' or 'speaker "text"' or 'voice ...'
-            if rest.starts_with("voice ") { continue; }
+                                // might be: '"text"' or 'speaker "text"' or 'voice ...'
+            if rest.starts_with("voice ") {
+                continue;
+            }
             // Strip optional word before quote
             let text_part = if let Some(idx) = rest.find('"') {
                 &rest[idx..]
@@ -226,9 +245,15 @@ fn extract_original_from_block(lines: &[&str], from: usize) -> String {
 fn block_has_voice(lines: &[&str], from: usize) -> bool {
     for line in lines.iter().skip(from).take(6) {
         let t = line.trim();
-        if t.is_empty() { continue; }
-        if t.starts_with("# voice ") { return true; }
-        if t.starts_with('#') { continue; }
+        if t.is_empty() {
+            continue;
+        }
+        if t.starts_with("# voice ") {
+            return true;
+        }
+        if t.starts_with('#') {
+            continue;
+        }
         break;
     }
     false
@@ -237,7 +262,9 @@ fn block_has_voice(lines: &[&str], from: usize) -> bool {
 /// Parse "    [speaker ]\"text\"" → (indent, Option<speaker>, text)
 fn parse_translation_line(line: &str) -> Option<(String, Option<String>, String)> {
     let indent_len = line.len() - line.trim_start().len();
-    if indent_len == 0 { return None; }
+    if indent_len == 0 {
+        return None;
+    }
     let indent = line[..indent_len].to_string();
     let rest = line.trim_start();
 
@@ -251,7 +278,11 @@ fn parse_translation_line(line: &str) -> Option<(String, Option<String>, String)
     if let Some(q) = rest.find('"') {
         let candidate_spk = rest[..q].trim();
         // Make sure it looks like an identifier, not a keyword
-        if candidate_spk.chars().all(|c| c.is_alphanumeric() || c == '_') && !candidate_spk.is_empty() {
+        if candidate_spk
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_')
+            && !candidate_spk.is_empty()
+        {
             let text = extract_quoted(&rest[q..]);
             return Some((indent, Some(candidate_spk.to_string()), text.to_string()));
         }
@@ -276,9 +307,13 @@ fn find_closing_quote(s: &str, start: usize) -> Option<usize> {
     let mut i = start;
     while i < bytes.len() {
         match bytes[i] {
-            b'\\' => { i += 2; } // skip escaped char
+            b'\\' => {
+                i += 2;
+            } // skip escaped char
             b'"' => return Some(i),
-            _ => { i += 1; }
+            _ => {
+                i += 1;
+            }
         }
     }
     None
@@ -296,7 +331,9 @@ fn patch_define(
     _target_lang: &str,
     char_defines: &HashMap<String, String>,
 ) -> String {
-    if char_defines.is_empty() { return line.to_string(); }
+    if char_defines.is_empty() {
+        return line.to_string();
+    }
     for (var, new_name) in char_defines {
         if line.contains(var.as_str()) {
             if let Some(start) = line.find("Character(\"") {
@@ -315,13 +352,13 @@ fn patch_define(
 }
 
 /// Build a mapping of original English text → translated text from a list of TextBlocks
-pub fn build_translation_map(
-    blocks: &[crate::extractor::TextBlock],
-) -> HashMap<String, String> {
+pub fn build_translation_map(blocks: &[crate::extractor::TextBlock]) -> HashMap<String, String> {
     blocks
         .iter()
         .filter_map(|b| {
-            b.translation.as_ref().map(|t| (b.source.clone(), t.clone()))
+            b.translation
+                .as_ref()
+                .map(|t| (b.source.clone(), t.clone()))
         })
         .collect()
 }

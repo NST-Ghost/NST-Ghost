@@ -106,6 +106,7 @@ private slots:
     void onAIUnlearnRequested();
     
     void processIncomingResults();
+    void displayFile(const QModelIndex &index);
 
 private:
     // Setup methods (constructor organization)

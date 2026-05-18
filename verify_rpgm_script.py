@@ -1,5 +1,6 @@
 import json
 import sys
+# pyrefly: ignore [missing-import]
 import js2py  # Might not be installed, use simple check or fallback
 # Better: Just print the scripts and I will eyeball them or use node to check specific ones.
 # Actually, I can use subprocess to call node for syntax check.

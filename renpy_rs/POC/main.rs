@@ -15,7 +15,10 @@ const DEFAULT_TARGET: &str = "Thai";
 fn rpa_native_index(archive_path: &str) -> Vec<rpa::RpaEntry> {
     match rpa::parse_rpa(archive_path) {
         Ok(e) => e,
-        Err(err) => { eprintln!("[error] {}", err); std::process::exit(1); }
+        Err(err) => {
+            eprintln!("[error] {}", err);
+            std::process::exit(1);
+        }
     }
 }
 
@@ -24,7 +27,11 @@ fn read_entry(archive_path: &str, entry: &rpa::RpaEntry) -> Vec<u8> {
 }
 
 fn to_str(bytes: &[u8]) -> String {
-    let b = if bytes.starts_with(b"\xef\xbb\xbf") { &bytes[3..] } else { bytes };
+    let b = if bytes.starts_with(b"\xef\xbb\xbf") {
+        &bytes[3..]
+    } else {
+        bytes
+    };
     String::from_utf8_lossy(b).replace("\r\n", "\n")
 }
 
@@ -39,7 +46,8 @@ fn cmd_extract(archive: &str, output: &str, base_only: bool) {
     let entries = rpa_native_index(archive);
     eprintln!("[extract] {} files in archive", entries.len());
 
-    let scripts: Vec<&rpa::RpaEntry> = entries.iter()
+    let scripts: Vec<&rpa::RpaEntry> = entries
+        .iter()
         .filter(|e| e.path.ends_with(".rpy") && (!base_only || !e.path.contains("tl/")))
         .collect();
 
@@ -48,7 +56,9 @@ fn cmd_extract(archive: &str, output: &str, base_only: bool) {
     let mut all_blocks: Vec<TextBlock> = Vec::new();
     for entry in scripts {
         let bytes = read_entry(archive, entry);
-        if bytes.is_empty() { continue; }
+        if bytes.is_empty() {
+            continue;
+        }
         let blocks = extractor::extract_from_bytes(&entry.path, to_str(&bytes).as_bytes());
         eprintln!("  {} → {} blocks", entry.path, blocks.len());
         all_blocks.extend(blocks);
@@ -76,12 +86,20 @@ fn cmd_translate(strings_json: &str, target_lang: &str, api_key: &str, output: &
 
     let trans_map = translator::translate_blocks(&blocks, target_lang, api_key).unwrap();
 
-    let translated: Vec<TextBlock> = blocks.into_iter().map(|mut b| {
-        if let Some(t) = trans_map.get(&b.source) { b.translation = Some(t.clone()); }
-        b
-    }).collect();
+    let translated: Vec<TextBlock> = blocks
+        .into_iter()
+        .map(|mut b| {
+            if let Some(t) = trans_map.get(&b.source) {
+                b.translation = Some(t.clone());
+            }
+            b
+        })
+        .collect();
 
-    let n_done = translated.iter().filter(|b| b.translation.is_some()).count();
+    let n_done = translated
+        .iter()
+        .filter(|b| b.translation.is_some())
+        .count();
     let payload = json!({
         "archive": parsed["archive"],
         "target_lang": target_lang,
@@ -110,23 +128,37 @@ fn cmd_patch(translated_json: &str, archive: &str, out_dir: &str) {
     fs::create_dir_all(&tl_dir).unwrap();
     eprintln!("[patch] Output: {}", tl_dir.display());
 
-    let ref_files: Vec<&rpa::RpaEntry> = entries.iter()
-        .filter(|e| e.path.starts_with(&format!("tl/{}/", REFERENCE_LANG)) && e.path.ends_with(".rpy"))
+    let ref_files: Vec<&rpa::RpaEntry> = entries
+        .iter()
+        .filter(|e| {
+            e.path.starts_with(&format!("tl/{}/", REFERENCE_LANG)) && e.path.ends_with(".rpy")
+        })
         .collect();
 
-    eprintln!("[patch] {} reference tl files ({})", ref_files.len(), REFERENCE_LANG);
+    eprintln!(
+        "[patch] {} reference tl files ({})",
+        ref_files.len(),
+        REFERENCE_LANG
+    );
 
     for ref_entry in ref_files {
         let ref_bytes = read_entry(archive, ref_entry);
-        if ref_bytes.is_empty() { continue; }
+        if ref_bytes.is_empty() {
+            continue;
+        }
         let ref_text = to_str(&ref_bytes);
 
         let char_defines: HashMap<String, String> = HashMap::new();
         let patched = patcher::patch_tl_file(
-            &ref_text, REFERENCE_LANG, target_lang, &trans_map, &char_defines,
+            &ref_text,
+            REFERENCE_LANG,
+            target_lang,
+            &trans_map,
+            &char_defines,
         );
 
-        let filename = ref_entry.path
+        let filename = ref_entry
+            .path
             .strip_prefix(&format!("tl/{}/", REFERENCE_LANG))
             .unwrap_or(&ref_entry.path);
 
@@ -135,7 +167,10 @@ fn cmd_patch(translated_json: &str, archive: &str, out_dir: &str) {
         eprintln!("  {}", out_path.display());
     }
 
-    eprintln!("[patch] Done! Copy {} into your game/tl/ folder", tl_dir.display());
+    eprintln!(
+        "[patch] Done! Copy {} into your game/tl/ folder",
+        tl_dir.display()
+    );
     eprintln!("[patch] In-game: Preferences → Language → {}", target_lang);
 }
 
@@ -166,13 +201,17 @@ fn cmd_info(archive: &str) {
 
     println!("\nBy extension:");
     let mut exts: Vec<_> = ext_count.iter().collect();
-    exts.sort_by(|a,b| b.1.cmp(a.1));
-    for (ext, n) in exts { println!("  .{:<10} {}", ext, n); }
+    exts.sort_by(|a, b| b.1.cmp(a.1));
+    for (ext, n) in exts {
+        println!("  .{:<10} {}", ext, n);
+    }
 
     println!("\nExisting translations:");
     let mut ls: Vec<_> = langs.iter().collect();
-    ls.sort_by(|a,b| b.1.cmp(a.1));
-    for (lang, n) in ls { println!("  {:<25} {} files", lang, n); }
+    ls.sort_by(|a, b| b.1.cmp(a.1));
+    for (lang, n) in ls {
+        println!("  {:<25} {} files", lang, n);
+    }
 }
 
 fn cmd_search(archive: &str, pattern: &str) {
@@ -196,49 +235,55 @@ fn cmd_search(archive: &str, pattern: &str) {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     match args.get(1).map(String::as_str) {
-        Some("info")      => cmd_info(args.get(2).map(String::as_str).unwrap_or("archive.rpa")),
-        Some("search")    => {
+        Some("info") => cmd_info(args.get(2).map(String::as_str).unwrap_or("archive.rpa")),
+        Some("search") => {
             let archive = args.get(2).map(String::as_str).unwrap_or("archive.rpa");
             let pattern = args.get(3).map(String::as_str).unwrap_or("");
-            if pattern.is_empty() { eprintln!("Usage: search <archive> <pattern>"); return; }
+            if pattern.is_empty() {
+                eprintln!("Usage: search <archive> <pattern>");
+                return;
+            }
             cmd_search(archive, pattern);
         }
-        Some("dump")      => {
+        Some("dump") => {
             let archive = args.get(2).map(String::as_str).unwrap_or("archive.rpa");
-            let path    = args.get(3).map(String::as_str).unwrap_or("");
-            let out     = args.get(4).map(String::as_str).unwrap_or("out.bin");
+            let path = args.get(3).map(String::as_str).unwrap_or("");
+            let out = args.get(4).map(String::as_str).unwrap_or("out.bin");
             let entries = rpa_native_index(archive);
             if let Some(e) = entries.iter().find(|e| e.path == path) {
                 let bytes = read_entry(archive, e);
                 std::fs::write(out, bytes).unwrap();
                 println!("Extracted {} to {}", path, out);
-            } else { eprintln!("File not found in archive: {}", path); }
+            } else {
+                eprintln!("File not found in archive: {}", path);
+            }
         }
-        Some("extract")   => {
+        Some("extract") => {
             let archive = args.get(2).map(String::as_str).unwrap_or("archive.rpa");
-            let output  = flag_value(&args, "-o").unwrap_or("strings.json".into());
+            let output = flag_value(&args, "-o").unwrap_or("strings.json".into());
             cmd_extract(archive, &output, args.contains(&"--base-only".into()));
         }
         Some("translate") => {
-            let input   = args.get(2).map(String::as_str).unwrap_or("strings.json");
-            let lang    = flag_value(&args, "--lang").unwrap_or(DEFAULT_TARGET.into());
-            let key     = flag_value(&args, "--api-key")
+            let input = args.get(2).map(String::as_str).unwrap_or("strings.json");
+            let lang = flag_value(&args, "--lang").unwrap_or(DEFAULT_TARGET.into());
+            let key = flag_value(&args, "--api-key")
                 .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
                 .unwrap_or_default();
             if key.is_empty() {
-                eprintln!("Set ANTHROPIC_API_KEY or use --api-key"); std::process::exit(1);
+                eprintln!("Set ANTHROPIC_API_KEY or use --api-key");
+                std::process::exit(1);
             }
-            let output  = flag_value(&args, "-o").unwrap_or("translated.json".into());
+            let output = flag_value(&args, "-o").unwrap_or("translated.json".into());
             cmd_translate(input, &lang, &key, &output);
         }
         Some("patch") => {
-            let json    = args.get(2).map(String::as_str).unwrap_or("translated.json");
+            let json = args.get(2).map(String::as_str).unwrap_or("translated.json");
             let archive = args.get(3).map(String::as_str).unwrap_or("archive.rpa");
             let out_dir = flag_value(&args, "--out-dir").unwrap_or("./output".into());
             cmd_patch(json, archive, &out_dir);
         }
         _ => eprintln!(
-"renpy_extract — Ren'Py translation pipeline
+            "renpy_extract — Ren'Py translation pipeline
 
 USAGE:
   renpy_extract info      <archive.rpa>

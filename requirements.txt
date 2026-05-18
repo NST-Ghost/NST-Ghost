@@ -4,3 +4,4 @@ Pillow
 paddlepaddle-gpu==3.0.0
 paddlex
 google-cloud-vision
+pyrefly

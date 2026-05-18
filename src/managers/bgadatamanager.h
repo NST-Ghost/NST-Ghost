@@ -20,8 +20,8 @@ public:
 
     QStringList getAvailableAnalyzers() const;
     QJsonArray loadStringsFromGameProject(const QString &engineName, const QString &projectPath);
-    bool saveStringsToGameProject(const QString &engineName, const QString &projectPath, const QMap<QString, QJsonArray> &data);
-    bool exportStringsToGameProject(const QString &engineName, const QString &projectPath, const QString &targetDir, const QMap<QString, QJsonArray> &data, bool onlyTranslated = true);
+    bool saveStringsToGameProject(const QString &engineName, const QString &projectPath, const QMap<QString, QJsonArray> &data, const QString &targetLanguage = QString());
+    bool exportStringsToGameProject(const QString &engineName, const QString &projectPath, const QString &targetDir, const QMap<QString, QJsonArray> &data, bool onlyTranslated = true, const QString &targetLanguage = QString());
     QPair<QString, QString> getScriptDetails(const QString &engineName, const QString &projectPath);
 
     QJsonArray loadedFonts() const;

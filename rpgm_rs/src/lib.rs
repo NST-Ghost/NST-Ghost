@@ -436,6 +436,13 @@ pub unsafe extern "C" fn rpgm_save(path: *const c_char, texts_json: *const c_cha
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn rpgm_free_json(ptr: *mut c_char) {
+    if !ptr.is_null() {
+       let _ = CString::from_raw(ptr);
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn rpgm_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         let _ = CString::from_raw(ptr);

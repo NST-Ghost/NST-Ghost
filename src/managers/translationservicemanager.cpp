@@ -69,8 +69,8 @@ void TranslationServiceManager::translate(const QString &serviceName, const QStr
         m_translationQueue.enqueue(text);
     }
     
-    // Always start with processNextTranslation, which will handle batching if supported
-    processNextTranslation();
+    // Start on the next event-loop turn so the UI can repaint after queue/status changes.
+    m_processTimer.start(0);
 }
 
 void TranslationServiceManager::onBatchTranslationDone(const QList<qtlingo::TranslationResult> &results)

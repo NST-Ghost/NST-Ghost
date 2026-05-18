@@ -70,6 +70,10 @@ jobs:
           libxkbcommon-x11-dev \
           liblua5.4-dev \
           python3-dev
+        pip install pyrefly
+
+    - name: Run Pyrefly Check
+      run: pyrefly check
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
@@ -111,9 +115,12 @@ jobs:
 
     - name: Install pybind11
       run: |
-        pip install pybind11
+        pip install pybind11 pyrefly
         $pybind = python -m pybind11 --cmakedir
         echo "pybind11_DIR=$pybind" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Run Pyrefly Check
+      run: pyrefly check
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v4

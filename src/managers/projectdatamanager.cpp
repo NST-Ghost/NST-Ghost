@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QFile>
 #include <QDir>
+#include <QSignalBlocker>
 
 ProjectDataManager::ProjectDataManager(QStandardItemModel *fileListModel, QStandardItemModel *translationModel, QObject *parent)
     : QObject(parent)
@@ -115,6 +116,7 @@ void ProjectDataManager::onFileSelected(const QModelIndex &index)
     
     QString fullFilePath = item->data(Qt::UserRole).toString();
 
+    QSignalBlocker modelSignalBlocker(m_translationModel);
     m_translationModel->clear();
     m_translationModel->setHorizontalHeaderLabels(QStringList() << "Context" << "Source Text" << "Translation");
 
@@ -122,11 +124,8 @@ void ProjectDataManager::onFileSelected(const QModelIndex &index)
 
     if (m_loadedGameProjectData.contains(fullFilePath)) {
         const QJsonArray &textsArray = m_loadedGameProjectData.value(fullFilePath);
-        if (textsArray.isEmpty()) return;
-
-        // Temporarily disable updates for performance
-        // This will be handled by MainWindow's QTableView directly
-        // For now, we'll just populate the model
+        QList<QList<QStandardItem*>> rows;
+        rows.reserve(textsArray.size());
 
         for (const QJsonValue &value : textsArray) {
             QJsonObject obj = value.toObject();
@@ -134,6 +133,10 @@ void ProjectDataManager::onFileSelected(const QModelIndex &index)
             QString translation = obj["text"].toString();
             QString key = obj["key"].toString();
             QString warning = obj["warning"].toString();
+
+            if (m_hideCompleted && !translation.isEmpty()) {
+                 continue;
+            }
 
             QStandardItem *contextItem = new QStandardItem(key);
             contextItem->setEditable(false); // Context should be read-only
@@ -152,13 +155,22 @@ void ProjectDataManager::onFileSelected(const QModelIndex &index)
             // but now it's visible in the first column.
             sourceItem->setData(key, Qt::UserRole + 1);
 
-            if (m_hideCompleted && !translation.isEmpty()) {
-                 continue;
-            }
+            rows.append(QList<QStandardItem*>() << contextItem << sourceItem << transItem);
+        }
 
-            m_translationModel->appendRow(QList<QStandardItem*>() << contextItem << sourceItem << transItem);
+        if (!rows.isEmpty()) {
+            m_translationModel->setRowCount(rows.size());
+            for (int row = 0; row < rows.size(); ++row) {
+                const QList<QStandardItem*> &items = rows.at(row);
+                for (int col = 0; col < items.size(); ++col) {
+                    m_translationModel->setItem(row, col, items.at(col));
+                }
+            }
         }
     }
+
+    modelSignalBlocker.unblock();
+    emit m_translationModel->layoutChanged();
 }
 
 void ProjectDataManager::updateTranslation(const QString &source, const QString &translation, const QString &filePath)

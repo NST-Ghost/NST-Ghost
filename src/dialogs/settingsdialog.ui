@@ -306,7 +306,7 @@
                   <item>
                    <widget class="QGroupBox" name="llmProviderGroup">
                     <property name="title">
-                     <string>LLM Provider Settings</string>
+                     <string>Chat Completion Provider Settings</string>
                     </property>
                     <layout class="QFormLayout" name="formLayout_ai_powered">
                      <item row="0" column="0">

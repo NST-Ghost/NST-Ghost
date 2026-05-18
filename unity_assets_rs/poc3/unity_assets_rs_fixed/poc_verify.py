@@ -86,12 +86,12 @@ for i in range(obj_count):
 assert errors == 0, f"{errors} out-of-bounds objects!"
 print(f"✓ All {len(objects)} objects parsed with 0 errors\n")
 
-cc = Counter(CLASS_NAMES.get(o['class_id'], f"class_{o['class_id']}") for o in objects)
+cc = Counter(CLASS_NAMES.get(int(o['class_id']), f"class_{o['class_id']}") for o in objects)
 print("Class distribution (top 15):")
 for cls, cnt in cc.most_common(15):
     print(f"  {cls:<20} {cnt:>5}")
 
 print("\nFirst 10 objects:")
 for o in objects[:10]:
-    cls = CLASS_NAMES.get(o['class_id'], f"class_{o['class_id']}")
+    cls = CLASS_NAMES.get(int(o['class_id']), f"class_{o['class_id']}")
     print(f"  path_id={o['path_id']:5}  {cls:<16}  size={o['byte_size']:7}  {o['name']}")

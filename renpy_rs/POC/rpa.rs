@@ -1,3 +1,4 @@
+use flate2::read::ZlibDecoder;
 /// Native RPA-3.0 archive parser
 /// Parses Ren'Py's proprietary archive format without any Python dependency.
 ///
@@ -7,11 +8,9 @@
 ///   index_dict: { filename: [(stored_offset, stored_length, prefix_bytes)] }
 ///   real_offset = stored_offset ^ xor_key
 ///   real_length = stored_length ^ xor_key
-
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Seek, SeekFrom};
-use flate2::read::ZlibDecoder;
 
 #[derive(Debug)]
 pub struct RpaEntry {
@@ -45,7 +44,12 @@ struct PickleReader<'a> {
 
 impl<'a> PickleReader<'a> {
     fn new(data: &'a [u8]) -> Self {
-        Self { data, pos: 0, stack: Vec::new(), memo: HashMap::new() }
+        Self {
+            data,
+            pos: 0,
+            stack: Vec::new(),
+            memo: HashMap::new(),
+        }
     }
 
     fn read_byte(&mut self) -> io::Result<u8> {
@@ -59,7 +63,10 @@ impl<'a> PickleReader<'a> {
 
     fn read_bytes(&mut self, n: usize) -> io::Result<&'a [u8]> {
         if self.pos + n > self.data.len() {
-            return Err(io::Error::new(io::ErrorKind::UnexpectedEof, "pickle eof slice"));
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "pickle eof slice",
+            ));
         }
         let s = &self.data[self.pos..self.pos + n];
         self.pos += n;
@@ -84,7 +91,9 @@ impl<'a> PickleReader<'a> {
     /// LONG1: 1-byte count N, then N bytes little-endian signed integer
     fn read_long1(&mut self) -> io::Result<i64> {
         let n = self.read_byte()? as usize;
-        if n == 0 { return Ok(0); }
+        if n == 0 {
+            return Ok(0);
+        }
         let bytes = self.read_bytes(n)?;
         // Sign-extend from n bytes
         let mut val: i64 = 0;
@@ -118,7 +127,15 @@ impl<'a> PickleReader<'a> {
             let op = self.read_byte()?;
             match op {
                 // PROTO: skip next byte
-                0x80 => { self.read_byte()?; }
+                0x80 => {
+                    self.read_byte()?;
+                }
+
+                // FRAME: protocol 4 frame length. The frame boundary is only
+                // a streaming hint, so the minimal decoder can ignore it.
+                0x95 => {
+                    self.read_bytes(8)?;
+                }
 
                 // EMPTY_DICT
                 0x7d => self.stack.push(PVal::Dict(Vec::new())),
@@ -143,6 +160,14 @@ impl<'a> PickleReader<'a> {
                 // LONG_BINPUT: memo[u32] = top
                 0x72 => {
                     let idx = self.read_u32_le()?;
+                    if let Some(v) = self.stack.last() {
+                        self.memo.insert(idx, v.clone());
+                    }
+                }
+
+                // MEMOIZE: memo[len(memo)] = top
+                0x94 => {
+                    let idx = self.memo.len() as u32;
                     if let Some(v) = self.stack.last() {
                         self.memo.insert(idx, v.clone());
                     }
@@ -235,7 +260,10 @@ impl<'a> PickleReader<'a> {
                 // LONG4: 4-byte count, then count bytes
                 0x8b => {
                     let n = self.read_u32_le()? as usize;
-                    if n == 0 { self.stack.push(PVal::Int(0)); continue; }
+                    if n == 0 {
+                        self.stack.push(PVal::Int(0));
+                        continue;
+                    }
                     let bytes = self.read_bytes(n)?;
                     let mut val: i64 = 0;
                     for (i, &b) in bytes.iter().take(8).enumerate() {
@@ -334,7 +362,11 @@ impl<'a> PickleReader<'a> {
                 other => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
-                        format!("unknown pickle opcode 0x{:02x} at pos {}", other, self.pos - 1),
+                        format!(
+                            "unknown pickle opcode 0x{:02x} at pos {}",
+                            other,
+                            self.pos - 1
+                        ),
                     ));
                 }
             }
@@ -355,7 +387,10 @@ pub fn parse_rpa(path: &str) -> io::Result<Vec<RpaEntry>> {
     let parts: Vec<&str> = header.trim().split_whitespace().collect();
 
     if parts.len() < 3 || parts[0] != "RPA-3.0" {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "not an RPA-3.0 file"));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "not an RPA-3.0 file",
+        ));
     }
 
     let index_offset = u64::from_str_radix(parts[1], 16)
@@ -378,7 +413,12 @@ pub fn parse_rpa(path: &str) -> io::Result<Vec<RpaEntry>> {
     // Convert PVal::Dict to RpaEntry list
     let dict = match root {
         PVal::Dict(d) => d,
-        _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "expected dict root")),
+        _ => {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected dict root",
+            ))
+        }
     };
 
     let mut entries = Vec::with_capacity(dict.len());
@@ -400,10 +440,18 @@ pub fn parse_rpa(path: &str) -> io::Result<Vec<RpaEntry>> {
                 _ => continue,
             };
 
-            if items.len() < 2 { continue; }
+            if items.len() < 2 {
+                continue;
+            }
 
-            let stored_offset = match &items[0] { PVal::Int(i) => *i, _ => continue };
-            let stored_length = match &items[1] { PVal::Int(i) => *i, _ => continue };
+            let stored_offset = match &items[0] {
+                PVal::Int(i) => *i,
+                _ => continue,
+            };
+            let stored_length = match &items[1] {
+                PVal::Int(i) => *i,
+                _ => continue,
+            };
             let prefix = match items.get(2) {
                 Some(PVal::Bytes(b)) => b.clone(),
                 _ => Vec::new(),

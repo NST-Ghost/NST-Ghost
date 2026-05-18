@@ -21,7 +21,8 @@ void TranslationTable::setupUI()
     setSelectionBehavior(QAbstractItemView::SelectRows);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
-    setWordWrap(true);
+    setWordWrap(false);
+    setTextElideMode(Qt::ElideRight);
     
     // Header configuration
     horizontalHeader()->setStretchLastSection(true);
@@ -29,6 +30,7 @@ void TranslationTable::setupUI()
     horizontalHeader()->setMinimumSectionSize(150);
     
     verticalHeader()->setVisible(false);
+    verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     verticalHeader()->setDefaultSectionSize(50);
     
     // Styling

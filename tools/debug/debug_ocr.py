@@ -6,6 +6,7 @@ import logging
 sys.path.append('/home/jop/work/NST/NST/scripts')
 sys.path.append('/home/jop/work/NST/NST')
 
+# pyrefly: ignore [missing-import]
 from image_translator import ImageTranslator
 
 def test_ocr(image_path, lang):

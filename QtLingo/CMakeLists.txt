@@ -19,11 +19,13 @@ add_library(QtLingo SHARED
   include/qtlingo/translationplugininterface.h
   include/qtlingo/translationservice.h
   include/qtlingo/translationservicefactory.h
+  include/qtlingo/mcpclient.h
   src/translationservicefactory.cpp
   src/google_translate_service.h
   src/google_translate_service.cpp
   src/llm_translation_service.h
   src/llm_translation_service.cpp
+  src/mcpclient.cpp
   ${TS_FILES}
 )
 

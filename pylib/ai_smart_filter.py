@@ -10,12 +10,17 @@ logging.basicConfig(level=logging.INFO,
                     filename='ai_smart_filter.log')
 logger = logging.getLogger("AISmartFilter")
 
+from typing import List, Set, Optional, Dict, Any
+
 class AISmartFilter:
-    def __init__(self, model_name="all-MiniLM-L6-v2"):
-        self.use_ai = False
-        self.model = None
-        self.embeddings = []
-        self.examples = [] # List of strings that we want to filter out
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+        self.use_ai: bool = False
+        self.model: Any = None
+        self.util: Any = None
+        self.torch: Any = None
+        self.embeddings: Any = None
+        self.examples: List[str] = [] # List of strings that we want to filter out
+        self.example_set: Set[str] = set()
         
         try:
             from sentence_transformers import SentenceTransformer, util
@@ -33,18 +38,19 @@ class AISmartFilter:
             logger.error(f"Failed to load model: {e}")
             self.use_ai = False
 
-        self.threshold = 0.75
-        self.prediction_cache = {}
+        self.threshold: float = 0.75
+        self.prediction_cache: Dict[str, bool] = {}
 
     def _clear_cache(self):
         self.prediction_cache.clear()
 
     def add_example(self, text):
         """Adds a text example to the filter list (stuff to skip)."""
-        if not text or text in self.examples:
+        if not text or text in self.example_set:
             return
             
         self.examples.append(text)
+        self.example_set.add(text)
         self._clear_cache()
         if self.use_ai and self.model:
             # Re-compute embeddings (naive approach for now, optimize later if needed)
@@ -53,21 +59,31 @@ class AISmartFilter:
         logger.info(f"Added example: {text}")
 
     def remove_example(self, text):
-        if text in self.examples:
+        if text in self.example_set:
             self.examples.remove(text)
+            self.example_set.discard(text)
             self._clear_cache()
             if self.use_ai and self.model:
                 self._update_embeddings()
             logger.info(f"Removed example: {text}")
 
     def _update_embeddings(self):
-        if not self.use_ai or not self.examples:
-            self.embeddings = []
+        if not self.use_ai or not self.examples or self.model is None:
+            self.embeddings = None
             return
         try:
-            self.embeddings = self.model.encode(self.examples, convert_to_tensor=True)
+            self.embeddings = self.model.encode(
+                self.examples,
+                convert_to_tensor=True,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
         except Exception as e:
             logger.error(f"Error updating embeddings: {e}")
+            self.embeddings = None
+
+    def _has_embeddings(self):
+        return self.embeddings is not None and len(self.examples) > 0
 
     def predict(self, text):
         """
@@ -84,16 +100,18 @@ class AISmartFilter:
             return self.prediction_cache[text]
 
         result = False
-        if self.use_ai and self.model and len(self.embeddings) > 0:
+        if self.use_ai and self.model and self.torch and self._has_embeddings():
             try:
                 # Encode the new text
-                query_embedding = self.model.encode(text, convert_to_tensor=True)
+                query_embedding = self.model.encode(
+                    text,
+                    convert_to_tensor=True,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                )
                 
-                # Compute cosine similarities
-                cosine_scores = self.util.cos_sim(query_embedding, self.embeddings)[0]
-                
-                # Find the best match
-                best_score = self.torch.max(cosine_scores).item()
+                # Embeddings are normalized, so dot product is cosine similarity.
+                best_score = self.torch.max(self.torch.matmul(query_embedding, self.embeddings.T)).item()
                 
                 if best_score >= self.threshold:
                     logger.info(f"AI Skip: '{text}' (Score: {best_score:.2f})")
@@ -112,7 +130,7 @@ class AISmartFilter:
         # So for non-AI mode in Python, we might just rely on exact match or very simple logic.
         
         if not result:
-             result = text in self.examples
+             result = text in self.example_set
         
         self.prediction_cache[text] = result
         return result
@@ -127,51 +145,57 @@ class AISmartFilter:
         results = [False] * len(texts)
         indices_to_predict = []
         texts_to_predict = []
+        unique_texts = []
+        unique_lookup = {}
         
         # 1. Check Cache first
         for i, text in enumerate(texts):
             if text in self.prediction_cache:
                 results[i] = self.prediction_cache[text]
-            elif self.examples and text in self.examples: # Fast exact check
+            elif self.examples and text in self.example_set: # Fast exact check
                  results[i] = True
                  self.prediction_cache[text] = True
             else:
                 indices_to_predict.append(i)
                 texts_to_predict.append(text)
+                if text not in unique_lookup:
+                    unique_lookup[text] = len(unique_texts)
+                    unique_texts.append(text)
         
         if not indices_to_predict:
             return results
 
-        if not self.use_ai or not self.model or not self.embeddings is not None and len(self.embeddings) == 0:
+        if not self.use_ai or not self.model or not self.torch or not self._has_embeddings():
             # Fallback for all remaining (already checked exact match above)
             for i, text in zip(indices_to_predict, texts_to_predict):
                  self.prediction_cache[text] = False
             return results
 
         try:
-            # Batch Encode
-            query_embeddings = self.model.encode(texts_to_predict, convert_to_tensor=True)
+            # Encode each distinct uncached text once.
+            query_embeddings = self.model.encode(
+                unique_texts,
+                convert_to_tensor=True,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
             
-            # Compute Cosine Similarity against all examples
-            # query_embeddings: [N, D]
-            # self.embeddings: [M, D]
-            # Result: [N, M]
-            cosine_scores = self.util.cos_sim(query_embeddings, self.embeddings)
-            
-            # Max over examples (axis 1)
-            # best_scores: [N]
-            best_scores, _ = self.torch.max(cosine_scores, dim=1)
-            
-            for i, score_tensor in enumerate(best_scores):
-                score = score_tensor.item()
+            # Embeddings are normalized, so dot product is cosine similarity.
+            similarity_scores = self.torch.matmul(query_embeddings, self.embeddings.T)
+            best_scores, _ = self.torch.max(similarity_scores, dim=1)
+
+            unique_results = {}
+            for text, unique_idx in unique_lookup.items():
+                score = best_scores[unique_idx].item()
                 should_skip = (score >= self.threshold)
-                
-                original_idx = indices_to_predict[i]
                 if should_skip:
-                    logger.info(f"AI Skip (Batch): '{texts_to_predict[i]}' (Score: {score:.2f})")
-                
-                results[original_idx] = should_skip
-                self.prediction_cache[texts_to_predict[i]] = should_skip
+                    logger.info(f"AI Skip (Batch): '{text}' (Score: {score:.2f})")
+                unique_results[text] = should_skip
+                self.prediction_cache[text] = should_skip
+            
+            for i, text in enumerate(texts_to_predict):
+                original_idx = indices_to_predict[i]
+                results[original_idx] = unique_results[text]
 
         except Exception as e:
             logger.error(f"Batch prediction error: {e}")
@@ -199,6 +223,7 @@ class AISmartFilter:
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 self.examples = data.get("examples", [])
+                self.example_set = set(self.examples)
                 self.threshold = data.get("threshold", 0.75)
             
             if self.use_ai and self.model:

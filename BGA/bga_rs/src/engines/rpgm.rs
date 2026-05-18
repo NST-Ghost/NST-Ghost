@@ -141,8 +141,7 @@ impl EventCode {
 }
 
 // Lazy-initialized regex patterns
-static URL_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)^(https?|ftp|file)://").unwrap());
+static URL_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(https?|ftp|file)://").unwrap());
 
 static FILE_EXT_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)\.(png|jpg|jpeg|gif|bmp|wav|ogg|m4a|mp3|json|js)$").unwrap());
@@ -150,14 +149,18 @@ static FILE_EXT_PATTERN: Lazy<Regex> =
 static CONTROL_CODE_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)^\\[a-z]\[\d+\]$").unwrap());
 
-static EVENT_NAME_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)^EV\d{3,}$").unwrap());
+static EVENT_NAME_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^EV\d{3,}$").unwrap());
 
-static PLUGIN_CMD_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)^[A-Z][a-zA-Z]+ (open|close|add|remove|set|get|show|hide|enable|disable)").unwrap());
+static PLUGIN_CMD_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)^[A-Z][a-zA-Z]+ (open|close|add|remove|set|get|show|hide|enable|disable)")
+        .unwrap()
+});
 
 static SYMBOL_ONLY_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[^a-zA-Z0-9\p{Thai}\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Cyrillic}\p{Arabic}]+$").unwrap()
+    Regex::new(
+        r"^[^a-zA-Z0-9\p{Thai}\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}\p{Cyrillic}\p{Arabic}]+$",
+    )
+    .unwrap()
 });
 
 static ARRAY_INDEX_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[(\d+)\]").unwrap());
@@ -165,19 +168,73 @@ static ARRAY_INDEX_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[(\d+)\]").
 /// Whitelisted keys for database objects
 static WHITELISTED_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "name", "description", "message1", "message2", "message3", "message4",
-        "note", "nickname", "profile", "gameTitle", "currencyUnit",
-        "terms", "basic", "commands", "params", "messages",
-        "actionFailure", "actorDamage", "actorDrain", "actorGain", "actorLoss",
-        "actorNoDamage", "actorNoHit", "actorRecovery", "alwaysDash", "bgmVolume",
-        "bgsVolume", "buffAdd", "buffRemove", "commandRemember", "counterAttack",
-        "criticalToActor", "criticalToEnemy", "debuffAdd", "defeat", "emerge",
-        "enemyDamage", "enemyDrain", "enemyGain", "enemyLoss", "enemyNoDamage",
-        "enemyNoHit", "enemyRecovery", "escapeFailure", "escapeStart", "evasion",
-        "expNext", "expTotal", "file", "levelUp", "loadMessage", "magicEvasion",
-        "magicReflection", "meVolume", "obtainExp", "obtainGold", "obtainItem",
-        "obtainSkill", "partyName", "possession", "preemptive", "saveMessage",
-        "seVolume", "substitute", "surprise", "useItem", "victory",
+        "name",
+        "description",
+        "message1",
+        "message2",
+        "message3",
+        "message4",
+        "note",
+        "nickname",
+        "profile",
+        "gameTitle",
+        "currencyUnit",
+        "terms",
+        "basic",
+        "commands",
+        "params",
+        "messages",
+        "actionFailure",
+        "actorDamage",
+        "actorDrain",
+        "actorGain",
+        "actorLoss",
+        "actorNoDamage",
+        "actorNoHit",
+        "actorRecovery",
+        "alwaysDash",
+        "bgmVolume",
+        "bgsVolume",
+        "buffAdd",
+        "buffRemove",
+        "commandRemember",
+        "counterAttack",
+        "criticalToActor",
+        "criticalToEnemy",
+        "debuffAdd",
+        "defeat",
+        "emerge",
+        "enemyDamage",
+        "enemyDrain",
+        "enemyGain",
+        "enemyLoss",
+        "enemyNoDamage",
+        "enemyNoHit",
+        "enemyRecovery",
+        "escapeFailure",
+        "escapeStart",
+        "evasion",
+        "expNext",
+        "expTotal",
+        "file",
+        "levelUp",
+        "loadMessage",
+        "magicEvasion",
+        "magicReflection",
+        "meVolume",
+        "obtainExp",
+        "obtainGold",
+        "obtainItem",
+        "obtainSkill",
+        "partyName",
+        "possession",
+        "preemptive",
+        "saveMessage",
+        "seVolume",
+        "substitute",
+        "surprise",
+        "useItem",
+        "victory",
     ]
     .into_iter()
     .collect()
@@ -186,12 +243,24 @@ static WHITELISTED_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 /// Blacklisted keys (contain filenames/technical data)
 static BLACKLISTED_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     [
-        "se", "bgm", "bgs", "me",
-        "animation1Name", "animation2Name",
-        "battlerName", "characterName", "faceName",
-        "motion", "overlay1Name", "overlay2Name",
-        "tileset", "parallaxName", "battleback1Name", "battleback2Name",
-        "script", "url",
+        "se",
+        "bgm",
+        "bgs",
+        "me",
+        "animation1Name",
+        "animation2Name",
+        "battlerName",
+        "characterName",
+        "faceName",
+        "motion",
+        "overlay1Name",
+        "overlay2Name",
+        "tileset",
+        "parallaxName",
+        "battleback1Name",
+        "battleback2Name",
+        "script",
+        "url",
     ]
     .into_iter()
     .collect()
@@ -199,10 +268,25 @@ static BLACKLISTED_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
 
 /// System prefixes that indicate non-translatable strings
 static SYSTEM_PREFIXES: &[&str] = &[
-    "img/", "audio/", "data/", "js/", "fonts/",
-    "Actor", "Class", "Skill", "Item", "Weapon", "Armor",
-    "Enemy", "Troop", "State", "Animation", "Tileset",
-    "CommonEvent", "System", "MapInfo",
+    "img/",
+    "audio/",
+    "data/",
+    "js/",
+    "fonts/",
+    "Actor",
+    "Class",
+    "Skill",
+    "Item",
+    "Weapon",
+    "Armor",
+    "Enemy",
+    "Troop",
+    "State",
+    "Animation",
+    "Tileset",
+    "CommonEvent",
+    "System",
+    "MapInfo",
 ];
 
 pub struct RpgmAnalyzer;
@@ -613,11 +697,16 @@ impl RpgmAnalyzer {
                             Some(v) => Self::update_value_recursive(v, parts, index + 1, new_value),
                             None => {
                                 // If path doesn't exist, create it (only if it's not the last part)
-                                // Actually for RPGM we expect the structure to exist, 
+                                // Actually for RPGM we expect the structure to exist,
                                 // but being robust helps.
                                 obj.insert(part.to_string(), Value::Object(Map::new()));
-                                Self::update_value_recursive(obj.get_mut(part).unwrap(), parts, index + 1, new_value)
-                            },
+                                Self::update_value_recursive(
+                                    obj.get_mut(part).unwrap(),
+                                    parts,
+                                    index + 1,
+                                    new_value,
+                                )
+                            }
                         }
                     }
                 }
@@ -700,7 +789,7 @@ impl RpgmAnalyzer {
                 project_path.join("js").join("plugins"),
                 project_path.join("www").join("js").join("plugins"),
             ];
-            
+
             for plugins_dir in &plugins_dirs {
                 if plugins_dir.exists() {
                     for entry in WalkDir::new(plugins_dir)
@@ -758,7 +847,7 @@ impl RpgmAnalyzer {
 
         // Check both root and www/ subdirectory for fonts
         let font_parents = [parent.to_path_buf(), parent.join("www")];
-        
+
         for font_parent in &font_parents {
             for font_dir_name in ["fonts", "Fonts"] {
                 let font_dir = font_parent.join(font_dir_name);
@@ -814,12 +903,7 @@ impl GameAnalyzer for RpgmAnalyzer {
             match fs::read_to_string(file_path) {
                 Ok(content) => match serde_json::from_str::<Value>(&content) {
                     Ok(doc) => {
-                        Self::extract_strings(
-                            &doc,
-                            &mut entries,
-                            &file_path.to_string_lossy(),
-                            "",
-                        );
+                        Self::extract_strings(&doc, &mut entries, &file_path.to_string_lossy(), "");
                         processed_count += 1;
                     }
                     Err(_) => {
@@ -888,7 +972,8 @@ impl GameAnalyzer for RpgmAnalyzer {
             let output = serde_json::to_string_pretty(&doc)
                 .map_err(|e| format!("Failed to serialize: {}", e))?;
 
-            fs::write(&file_path, output).map_err(|e| format!("Failed to write {}: {}", file_path, e))?;
+            fs::write(&file_path, output)
+                .map_err(|e| format!("Failed to write {}: {}", file_path, e))?;
 
             // Remove backup on success
             let _ = fs::remove_file(&backup_path);
@@ -959,9 +1044,6 @@ mod tests {
             RpgmAnalyzer::update_json_value(&mut doc, "events[0].list[0].parameters[0]", "Updated");
 
         assert!(success);
-        assert_eq!(
-            doc["events"][0]["list"][0]["parameters"][0],
-            "Updated"
-        );
+        assert_eq!(doc["events"][0]["list"][0]["parameters"][0], "Updated");
     }
 }

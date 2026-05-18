@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QFile>
 #include <QSet>
+#include <QCoreApplication>
 
 
 #ifdef HAS_PYTHON
@@ -299,6 +300,10 @@ QList<bool> SmartFilterManager::shouldSkipBatch(const QStringList &texts) const
         if (!skip) {
             aiTasks.append({i, text});
         }
+
+        if ((i % 250) == 0) {
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        }
     }
     
 #ifdef HAS_PYTHON
@@ -306,20 +311,25 @@ QList<bool> SmartFilterManager::shouldSkipBatch(const QStringList &texts) const
     if (!aiTasks.isEmpty() && m_aiEnabled && !d->m_pyFilter.is_none()) {
         try {
             py::gil_scoped_acquire acquire;
-            py::list pyTexts;
-            for (const Task &task : aiTasks) {
-                pyTexts.append(task.text.toStdString());
-            }
-            
-            py::list pyResults = d->m_pyFilter.attr("predict_batch")(pyTexts).cast<py::list>();
-            
-            if (pyResults.size() == aiTasks.size()) {
-                 for (int j = 0; j < aiTasks.size(); ++j) {
-                     bool aiSkip = pyResults[j].cast<bool>();
-                     if (aiSkip) {
-                         results[aiTasks[j].index] = true;
-                     }
-                 }
+
+            const int aiChunkSize = 256;
+            for (int start = 0; start < aiTasks.size(); start += aiChunkSize) {
+                const int end = qMin(start + aiChunkSize, aiTasks.size());
+                py::list pyTexts;
+                for (int i = start; i < end; ++i) {
+                    pyTexts.append(aiTasks[i].text.toStdString());
+                }
+
+                py::list pyResults = d->m_pyFilter.attr("predict_batch")(pyTexts).cast<py::list>();
+                const int resultCount = qMin(static_cast<int>(pyResults.size()), end - start);
+                for (int j = 0; j < resultCount; ++j) {
+                    bool aiSkip = pyResults[j].cast<bool>();
+                    if (aiSkip) {
+                        results[aiTasks[start + j].index] = true;
+                    }
+                }
+
+                QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             }
         } catch (const std::exception &e) {
             qDebug() << "AI Batch Predict Error:" << e.what();

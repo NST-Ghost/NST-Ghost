@@ -2,7 +2,6 @@
 ///
 /// Sends text in chunks to avoid token limits.
 /// Preserves Ren'Py markup tags like {b}, {i}, {color}, {font}, etc.
-
 use crate::extractor::TextBlock;
 use std::collections::HashMap;
 use std::io::{self, Write};
@@ -27,14 +26,23 @@ pub fn translate_blocks(
         }
     }
 
-    eprintln!("[translate] {} unique strings to translate → {}", unique.len(), target_lang);
+    eprintln!(
+        "[translate] {} unique strings to translate → {}",
+        unique.len(),
+        target_lang
+    );
 
     let mut result: HashMap<String, String> = HashMap::new();
     let chunks: Vec<&[&str]> = unique.chunks(BATCH_SIZE).collect();
     let total = chunks.len();
 
     for (i, chunk) in chunks.iter().enumerate() {
-        eprint!("[translate] batch {}/{} ({} strings)...", i + 1, total, chunk.len());
+        eprint!(
+            "[translate] batch {}/{} ({} strings)...",
+            i + 1,
+            total,
+            chunk.len()
+        );
         io::stderr().flush().ok();
 
         match translate_batch(chunk, target_lang, api_key) {

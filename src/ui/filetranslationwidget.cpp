@@ -36,7 +36,7 @@ FileTranslationWidget::FileTranslationWidget(TranslationServiceManager *serviceM
     setupTimers();
 
     connect(&m_loadFutureWatcher, &QFutureWatcher<QJsonArray>::finished, this, &FileTranslationWidget::onLoadingFinished);
-    connect(ui->fileListView, &QListView::clicked, m_projectDataManager, &ProjectDataManager::onFileSelected);
+    connect(ui->fileListView, &QListView::clicked, this, &FileTranslationWidget::displayFile);
 }
 
 /* =========================================================================
@@ -65,13 +65,13 @@ void FileTranslationWidget::setupTableView()
 {
     ui->translationTableView->setModel(m_translationModel);
     
-    // Word wrap and display settings
-    ui->translationTableView->setWordWrap(true);
-    ui->translationTableView->setTextElideMode(Qt::ElideNone);
+    // Avoid expensive text layout when opening files with thousands of long rows.
+    ui->translationTableView->setWordWrap(false);
+    ui->translationTableView->setTextElideMode(Qt::ElideRight);
     ui->translationTableView->setAlternatingRowColors(true);
     
     // Header configuration
-    ui->translationTableView->verticalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    ui->translationTableView->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
     ui->translationTableView->verticalHeader()->setDefaultSectionSize(60);
     ui->translationTableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
     ui->translationTableView->horizontalHeader()->setStretchLastSection(true);
@@ -183,7 +183,7 @@ void FileTranslationWidget::connectManagerSignals()
                     }
                 }
                 m_isTranslating = false;
-                processNextTranslationJob();
+                QTimer::singleShot(25, this, &FileTranslationWidget::processNextTranslationJob);
             }
         });
     }
@@ -343,7 +343,7 @@ void FileTranslationWidget::onLoadingFinished()
     
     QJsonArray extractedTextsArray = m_loadFutureWatcher.result();
     if (extractedTextsArray.isEmpty()) {
-        QMessageBox::warning(this, tr("Warning"), tr("No translatable text found in this project.\nCheck if the format is supported (RPG Maker MV/MZ)."));
+        QMessageBox::warning(this, tr("Warning"), tr("No translatable text found in this project.\nPlease check if the project format is supported."));
         return;
     }
 
@@ -388,7 +388,7 @@ void FileTranslationWidget::onProjectProcessingFinished()
     if (m_fileListModel->rowCount() > 0) {
         QModelIndex firstIndex = m_fileListModel->index(0, 0);
         ui->fileListView->setCurrentIndex(firstIndex);
-        m_projectDataManager->onFileSelected(firstIndex);
+        displayFile(firstIndex);
     } else {
         // If rowCount is 0 after processing, it means filtering removed everything or empty.
         // Warn user?
@@ -415,11 +415,14 @@ void FileTranslationWidget::openSearchDialog()
 
 void FileTranslationWidget::onSearchResultSelected(const QString &fileName, int row)
 {
-    QString fullPath;
-    for (const QString &key : m_projectDataManager->getLoadedGameProjectData().keys()) {
-        if (QFileInfo(key).fileName() == fileName) {
-            fullPath = key;
-            break;
+    QString fullPath = fileName;
+    if (!m_projectDataManager->getLoadedGameProjectData().contains(fullPath)) {
+        fullPath.clear();
+        for (const QString &key : m_projectDataManager->getLoadedGameProjectData().keys()) {
+            if (QFileInfo(key).fileName() == fileName) {
+                fullPath = key;
+                break;
+            }
         }
     }
     if (fullPath.isEmpty()) return;
@@ -428,9 +431,7 @@ void FileTranslationWidget::onSearchResultSelected(const QString &fileName, int 
         if (item && item->data(Qt::UserRole).toString() == fullPath) {
             QModelIndex modelIdx = m_fileListModel->index(i, 0);
             ui->fileListView->setCurrentIndex(modelIdx);
-            ui->translationTableView->setUpdatesEnabled(false);
-            m_projectDataManager->onFileSelected(modelIdx);
-            ui->translationTableView->setUpdatesEnabled(true);
+            displayFile(modelIdx);
             break;
         }
     }
@@ -472,13 +473,30 @@ void FileTranslationWidget::openMockData()
     QModelIndex idx = m_fileListModel->index(0, 0);
     ui->fileListView->setCurrentIndex(idx);
     ui->translationTableView->setUpdatesEnabled(false);
-    m_projectDataManager->onFileSelected(idx);
+    displayFile(idx);
     ui->translationTableView->setUpdatesEnabled(true);
 }
 
 void FileTranslationWidget::onSearchRequested(const QString &query)
 {
     m_searchController->onSearchQueryChanged(query);
+    m_searchDialog->displaySearchResults(m_searchController->searchAllFiles(query), query);
+}
+
+void FileTranslationWidget::displayFile(const QModelIndex &index)
+{
+    if (!index.isValid() || !m_projectDataManager || !m_translationModel) return;
+
+    ui->translationTableView->setUpdatesEnabled(false);
+    ui->translationTableView->setModel(nullptr);
+
+    m_projectDataManager->onFileSelected(index);
+
+    ui->translationTableView->setModel(m_translationModel);
+    ui->translationTableView->setColumnWidth(0, 250);
+    ui->translationTableView->setColumnWidth(1, 250);
+    ui->translationTableView->setUpdatesEnabled(true);
+    ui->translationTableView->viewport()->update();
 }
 
 void FileTranslationWidget::onTranslationFinished(const qtlingo::TranslationResult &result)
@@ -520,6 +538,7 @@ void FileTranslationWidget::processIncomingResults()
 
         if (targetFilePath == currentLoadedPath) {
             auto pendingList = m_pendingTranslations.values(sourceText);
+            bool updatedVisibleRows = false;
             for (const PendingTranslation &pending : pendingList) {
                 if (pending.filePath != targetFilePath) continue;
                 if (!pending.index.isValid()) continue;
@@ -532,6 +551,20 @@ void FileTranslationWidget::processIncomingResults()
                 if (item) {
                     item->setText(translatedText);
                     m_pendingUIUpdates.append(pending.index);
+                    updatedVisibleRows = true;
+                }
+            }
+            if (!updatedVisibleRows) {
+                for (int row = 0; row < m_translationModel->rowCount(); ++row) {
+                    QModelIndex sourceIndex = m_translationModel->index(row, 1);
+                    if (m_translationModel->data(sourceIndex).toString() != sourceText) continue;
+
+                    QModelIndex translationIndex = m_translationModel->index(row, 2);
+                    QStandardItem *item = m_translationModel->item(row, 2);
+                    if (item) {
+                        item->setText(translatedText);
+                        m_pendingUIUpdates.append(translationIndex);
+                    }
                 }
             }
         }
@@ -550,7 +583,13 @@ void FileTranslationWidget::processIncomingResults()
                 m_projectDataManager->getLoadedGameProjectData().insert(targetFilePath, textsArray);
             }
         }
+        auto pendingList = m_pendingTranslations.values(sourceText);
         m_pendingTranslations.remove(sourceText);
+        for (const PendingTranslation &pending : pendingList) {
+            if (pending.filePath != targetFilePath) {
+                m_pendingTranslations.insert(sourceText, pending);
+            }
+        }
     }
     if (m_translationModel) m_translationModel->blockSignals(false);
     if (!m_pendingUIUpdates.isEmpty()) {
@@ -748,7 +787,7 @@ void FileTranslationWidget::onHideCompleted(bool checked)
     m_projectDataManager->setHideCompleted(checked);
     // Refresh view
     QModelIndex idx = ui->fileListView->currentIndex();
-    if(idx.isValid()) m_projectDataManager->onFileSelected(idx);
+    if(idx.isValid()) displayFile(idx);
 }
 
 void FileTranslationWidget::onExportSmartFilterRules()
@@ -880,9 +919,11 @@ void FileTranslationWidget::onDeployProject()
     bool onlyTranslated = (choice == options[0]);
 
     QString dir;
-    
-    // Check if default path is set via CLI
-    if (!m_defaultDeploymentPath.isEmpty()) {
+    const bool isRenpy = (m_engineName.compare(QStringLiteral("renpy"), Qt::CaseInsensitive) == 0);
+
+    if (isRenpy) {
+        dir = gamePath;
+    } else if (!m_defaultDeploymentPath.isEmpty()) {
         dir = m_defaultDeploymentPath;
         // Verify path is valid/writable?
         QFileInfo info(dir);
@@ -927,7 +968,9 @@ void FileTranslationWidget::onDeployProject()
         }
     }
     
-    m_progressDialog->setLabelText(tr("Deploying game (Copying & Patching)..."));
+    m_progressDialog->setLabelText(isRenpy
+        ? tr("Deploying Ren'Py translations...")
+        : tr("Deploying game (Copying & Patching)..."));
     m_progressDialog->setRange(0, 0);
     m_progressDialog->show();
     QApplication::processEvents();
@@ -937,13 +980,16 @@ void FileTranslationWidget::onDeployProject()
         gamePath,
         dir,
         m_projectDataManager->getLoadedGameProjectData(),
-        onlyTranslated
+        onlyTranslated,
+        m_targetLanguage
     );
     
     m_progressDialog->close();
 
     if (success) {
-        QString message = tr("Game Deployed successfully to:\n%1").arg(dir);
+        QString message = isRenpy
+            ? tr("Ren'Py translations deployed to:\n%1").arg(dir)
+            : tr("Game Deployed successfully to:\n%1").arg(dir);
         if (backupEnabled) {
             message += tr("\n\nBackup saved in: %1/_nst_backup").arg(gamePath);
         }
@@ -997,7 +1043,8 @@ void FileTranslationWidget::onDeployProjectCLI(const QString &targetDir, bool cr
         gamePath,
         outputPath,
         m_projectDataManager->getLoadedGameProjectData(),
-        true  // onlyTranslated = true
+        true,  // onlyTranslated = true
+        m_targetLanguage
     );
 
     if (success) {

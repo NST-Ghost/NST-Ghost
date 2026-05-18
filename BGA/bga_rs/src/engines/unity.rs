@@ -6,9 +6,9 @@ use crate::analyzer::{AnalyzerOutput, GameAnalyzer, TextEntry};
 use serde_json::json;
 use std::fs;
 use std::path::Path;
-use walkdir::WalkDir;
 use unity_asset_binary::asset::SerializedFile;
 use unity_asset_binary::reader::BinaryReader;
+use walkdir::WalkDir;
 
 pub struct UnityAnalyzer;
 
@@ -28,10 +28,7 @@ impl GameAnalyzer for UnityAnalyzer {
     fn analyze(&self, input_path: &Path) -> AnalyzerOutput {
         let mut entries = Vec::new();
 
-        for entry in WalkDir::new(input_path)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
+        for entry in WalkDir::new(input_path).into_iter().filter_map(|e| e.ok()) {
             if entry.file_type().is_file() {
                 if let Some(ext) = entry.path().extension() {
                     let ext_str = ext.to_string_lossy().to_lowercase();

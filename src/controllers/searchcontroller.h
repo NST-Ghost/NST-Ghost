@@ -9,6 +9,8 @@
 #include <QStringListModel>
 #include <QPair>
 #include <QtConcurrent/QtConcurrent>
+#include <QJsonObject>
+#include <QRegularExpression>
 
 class SearchController : public QObject
 {
@@ -28,6 +30,25 @@ public slots:
     void onSearchQueryChanged(const QString &query);
 
 private:
+    struct SearchTerm {
+        QString field;
+        QString value;
+        bool negative = false;
+        bool regex = false;
+        QRegularExpression expression;
+    };
+
+    struct ParsedQuery {
+        QList<SearchTerm> terms;
+        Qt::CaseSensitivity caseSensitivity = Qt::CaseInsensitive;
+        bool valid = true;
+    };
+
+    ParsedQuery parseQuery(const QString &query) const;
+    bool matchesObject(const QJsonObject &object, const QString &filePath, const ParsedQuery &query) const;
+    bool matchesModelRow(int row, const ParsedQuery &query) const;
+    QString buildResultPreview(const QJsonObject &object, const SearchTerm *matchedTerm = nullptr) const;
+
     QStandardItemModel *m_translationModel;
     QTableView *m_view;
     const QMap<QString, QJsonArray> *m_loadedGameProjectData;

@@ -31,7 +31,10 @@ pub unsafe extern "C" fn bga_analyze(engine: *const c_char, path: *const c_char)
         Err(_) => return std::ptr::null_mut(),
     };
 
-    println!("[BGA-Rust-FFI] bga_analyze(engine='{}', path='{}')", engine_str, path_str);
+    println!(
+        "[BGA-Rust-FFI] bga_analyze(engine='{}', path='{}')",
+        engine_str, path_str
+    );
 
     let result = match engine_str.to_lowercase().as_str() {
         "rpgm" => {
