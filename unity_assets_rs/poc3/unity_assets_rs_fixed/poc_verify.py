@@ -6,11 +6,12 @@ Proves all 5 Rust fixes work by reading resources.assets in pure Python.
 Usage:
     python3 poc_verify.py resources.assets
 """
-import struct, sys, json
+import struct, sys
 from collections import Counter
 
 path = sys.argv[1] if len(sys.argv) > 1 else "resources.assets"
-data = open(path, 'rb').read()
+with open(path, 'rb') as f:
+    data = f.read()
 print(f"File: {path}  ({len(data):,} bytes)\n")
 
 # ── Header (big-endian) ───────────────────────────────────────────────────────
@@ -67,7 +68,7 @@ CLASS_NAMES = {
 
 objects = []
 errors  = 0
-for i in range(obj_count):
+for _ in range(obj_count):
     a = (pos + 3) & ~3; pos = a          # per-object align (correct)
     path_id    = struct.unpack_from('<q', data, pos)[0]; pos += 8
     byte_start = struct.unpack_from('<Q', data, pos)[0]; pos += 8
