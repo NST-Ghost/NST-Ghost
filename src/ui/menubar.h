@@ -12,6 +12,7 @@ public:
 signals:
     void openMockData();
     void newProject();      // Renamed from loadFromGameProject
+    void updateProject();   // Added
     void openProject();     // Renamed from openWorkspace
     void settings();
     void saveProject();     // Kept same name, logic changes
@@ -41,6 +42,7 @@ private:
     QMenu *smartFilterMenu;
     QAction *openMockDataAction;
     QAction *newProjectAction;      // Renamed
+    QAction *updateProjectAction;   // Added
     QAction *openProjectAction;     // Renamed
     QAction *settingsAction;
     QAction *saveProjectAction;

@@ -129,6 +129,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Connect MenuBar signals to FileTranslationWidget slots
     connect(m_menuBar, &MenuBar::openMockData, m_fileTranslationWidget, &FileTranslationWidget::openMockData);
     connect(m_menuBar, &MenuBar::newProject, this, &MainWindow::onNewProject);
+    connect(m_menuBar, &MenuBar::updateProject, m_fileTranslationWidget, &FileTranslationWidget::onUpdateProject);
     connect(m_menuBar, &MenuBar::openProject, m_fileTranslationWidget, &FileTranslationWidget::onOpenProject);
     
     // Changing strategy: Connect to FileTranslationWidget signal if it exists, or add one.

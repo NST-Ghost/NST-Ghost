@@ -50,6 +50,7 @@ public:
     void onImportSmartFilterRules();
     // New Project Flow (cliMode=true skips save dialog and auto-saves)
     void onNewProject(const QString &engineName, const QString &projectPath, bool cliMode = false); 
+    void onUpdateProject(); // Added: Update project with new game version
     void onOpenProject();  // Renamed from onLoadTranslationWorkspace
     void onSaveProject();  // Renamed from onSaveGameProject
     void onDeployProject(); // Renamed from onExportGameProject
@@ -162,6 +163,7 @@ private:
     QTimer *m_uiUpdateTimer;
     
     bool m_isImporting = false; // Flag to track import state
+    bool m_isUpdating = false; // Added: Track if we are merging/updating
     QJsonArray m_gameFonts; // Added
     
     QTimer *m_spinnerTimer;

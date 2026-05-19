@@ -24,6 +24,9 @@ void MenuBar::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(exitAction);
 
+    QMenu *projectMenu = addMenu(tr("&Project"));
+    projectMenu->addAction(updateProjectAction);
+
     viewMenu = addMenu(tr("&View"));
     viewMenu->addAction(toggleContextAction);
     viewMenu->addAction(hideCompletedAction);
@@ -46,6 +49,9 @@ void MenuBar::createActions()
 
     newProjectAction = new QAction(tr("New Project..."), this);
     connect(newProjectAction, &QAction::triggered, this, &MenuBar::newProject);
+
+    updateProjectAction = new QAction(tr("Update Game Version..."), this);
+    connect(updateProjectAction, &QAction::triggered, this, &MenuBar::updateProject);
 
     openProjectAction = new QAction(tr("Open Project..."), this);
     connect(openProjectAction, &QAction::triggered, this, &MenuBar::openProject);

@@ -91,6 +91,77 @@ void ProjectDataManager::onLoadingFinished(const QJsonArray &extractedTextsArray
     }
 }
 
+void ProjectDataManager::mergeLoadingFinished(const QJsonArray &newExtractedTextsArray, bool sync)
+{
+    qDebug() << "ProjectDataManager: mergeLoadingFinished called with " << newExtractedTextsArray.size() << " entries. Sync =" << sync;
+
+    // 1. Create a map from existing data: (source + key) -> translation
+    QMap<QString, QString> translationMemory;
+    for (auto it = m_loadedGameProjectData.begin(); it != m_loadedGameProjectData.end(); ++it) {
+        const QJsonArray &arr = it.value();
+        for (const QJsonValue &val : arr) {
+            QJsonObject obj = val.toObject();
+            QString source = obj["source"].toString();
+            QString key = obj["key"].toString();
+            QString translation = obj["text"].toString();
+            
+            if (!translation.isEmpty()) {
+                translationMemory.insert(source + "|" + key, translation);
+            }
+        }
+    }
+
+    auto processFunc = [newExtractedTextsArray, translationMemory]() {
+        QMap<QString, QJsonArray> fileMap;
+        QStringList filePaths;
+        QSet<QString> uniquePaths;
+
+        for (const QJsonValue &value : newExtractedTextsArray) {
+            QJsonObject obj = value.toObject();
+            QString filePath = obj["path"].toString();
+            if (filePath.isEmpty()) continue;
+
+            QString source = obj["source"].toString();
+            QString key = obj["key"].toString();
+            
+            // Check for match in translation memory
+            QString tmKey = source + "|" + key;
+            if (translationMemory.contains(tmKey)) {
+                obj["text"] = translationMemory.value(tmKey);
+            }
+
+            fileMap[filePath].append(obj);
+            if (!uniquePaths.contains(filePath)) {
+                uniquePaths.insert(filePath);
+                filePaths.append(filePath);
+            }
+        }
+
+        std::sort(filePaths.begin(), filePaths.end(), [](const QString &a, const QString &b) {
+            return QFileInfo(a).fileName() < QFileInfo(b).fileName();
+        });
+
+        return qMakePair(fileMap, filePaths);
+    };
+
+    if (sync) {
+        auto result = processFunc();
+        m_loadedGameProjectData = result.first;
+        if (m_fileListModel) {
+            m_fileListModel->clear();
+            for (const QString &path : result.second) {
+                QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
+                item->setData(path, Qt::UserRole);
+                m_fileListModel->appendRow(item);
+            }
+        }
+        emit processingFinished();
+    } else {
+        QFuture<QPair<QMap<QString, QJsonArray>, QStringList>> future = QtConcurrent::run(processFunc);
+        m_processingFutureWatcher.setFuture(future);
+    }
+}
+
 void ProjectDataManager::onProcessingFinished()
 {
     qDebug() << "ProjectDataManager: Background processing finished.";

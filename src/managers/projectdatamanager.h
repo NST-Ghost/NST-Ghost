@@ -37,6 +37,7 @@ public:
 
 public slots:
     void onLoadingFinished(const QJsonArray &extractedTextsArray, bool sync = false);
+    void mergeLoadingFinished(const QJsonArray &newExtractedTextsArray, bool sync = false);
     void onFileSelected(const QModelIndex &index);
 
 private slots:

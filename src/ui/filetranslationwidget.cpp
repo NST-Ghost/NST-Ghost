@@ -306,6 +306,7 @@ void FileTranslationWidget::onNewProject(const QString &engineName, const QStrin
     m_progressDialog->show();
 
     m_isImporting = true; // Set flag start
+    m_isUpdating = false;
 
     // Use lambda to call BGADataManager
     QFuture<QJsonArray> future = QtConcurrent::run([this, engineName, projectPath]() {
@@ -317,25 +318,43 @@ void FileTranslationWidget::onNewProject(const QString &engineName, const QStrin
     emit projectLoaded(projectPath);
 }
 
+void FileTranslationWidget::onUpdateProject()
+{
+    if (m_projectDataManager->getLoadedGameProjectData().isEmpty()) {
+        QMessageBox::warning(this, tr("No Project"), tr("Please open a project before updating."));
+        return;
+    }
+
+    QString newProjectPath = QFileDialog::getExistingDirectory(this, tr("Select New Game Version Folder"),
+                                                            m_projectDataManager->getProjectPath(),
+                                                            QFileDialog::ShowDirsOnly
+                                                            | QFileDialog::DontResolveSymlinks);
+    if (newProjectPath.isEmpty()) return;
+
+    m_progressDialog = new CustomProgressDialog(this);
+    m_progressDialog->setWindowModality(Qt::WindowModal);
+    m_progressDialog->setValue(0);
+    m_progressDialog->setLabelText(tr("Scanning new game version..."));
+    m_progressDialog->show();
+
+    m_isUpdating = true;
+    m_isImporting = false;
+
+    // Update project path in manager (optional? depends if we want to point to v0.2 from now on)
+    m_projectDataManager->setProjectPath(newProjectPath);
+
+    QString engineName = m_engineName;
+    QFuture<QJsonArray> future = QtConcurrent::run([this, engineName, newProjectPath]() {
+        return m_bgaDataManager->loadStringsFromGameProject(engineName, newProjectPath);
+    });
+    
+    m_loadFutureWatcher.setFuture(future);
+}
+
 void FileTranslationWidget::onLoadingFinished()
 {
     if (m_progressDialog) {
-        // Keep progress dialog open during PDM processing? 
-        // PDM takes over. But PDM runs in background thread.
-        // We should update the label at least.
         m_progressDialog->setLabelText(tr("Processing extracted text..."));
-        // Don't close yet if we passed it to PDM
-        // But PDM logic runs async via QtConcurrent. 
-        // We can close here and let PDM processing happen, showing a new spinner or just non-modal?
-        // Or keep it simple: Just update label.
-        // BUT PDM starts its own watcher. We don't have a direct hook unless we rely on signals.
-        // Let's close it here for now, or the user is stuck if PDM fails.
-        // The original code closed it. Let's keep closing it to avoid sticking.
-        // Better UX: Keep it open.
-        // But for now, closest to original behavior is fine, but we need to wait for processingFinished.
-        
-        // Actually, let's close it here because PDM processing is usually fast.
-        // If it's slow, we might want a spinner.
         m_progressDialog->close();
         delete m_progressDialog;
         m_progressDialog = nullptr;
@@ -347,9 +366,11 @@ void FileTranslationWidget::onLoadingFinished()
         return;
     }
 
-    m_projectDataManager->onLoadingFinished(extractedTextsArray);
-
-    // Auto-save MOVED to onProjectProcessingFinished
+    if (m_isUpdating) {
+        m_projectDataManager->mergeLoadingFinished(extractedTextsArray);
+    } else {
+        m_projectDataManager->onLoadingFinished(extractedTextsArray);
+    }
 }
 
 void FileTranslationWidget::onProjectProcessingFinished()
@@ -369,20 +390,11 @@ void FileTranslationWidget::onProjectProcessingFinished()
     
     if (!m_currentProjectFile.isEmpty()) {
         m_projectDataManager->saveTranslationWorkspace(m_currentProjectFile);
-        
-        // Only show message if model indicates data?
-        // Let's assume if processing finished, we are good.
-        // Showing message every time processing finishes (refresh?) might be annoying.
-        // But this signal fires after loading.
-        
-        // Let's only show if it's a fresh import... hard to tell without state.
-        // For now, I'll log/status bar instead of Popup to avoid annoyance,
-        // EXCEPT if the user just clicked "New Project". 
-        // Whatever, let's show status bar or a disappearing message.
-        // Given I can't easily add state right now, I'll stick to saving.
-        // The "Success" popup is important for the first time.
-        
-        // I will assume if the table is populated, we are good.
+    }
+
+    if (m_isUpdating) {
+        QMessageBox::information(this, tr("Update Complete"), tr("Game version updated successfully.\nExisting translations have been merged."));
+        m_isUpdating = false;
     }
 
     if (m_fileListModel->rowCount() > 0) {
