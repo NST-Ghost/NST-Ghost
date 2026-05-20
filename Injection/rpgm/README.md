@@ -1,64 +1,55 @@
 # NST Translation Layer — RPG Maker
 
-ระบบแปลภาษาแบบ drop-in สำหรับเกม RPG Maker MV/MZ  
-**ไม่แก้ไขไฟล์ต้นฉบับเกม** — วางไฟล์แล้วเล่นได้เลย
+ระบบแปลภาษาแบบ **drop-in** สำหรับเกม RPG Maker MV/MZ  
+**ไม่ต้องเปิดโปรแกรมอะไร — ไม่ต้องแก้ไขอะไร — วางไฟล์แล้วเล่นได้เลย**
 
-## รองรับ
-- ✅ NW.js (PC — Windows/Linux/Mac)
-- ✅ JoiPlay (Android)
-- ✅ Browser
-- ✅ Electron
+ใช้ได้ทุกที่: NW.js (PC) / JoiPlay (Android) / Browser / Linux / Mac
 
 ---
 
-## วิธีติดตั้ง (สำหรับผู้ใช้)
+## วิธีใช้ — วางแล้วเล่น
 
-### 1. คัดลอกไฟล์ลงเกม
+### สำหรับเกม RPG Maker MV
 
-วาง 2 อย่างนี้ลงใน root ของเกม:
+คัดลอกทั้ง 3 อย่างนี้วางทับลงในโฟลเดอร์เกม:
 
 ```
-[เกม]/
-├── js/plugins/
-│   └── NST_TranslationLayer.js     ← คัดลอกไฟล์นี้มาวาง
-├── nst_translations/                ← คัดลอกโฟลเดอร์นี้มาวาง
-│   ├── config.txt
-│   ├── Map001.txt
-│   ├── Map002.txt
-│   ├── Actors.txt
-│   ├── Items.txt
-│   └── System.txt
-├── data/                            ← ไฟล์เกมเดิม (ไม่ต้องแตะ)
-└── index.html
+คัดลอกจาก mv/ :
+├── js/
+│   ├── main.js                      ← วางทับ (auto-boot)
+│   └── plugins/
+│       └── NST_TranslationLayer.js  ← วาง
+└── nst_translations/                ← วาง
+    ├── config.txt
+    ├── Map001.txt
+    └── ...
 ```
 
-### 2. เปิดใช้ Plugin
+### สำหรับเกม RPG Maker MZ
 
-เปิดไฟล์ `js/plugins.js` แล้วเพิ่มบรรทัดนี้ในอาร์เรย์:
+คัดลอกจาก `mz/` แทน (โครงสร้างเหมือนกัน)
 
-```js
-{"name":"NST_TranslationLayer","status":true,"description":"NST Translation","parameters":{}}
-```
-
-**ตัวอย่าง plugins.js:**
-```js
-var $plugins = [
-  // ... plugin อื่นๆ ของเกม ...
-  {"name":"NST_TranslationLayer","status":true,"description":"NST Translation","parameters":{}}
-];
-```
-
-### 3. เล่นเกม
-
-เปิดเกมตามปกติ — ข้อความจะถูกแปลอัตโนมัติ
+### จบ — เปิดเกมเล่นได้เลย
 
 ---
 
-## Format ไฟล์คำแปล (.txt)
+## สร้างไฟล์คำแปล
+
+### Format (.txt)
+
+สร้างไฟล์ `.txt` ใน `nst_translations/` ตั้งชื่อตาม data file ของเกม:
+
+| ไฟล์เกม (data/) | ไฟล์แปล (nst_translations/) |
+|-----------------|---------------------------|
+| Map001.json | Map001.txt |
+| Actors.json | Actors.txt |
+| Items.json | Items.txt |
+| System.json | System.txt |
+| CommonEvents.json | CommonEvents.txt |
+
+### เขียนคำแปล
 
 ```
-# ไฟล์ Map001.txt
-
 <<<ORIGINAL>>>
 こんにちは、旅人よ。
 <<<TRANSLATED>>>
@@ -74,42 +65,20 @@ var $plugins = [
 <<<END>>>
 ```
 
-### Key-based matching (optional — แม่นยำกว่า)
-
-```
-<<<KEY>>>
-events[5].list[3].parameters[0]
-<<<ORIGINAL>>>
-こんにちは、旅人よ。
-<<<TRANSLATED>>>
-สวัสดี, นักเดินทาง
-<<<END>>>
-```
-
----
-
-## config.txt
+### config.txt
 
 ```ini
-# เปิด/ปิดการแปล
 enabled=true
-
-# แสดง debug ใน console (F12)
 debug=false
-
-# โหลดเฉพาะ map ที่เล่น (ประหยัด memory)
 lazy_load=true
-
-# ถ้าไม่มีคำแปล: original / empty / [untranslated]
 fallback=original
 ```
 
 ---
 
-## Debug (F12 Console)
+## Debug (F12)
 
 ```js
-NST.TL.stats()       // ดูจำนวน entries ที่โหลด
+NST.TL.stats()       // ดูจำนวน entries
 NST.TL.reload()      // โหลดคำแปลใหม่
-NST.TL.translate("テスト")  // ทดสอบแปลคำ
 ```
