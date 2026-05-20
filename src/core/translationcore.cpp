@@ -2,6 +2,7 @@
 #define TRANSLATIONCORE_CPP
 
 #include "translationcore.h"
+#include "rpgm_injection_exporter.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QDebug>
@@ -107,6 +108,30 @@ bool TranslationCore::deployProject(const QString &targetDir, bool createBackup)
         outputPath,
         m_projectDataManager->getLoadedGameProjectData(),
         true // onlyTranslated
+    );
+
+    return success;
+}
+
+bool TranslationCore::deployAsInjection(const QString &languageName)
+{
+    QString gamePath = m_projectDataManager->getProjectPath();
+    if (gamePath.isEmpty()) {
+        emit errorOccurred("No project loaded.");
+        return false;
+    }
+
+    RpgmInjectionExporter exporter(this);
+    connect(&exporter, &RpgmInjectionExporter::errorOccurred, this, &TranslationCore::errorOccurred);
+    connect(&exporter, &RpgmInjectionExporter::progressUpdated, this, [this](int pct, const QString &msg) {
+        emit totalProgressUpdated(pct, 100);
+    });
+
+    bool success = exporter.deploy(
+        gamePath,
+        m_projectDataManager->getLoadedGameProjectData(),
+        true, // onlyTranslated
+        languageName
     );
 
     return success;

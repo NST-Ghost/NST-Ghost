@@ -13,6 +13,7 @@
 #include "translationservicemanager.h"
 #include "smartfiltermanager.h"
 #include "projectdatamanager.h"
+#include "rpgm_injection_exporter.h"
 
 namespace qtlingo {
     struct TranslationResult;
@@ -36,6 +37,7 @@ public:
     void saveProject(); // Saves metadata directly into game data files (DANGEROUS if called blindly)
     bool saveWorkspace(const QString &filePath); // Saves to a single .nst file
     bool deployProject(const QString &targetDir = QString(), bool createBackup = true);
+    bool deployAsInjection(const QString &languageName = QStringLiteral("Thai"));
 
     // Translation Actions
     void translateAll(const QString &serviceName = QString());

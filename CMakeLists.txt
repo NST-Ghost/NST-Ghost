@@ -50,6 +50,8 @@ set(PROJECT_SOURCES
     src/core/main.cpp
     src/core/translationcore.cpp
     src/core/translationcore.h
+    src/core/rpgm_injection_exporter.cpp
+    src/core/rpgm_injection_exporter.h
     src/ui/mainwindow.cpp
     src/ui/menubar.cpp
     src/dialogs/loadprojectdialog.cpp
@@ -200,6 +202,13 @@ add_custom_command(TARGET NST POST_BUILD
         ${CMAKE_SOURCE_DIR}/scripts
         ${CMAKE_BINARY_DIR}/scripts
     COMMENT "Syncing Lua scripts to build directory..."
+)
+# Copy RPGM injection plugin to build directory
+add_custom_command(TARGET NST POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/Injection/rpgm
+        ${CMAKE_BINARY_DIR}/Injection/rpgm
+    COMMENT "Syncing RPGM injection plugin to build directory..."
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
