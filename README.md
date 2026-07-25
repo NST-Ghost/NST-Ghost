@@ -47,6 +47,11 @@ The script uses [uv](https://astral.sh/uv) to ensure correct package versions ar
 
 Please see the [CONTRIBUTING.md](CONTRIBUTING.md) file for details on how to contribute to this project.
 
+## SAST Tools
+
+[PVS-Studio](https://pvs-studio.com/en/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static analyzer for C, C++, C#, and Java code.
+
 ## License
 
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
