@@ -11,9 +11,16 @@ CustomProgressDialog::CustomProgressDialog(QWidget *parent)
     m_progressBar->setRange(0, 100);
     m_progressBar->setValue(0);
 
+    m_cancelButton = new QPushButton("Stop / Cancel Translation", this);
+    connect(m_cancelButton, &QPushButton::clicked, this, [this]() {
+        emit canceled();
+        reject();
+    });
+
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->addWidget(m_labelText);
     layout->addWidget(m_progressBar);
+    layout->addWidget(m_cancelButton);
 
     setLayout(layout);
 }

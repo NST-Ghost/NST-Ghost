@@ -22,7 +22,7 @@ public:
     void setTargetLanguage(const QString &language) override;
     void setSourceLanguage(const QString &language);
     void setGoogleTranslateMode(bool isApi);
-    void configure(const QVariantMap &settings) override;
+    void configure(const TranslationSettings &settings) override;
 
 private slots:
     void onNetworkReply(QNetworkReply *reply);

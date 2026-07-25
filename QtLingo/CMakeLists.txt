@@ -20,12 +20,15 @@ add_library(QtLingo SHARED
   include/qtlingo/translationservice.h
   include/qtlingo/translationservicefactory.h
   include/qtlingo/mcpclient.h
+  include/qtlingo/mcplocaltransport.h
+  include/qtlingo/translationsettings.h
   src/translationservicefactory.cpp
   src/google_translate_service.h
   src/google_translate_service.cpp
   src/llm_translation_service.h
   src/llm_translation_service.cpp
   src/mcpclient.cpp
+  src/mcplocaltransport.cpp
   ${TS_FILES}
 )
 

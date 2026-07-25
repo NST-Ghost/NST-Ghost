@@ -15,6 +15,8 @@
 #include "translationcore.h"
 #include "projectmanagerwidget.h"
 #include "projectregistry.h"
+#include <qtlingo/translationsettings.h>
+#include "mcpserver.h"
 
 #include <QApplication>
 #include <QLocale>
@@ -248,6 +250,9 @@ static void configurePythonEnvironment(const char* argv0)
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication::setOrganizationName("NST");
+    QCoreApplication::setApplicationName("NST");
+    QSettings::setDefaultFormat(QSettings::IniFormat);
 #ifdef _WIN32
     // Check Windows dependencies FIRST, before anything else
     std::string exeDir = getExeDirectory();
@@ -272,172 +277,117 @@ int main(int argc, char *argv[])
     std::cerr << "[NST] GIL released, starting Qt..." << std::endl;
 #endif
 
-    // Pre-parse command line to check for headless mode
-    bool headless = false;
+    // Check if we should start in MCP Server mode (for AI agent tool execution)
+    bool mcpServerMode = false;
     for (int i = 1; i < argc; ++i) {
-        QString arg = argv[i];
-        if (arg == "-e" || arg == "--engine" || arg == "-p" || arg == "--project") {
-            headless = true;
+        if (QString(argv[i]) == "--mcp-server") {
+            mcpServerMode = true;
             break;
         }
     }
 
-    QCoreApplication* app;
-    if (headless) {
-        std::cerr << "[NST] Starting in Headless (CLI) mode" << std::endl;
-        app = new QCoreApplication(argc, argv);
-    } else {
-        std::cerr << "[NST] Starting in GUI mode" << std::endl;
-        app = new QApplication(argc, argv);
+    if (mcpServerMode) {
+        std::cerr << "[NST] Starting in Headless MCP Server mode..." << std::endl;
+        QCoreApplication app(argc, argv);
+        app.setApplicationName("NST-McpServer");
+        
+        TranslationCore* core = new TranslationCore(&app);
+        TranslationSettings settings;
+        settings.load();
+        core->setTranslationSettings(settings);
+        
+        McpServer server(core, &app);
+        server.start();
+        
+        return app.exec();
     }
+
+    // Check if we should start in CLI mode (backdoor for AI automated translation)
+    bool cliMode = false;
+    for (int i = 1; i < argc; ++i) {
+        if (QString(argv[i]) == "--cli") {
+            cliMode = true;
+            break;
+        }
+    }
+
+    if (cliMode) {
+        std::cerr << "[NST] Starting in Headless CLI mode..." << std::endl;
+        QCoreApplication app(argc, argv);
+        app.setApplicationName("NST-CLI");
+        
+        QString engine = "rpgm";
+        QString path = "";
+        for (int i = 1; i < argc; ++i) {
+            if (QString(argv[i]) == "-p" && i + 1 < argc) {
+                path = argv[i+1];
+            } else if (QString(argv[i]) == "-e" && i + 1 < argc) {
+                engine = argv[i+1];
+            }
+        }
+        
+        if (path.isEmpty()) {
+            std::cerr << "Error: project path (-p) required." << std::endl;
+            return 1;
+        }
+        
+        TranslationCore* core = new TranslationCore(&app);
+        TranslationSettings settings;
+        settings.load();
+        core->setTranslationSettings(settings);
+        
+        QObject::connect(core, &TranslationCore::translationFinished, [core, path]() {
+            std::cerr << "[NST] Translation finished. Deploying..." << std::endl;
+            core->deployProject(path, true);
+            
+            QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+            QString workspaceFile = QDir(path).filePath("project_" + timestamp + ".nst");
+            core->saveWorkspace(workspaceFile);
+            std::cerr << "[NST] Saved workspace to: " << workspaceFile.toStdString() << std::endl;
+            QCoreApplication::quit();
+        });
+        
+        QObject::connect(core, &TranslationCore::errorOccurred, [](const QString &msg) {
+            std::cerr << "[NST] Error: " << msg.toStdString() << std::endl;
+            QCoreApplication::quit();
+        });
+        
+        if (core->loadProject(engine, path)) {
+            core->translateAll();
+        } else {
+            return 1;
+        }
+        
+        return app.exec();
+    }
+
+    // Check if we should start in TUI mode
+    bool tuiMode = false;
+    for (int i = 1; i < argc; ++i) {
+        QString arg = argv[i];
+        if (arg == "-t" || arg == "--tui" || arg == "-tui" || 
+            arg == "-e" || arg == "--engine" || arg == "-p" || arg == "--project") {
+            tuiMode = true;
+            break;
+        }
+    }
+#if defined(Q_OS_LINUX) || defined(Q_OS_UNIX)
+    if (!tuiMode && qEnvironmentVariableIsEmpty("DISPLAY")) {
+        tuiMode = true;
+    }
+#endif
+
+    if (tuiMode) {
+        extern int run_tui(int argc, char *argv[]);
+        return run_tui(argc, argv);
+    }
+
+    std::cerr << "[NST] Starting in GUI mode" << std::endl;
+    QApplication* app = new QApplication(argc, argv);
 
     // Set application info
     app->setApplicationName("NST");
     app->setApplicationVersion("1.0.0");
-
-    // Parse command line arguments
-    QCommandLineParser parser;
-    parser.setApplicationDescription("NST Translation Tool - Game Translation Made Easy");
-    parser.addHelpOption();
-    parser.addVersionOption();
-
-    QCommandLineOption engineOption(
-        QStringList() << "e" << "engine",
-        "Game engine name (e.g., rpgm, unity, renpy)",
-        "engine"
-    );
-    QCommandLineOption projectOption(
-        QStringList() << "p" << "project",
-        "Path to game project directory",
-        "path"
-    );
-    QCommandLineOption deployOption(
-        QStringList() << "d" << "deploy",
-        "Deploy translated game after loading project"
-    );
-    QCommandLineOption outputOption(
-        QStringList() << "o" << "output",
-        "Output directory for deployment (default: original game folder)",
-        "path"
-    );
-    QCommandLineOption backupOption(
-        "backup",
-        "Create backup before deployment (overrides settings)"
-    );
-    QCommandLineOption noBackupOption(
-        "no-backup",
-        "Skip backup creation (overrides settings)"
-    );
-    QCommandLineOption translateOption(
-        QStringList() << "t" << "translate",
-        "Translate all files after loading project"
-    );
-
-    parser.addOption(engineOption);
-    parser.addOption(projectOption);
-    parser.addOption(deployOption);
-    parser.addOption(outputOption);
-    parser.addOption(backupOption);
-    parser.addOption(noBackupOption);
-    parser.addOption(translateOption);
-    
-    // Use process() which automatically handles help/version and exits if needed
-    parser.process(*app);
-
-    QString cliEngine = parser.value(engineOption);
-    QString cliProject = parser.value(projectOption);
-    bool cliDeploy = parser.isSet(deployOption);
-    bool cliTranslate = parser.isSet(translateOption);
-    QString cliOutput = parser.value(outputOption);
-    bool cliBackup = parser.isSet(backupOption);
-    bool cliNoBackup = parser.isSet(noBackupOption);
-
-
-    if (headless && !cliEngine.isEmpty() && !cliProject.isEmpty()) {
-        std::cerr << "[NST] Debug: Creating TranslationCore..." << std::endl;
-        TranslationCore* core = new TranslationCore(app);
-        std::cerr << "[NST] Debug: TranslationCore created." << std::endl;
-        
-        std::cerr << "[NST] Debug: Loading settings..." << std::endl;
-        QSettings settings;
-        QVariantMap translationSettings;
-        translationSettings["googleApiKey"] = settings.value("apiKey").toString();
-        translationSettings["targetLanguage"] = settings.value("targetLanguage", "en").toString();
-        translationSettings["googleApi"] = settings.value("googleApi", true).toBool();
-        translationSettings["llmProvider"] = settings.value("llmProvider").toString();
-        translationSettings["llmApiKey"] = settings.value("llmApiKey").toString();
-        translationSettings["llmModel"] = settings.value("llmModel").toString();
-        translationSettings["llmBaseUrl"] = settings.value("llmBaseUrl").toString();
-        translationSettings["sourceLanguage"] = settings.value("sourceLanguage", "auto").toString();
-        core->setTranslationSettings(translationSettings);
-        std::cerr << "[NST] Debug: Settings loaded." << std::endl;
-
-        int backupPref = -1;
-        if (cliBackup) backupPref = 1;
-        if (cliNoBackup) backupPref = 0;
-        bool shouldBackup = (backupPref == 1) || (backupPref == -1 && settings.value("deployBackupEnabled", true).toBool());
-
-        std::cerr << "[NST] Debug: Connecting signals..." << std::endl;
-        QObject::connect(core, &TranslationCore::translationFinished, [core, cliDeploy, cliProject, cliOutput, shouldBackup]() {
-            std::cerr << "[NST] Translation finished." << std::endl;
-            if (cliDeploy) {
-                std::cerr << "[NST] Starting deployment..." << std::endl;
-                QString target = cliOutput.isEmpty() ? cliProject : cliOutput;
-                if (core->deployProject(target, shouldBackup)) {
-                    std::cerr << "[NST] Deployment successful." << std::endl;
-                } else {
-                    std::cerr << "[NST] Deployment failed." << std::endl;
-                }
-            }
-            
-            // Save workspace to a separate .nst file instead of overwriting game data
-            QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
-            QString workspaceFile = QDir(cliProject).filePath("project_" + timestamp + ".nst");
-            if (core->saveWorkspace(workspaceFile)) {
-                std::cerr << "[NST] Workspace saved to: " << workspaceFile.toStdString() << std::endl;
-            } else {
-                std::cerr << "[NST] Failed to save workspace." << std::endl;
-            }
-            
-            QCoreApplication::quit();
-        });
-
-        QObject::connect(core, &TranslationCore::errorOccurred, [](const QString &msg) {
-            std::cerr << "[NST] ERROR: " << msg.toStdString() << std::endl;
-        });
-        std::cerr << "[NST] Debug: Signals connected." << std::endl;
-
-        std::cerr << "[NST] Debug: Calling core->loadProject..." << std::endl;
-        if (core->loadProject(cliEngine, cliProject)) {
-            std::cerr << "[NST] Debug: core->loadProject success." << std::endl;
-            if (cliTranslate) {
-                std::cerr << "[NST] Starting translation..." << std::endl;
-                core->translateAll();
-            } else if (cliDeploy) {
-                QString target = cliOutput.isEmpty() ? cliProject : cliOutput;
-                if (core->deployProject(target, shouldBackup)) {
-                    std::cerr << "[NST] Deployment successful." << std::endl;
-                } else {
-                    std::cerr << "[NST] Deployment failed." << std::endl;
-                }
-                
-                // Save workspace
-                QString timestamp = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
-                QString workspaceFile = QDir(cliProject).filePath("project_" + timestamp + ".nst");
-                core->saveWorkspace(workspaceFile);
-                std::cerr << "[NST] Workspace saved to: " << workspaceFile.toStdString() << std::endl;
-                
-                QCoreApplication::quit();
-            } else {
-                std::cerr << "[NST] Project loaded. No actions specified." << std::endl;
-                QCoreApplication::quit();
-            }
-        } else {
-            return 1;
-        }
-
-        return app->exec();
-    } else {
         // GUI Mode
         QApplication* guiApp = qobject_cast<QApplication*>(app);
         
@@ -489,5 +439,4 @@ int main(int argc, char *argv[])
         int ret = guiApp->exec();
         delete w;
         return ret;
-    }
 }

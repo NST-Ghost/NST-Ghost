@@ -1,4 +1,4 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SettingsDialog</class>
  <widget class="QDialog" name="SettingsDialog">
@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>750</width>
-    <height>550</height>
+    <width>880</width>
+    <height>680</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -33,7 +33,7 @@
     <widget class="QListWidget" name="settingsListWidget">
      <property name="maximumSize">
       <size>
-       <width>180</width>
+       <width>200</width>
        <height>16777215</height>
       </size>
      </property>
@@ -50,17 +50,17 @@
      </item>
      <item>
       <property name="text">
-       <string>Translation</string>
+       <string>Translation Engine</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>AI Engine</string>
+       <string>AI Filter &amp; Guard</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>Plugins</string>
+       <string>Plugins Manager</string>
       </property>
      </item>
     </widget>
@@ -78,88 +78,206 @@
        <number>12</number>
       </property>
       <property name="leftMargin">
-       <number>12</number>
+       <number>16</number>
       </property>
       <property name="topMargin">
-       <number>12</number>
+       <number>16</number>
       </property>
       <property name="rightMargin">
-       <number>12</number>
+       <number>16</number>
       </property>
       <property name="bottomMargin">
-       <number>12</number>
+       <number>16</number>
       </property>
       <item>
        <widget class="QStackedWidget" name="configStackedWidget">
         <property name="currentIndex">
          <number>0</number>
         </property>
+        <!-- Page 0: General NST Preferences -->
         <widget class="QWidget" name="page_general">
          <layout class="QVBoxLayout" name="verticalLayout_general">
           <item>
-           <widget class="QGroupBox" name="generalGroupBox">
+           <widget class="QGroupBox" name="appearanceGroupBox">
             <property name="title">
-             <string>General Settings</string>
+             <string>UI &amp; Appearance</string>
             </property>
-            <layout class="QFormLayout" name="formLayout_general">
+            <layout class="QFormLayout" name="formLayout_appearance">
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+             </property>
              <property name="horizontalSpacing">
               <number>15</number>
              </property>
              <property name="verticalSpacing">
-              <number>10</number>
+              <number>12</number>
              </property>
              <item row="0" column="0">
-              <widget class="QLabel" name="sourceLanguageLabel">
+              <widget class="QLabel" name="label_theme">
                <property name="text">
-                <string>Source Language:</string>
+                <string>Interface Theme:</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QComboBox" name="sourceLanguageComboBox" />
+              <widget class="QComboBox" name="themeComboBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+               </property>
+               <item>
+                <property name="text">
+                 <string>System Default</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Dark Mode (NST Dark)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Light Mode</string>
+                </property>
+               </item>
+              </widget>
              </item>
              <item row="1" column="0">
-              <widget class="QLabel" name="targetLanguageLabel">
+              <widget class="QLabel" name="label_uiLanguage">
                <property name="text">
-                <string>Target Language:</string>
+                <string>Interface Language:</string>
                </property>
               </widget>
              </item>
              <item row="1" column="1">
-              <widget class="QComboBox" name="targetLanguageComboBox" />
-             </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="label_enable_ai">
-               <property name="text">
-                <string>AI Features:</string>
+              <widget class="QComboBox" name="uiLanguageComboBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
                </property>
+               <item>
+                <property name="text">
+                 <string>English</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>ไทย (Thai)</string>
+                </property>
+               </item>
               </widget>
              </item>
-             <item row="2" column="1">
-              <widget class="QCheckBox" name="enableAiFilterCheckBox">
-               <property name="text">
-                <string>Enable AI Context Filter</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_backup">
-               <property name="text">
-                <string>Deployment:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="3" column="1">
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="behaviorGroupBox">
+            <property name="title">
+             <string>Application Behavior</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_behavior">
+             <item>
               <widget class="QCheckBox" name="enableBackupCheckBox">
                <property name="text">
-                <string>Create backup before deployment</string>
+                <string>Create backup before deployment (_nst_backup)</string>
                </property>
                <property name="checked">
                 <bool>true</bool>
                </property>
-               <property name="toolTip">
-                <string>Backup original files to _nst_backup folder before deploying</string>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="autoCheckUpdatesCheckBox">
+               <property name="text">
+                <string>Automatically check for NST updates on startup</string>
                </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="showNotificationsCheckBox">
+               <property name="text">
+                <string>Show desktop notifications on task completion</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="systemGroupBox">
+            <property name="title">
+             <string>System &amp; Logging</string>
+            </property>
+            <layout class="QFormLayout" name="formLayout_system">
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+             </property>
+             <property name="horizontalSpacing">
+              <number>15</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>12</number>
+             </property>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_logLevel">
+               <property name="text">
+                <string>Log Verbosity Level:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QComboBox" name="logLevelComboBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+               </property>
+               <item>
+                <property name="text">
+                 <string>Info (Normal)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Debug (Verbose)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Warning / Error Only</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_fileEncoding">
+               <property name="text">
+                <string>Default File Encoding:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="fileEncodingComboBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+               </property>
+               <item>
+                <property name="text">
+                 <string>UTF-8 (Recommended)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Shift-JIS (Japanese Legacy)</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>Windows-1252 (Western)</string>
+                </property>
+               </item>
               </widget>
              </item>
             </layout>
@@ -180,8 +298,22 @@
           </item>
          </layout>
         </widget>
+
+        <!-- Page 1: Translation Engine Configuration -->
         <widget class="QWidget" name="page_translation">
          <layout class="QVBoxLayout" name="verticalLayout_translation">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QScrollArea" name="scrollArea_translation">
             <property name="widgetResizable">
@@ -195,39 +327,100 @@
               <rect>
                <x>0</x>
                <y>0</y>
-               <width>100</width>
-               <height>100</height>
+               <width>630</width>
+               <height>580</height>
               </rect>
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_scroll_translation">
+              <property name="spacing">
+               <number>15</number>
+              </property>
+              <item>
+               <widget class="QGroupBox" name="languagesGroupBox">
+                <property name="title">
+                 <string>Default Languages</string>
+                </property>
+                <layout class="QFormLayout" name="formLayout_languages">
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="horizontalSpacing">
+                  <number>15</number>
+                 </property>
+                 <property name="verticalSpacing">
+                  <number>12</number>
+                 </property>
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="sourceLanguageLabel">
+                   <property name="text">
+                    <string>Source Language:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="sourceLanguageComboBox">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="targetLanguageLabel">
+                   <property name="text">
+                    <string>Target Language:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QComboBox" name="targetLanguageComboBox">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
               <item>
                <widget class="QGroupBox" name="translationModeGroupBox">
                 <property name="title">
-                 <string>Translation Mode</string>
+                 <string>Translation Engine &amp; Provider</string>
                 </property>
                 <layout class="QFormLayout" name="formLayout_translationMode">
+                 <property name="fieldGrowthPolicy">
+                  <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                 </property>
+                 <property name="horizontalSpacing">
+                  <number>15</number>
+                 </property>
+                 <property name="verticalSpacing">
+                  <number>12</number>
+                 </property>
                  <item row="0" column="0">
                   <widget class="QLabel" name="activeModeLabel">
                    <property name="text">
-                    <string>Active Mode:</string>
+                    <string>Engine Type:</string>
                    </property>
                   </widget>
                  </item>
                  <item row="0" column="1">
                   <widget class="QComboBox" name="translatorModeComboBox">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                   </property>
                    <item>
                     <property name="text">
-                     <string>Google Translate</string>
+                     <string>Google Translate (Free / Cloud API)</string>
                     </property>
                    </item>
                    <item>
                     <property name="text">
-                     <string>AI-Powered (LLM)</string>
+                     <string>AI-Powered LLM (Cloud / Local Model)</string>
                     </property>
                    </item>
                    <item>
                     <property name="text">
-                     <string>Plugins (Lua)</string>
+                     <string>Lua Plugin Script (Custom Provider)</string>
                     </property>
                    </item>
                   </widget>
@@ -242,18 +435,6 @@
                 </property>
                 <widget class="QWidget" name="page_engine_google">
                  <layout class="QVBoxLayout" name="verticalLayout_engine_pro">
-                  <property name="leftMargin">
-                   <number text="0" />
-                  </property>
-                  <property name="topMargin">
-                   <number text="0" />
-                  </property>
-                  <property name="rightMargin">
-                   <number text="0" />
-                  </property>
-                  <property name="bottomMargin">
-                   <number text="0" />
-                  </property>
                   <item>
                    <widget class="QLabel" name="label_google_fallback">
                     <property name="text">
@@ -267,6 +448,15 @@
                      <string>Google Cloud Translation API</string>
                     </property>
                     <layout class="QFormLayout" name="formLayout_professional">
+                     <property name="fieldGrowthPolicy">
+                      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                     </property>
+                     <property name="horizontalSpacing">
+                      <number>15</number>
+                     </property>
+                     <property name="verticalSpacing">
+                      <number>12</number>
+                     </property>
                      <item row="0" column="0">
                       <widget class="QLabel" name="googleApiKeyLabel">
                        <property name="text">
@@ -275,40 +465,37 @@
                       </widget>
                      </item>
                      <item row="0" column="1">
-                      <widget class="QLineEdit" name="googleApiKeyEdit" />
+                      <widget class="QLineEdit" name="googleApiKeyEdit">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                       <property name="echoMode">
+                        <enum>QLineEdit::Password</enum>
+                       </property>
+                      </widget>
                      </item>
                     </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <spacer name="spacer_engine_pro">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                   </spacer>
                   </item>
                  </layout>
                 </widget>
                 <widget class="QWidget" name="page_engine_llm">
                  <layout class="QVBoxLayout" name="verticalLayout_engine_llm">
-                  <property name="leftMargin">
-                   <number text="0" />
-                  </property>
-                  <property name="topMargin">
-                   <number text="0" />
-                  </property>
-                  <property name="rightMargin">
-                   <number text="0" />
-                  </property>
-                  <property name="bottomMargin">
-                   <number text="0" />
-                  </property>
                   <item>
                    <widget class="QGroupBox" name="llmProviderGroup">
                     <property name="title">
-                     <string>Chat Completion Provider Settings</string>
+                     <string>LLM Provider &amp; Model Credentials</string>
                     </property>
-                    <layout class="QFormLayout" name="formLayout_ai_powered">
+                    <layout class="QFormLayout" name="formLayout_llm">
+                     <property name="fieldGrowthPolicy">
+                      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                     </property>
+                     <property name="horizontalSpacing">
+                      <number>15</number>
+                     </property>
+                     <property name="verticalSpacing">
+                      <number>12</number>
+                     </property>
                      <item row="0" column="0">
                       <widget class="QLabel" name="llmProviderLabel">
                        <property name="text">
@@ -318,21 +505,9 @@
                      </item>
                      <item row="0" column="1">
                       <widget class="QComboBox" name="llmProviderComboBox">
-                       <item>
-                        <property name="text">
-                         <string>OpenAI</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>Google AI</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>Anthropic</string>
-                        </property>
-                       </item>
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
                       </widget>
                      </item>
                      <item row="1" column="0">
@@ -343,108 +518,222 @@
                       </widget>
                      </item>
                      <item row="1" column="1">
-                      <widget class="QLineEdit" name="llmApiKeyEdit" />
+                      <widget class="QLineEdit" name="llmApiKeyEdit">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                       <property name="echoMode">
+                        <enum>QLineEdit::Password</enum>
+                       </property>
+                      </widget>
                      </item>
                      <item row="2" column="0">
-                      <widget class="QLabel" name="llmModelLabel">
+                      <widget class="QLabel" name="llmBaseUrlLabel">
                        <property name="text">
-                        <string>Model:</string>
+                        <string>Base URL:</string>
                        </property>
                       </widget>
                      </item>
                      <item row="2" column="1">
+                      <widget class="QLineEdit" name="llmBaseUrlEdit">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="QLabel" name="llmModelLabel">
+                       <property name="text">
+                        <string>Model Name:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
                       <layout class="QHBoxLayout" name="horizontalLayout_model">
                        <item>
-                        <widget class="QComboBox" name="llmModelComboBox" />
+                        <widget class="QComboBox" name="llmModelComboBox">
+                         <property name="sizePolicy">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                         </property>
+                         <property name="sizeAdjustPolicy">
+                          <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+                         </property>
+                        </widget>
                        </item>
                        <item>
                         <widget class="QPushButton" name="fetchModelsButton">
                          <property name="text">
-                          <string>Fetch</string>
-                         </property>
-                         <property name="toolTip">
-                          <string>Fetch available models from the provider using the API key</string>
+                          <string>Fetch Models</string>
                          </property>
                         </widget>
                        </item>
                       </layout>
                      </item>
-                     <item row="3" column="0" colspan="2">
-                      <widget class="QGroupBox" name="llmAdvancedGroupBox">
-                       <property name="title">
-                        <string>Advanced</string>
-                       </property>
-                       <property name="checkable">
-                        <bool>true</bool>
-                       </property>
-                       <property name="checked">
-                        <bool>false</bool>
-                       </property>
-                       <layout class="QFormLayout" name="formLayout_advanced">
-                        <item row="0" column="0">
-                         <widget class="QLabel" name="llmBaseUrlLabel">
-                          <property name="text">
-                           <string>Base URL:</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item row="0" column="1">
-                         <widget class="QLineEdit" name="llmBaseUrlEdit" />
-                        </item>
-                       </layout>
-                      </widget>
-                     </item>
                     </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <spacer name="spacer_engine_llm">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                   </spacer>
                   </item>
                  </layout>
                 </widget>
                 <widget class="QWidget" name="page_engine_plugins">
                  <layout class="QVBoxLayout" name="verticalLayout_engine_plugins">
                   <item>
-                   <widget class="QLabel" name="label_engine_plugins">
-                    <property name="text">
-                     <string>Plugin scripts manage their own configuration. Go to the Plugins tab.</string>
+                   <widget class="QGroupBox" name="pluginEngineGroupBox">
+                    <property name="title">
+                     <string>Lua Plugin Engine Connection</string>
                     </property>
+                    <layout class="QFormLayout" name="formLayout_plugin_engine">
+                     <property name="fieldGrowthPolicy">
+                      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                     </property>
+                     <property name="horizontalSpacing">
+                      <number>15</number>
+                     </property>
+                     <property name="verticalSpacing">
+                      <number>12</number>
+                     </property>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label_activePluginScript">
+                       <property name="text">
+                        <string>Active Lua Plugin:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="1">
+                      <widget class="QComboBox" name="luaPluginComboBox">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_pluginApiKey">
+                       <property name="text">
+                        <string>Plugin API Key:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QLineEdit" name="pluginApiKeyEdit">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                       <property name="echoMode">
+                        <enum>QLineEdit::Password</enum>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="0">
+                      <widget class="QLabel" name="label_pluginBaseUrl">
+                       <property name="text">
+                        <string>Plugin Base URL:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="2" column="1">
+                      <widget class="QLineEdit" name="pluginBaseUrlEdit">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="0">
+                      <widget class="QLabel" name="label_pluginModel">
+                       <property name="text">
+                        <string>Plugin Model:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="3" column="1">
+                      <widget class="QComboBox" name="pluginModelComboBox">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Expanding" vsizetype="Fixed"/>
+                       </property>
+                       <property name="editable">
+                        <bool>true</bool>
+                       </property>
+                       <property name="sizeAdjustPolicy">
+                        <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
                    </widget>
-                  </item>
-                  <item>
-                   <spacer name="spacer_engine_plugins">
-                    <property name="orientation">
-                     <enum>Qt::Vertical</enum>
-                    </property>
-                   </spacer>
                   </item>
                  </layout>
                 </widget>
                </widget>
               </item>
+
+              <!-- Developer Inspection Console -->
               <item>
-               <spacer name="verticalSpacer_translation">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
+               <widget class="QGroupBox" name="devConsoleGroupBox">
+                <property name="title">
+                 <string>Developer Traffic Inspector (Request &amp; Response Traffic Log)</string>
                 </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>40</height>
-                 </size>
-                </property>
-               </spacer>
+                <layout class="QVBoxLayout" name="verticalLayout_devConsole">
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_devControls">
+                   <item>
+                    <widget class="QPushButton" name="testConnectionBtn">
+                     <property name="text">
+                      <string>Test Connection &amp; Inspect Traffic</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="clearConsoleBtn">
+                     <property name="text">
+                      <string>Clear Inspector Log</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_dev">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <widget class="QTextEdit" name="devConsoleEdit">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>200</height>
+                    </size>
+                   </property>
+                   <property name="font">
+                    <font>
+                     <family>Monospace</family>
+                     <pointsize>9</pointsize>
+                    </font>
+                   </property>
+                   <property name="readOnly">
+                    <bool>true</bool>
+                   </property>
+                   <property name="html">
+                    <string>&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name="qrichtext" content="1" /&gt;&lt;style type="text/css"&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=" font-family:'Monospace'; font-size:9pt; font-weight:400; font-style:normal;"&gt;
+&lt;p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;span style=" color:#888888;"&gt;Developer Traffic Inspector: Click 'Test Connection' above to inspect exact HTTP request headers, payload JSON, and raw server response JSON in real-time...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
               </item>
+
              </layout>
             </widget>
            </widget>
           </item>
          </layout>
         </widget>
+
+        <!-- Page 2: AI Filter & Guard -->
         <widget class="QWidget" name="page_ai_ui">
          <layout class="QVBoxLayout" name="verticalLayout_ai_ui">
           <item>
@@ -453,14 +742,37 @@
              <string>AI Filter Configuration</string>
             </property>
             <layout class="QFormLayout" name="formLayout_ai_settings">
+             <property name="fieldGrowthPolicy">
+              <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+             </property>
+             <property name="horizontalSpacing">
+              <number>15</number>
+             </property>
+             <property name="verticalSpacing">
+              <number>12</number>
+             </property>
              <item row="0" column="0">
-              <widget class="QLabel" name="label_ai_sensitivity">
+              <widget class="QLabel" name="label_enable_ai">
                <property name="text">
-                <string>Sensitivity:</string>
+                <string>AI Context Filter:</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
+              <widget class="QCheckBox" name="enableAiFilterCheckBox">
+               <property name="text">
+                <string>Enable AI similarity filter to skip duplicate strings</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_ai_sensitivity">
+               <property name="text">
+                <string>Sensitivity Threshold:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
               <widget class="QDoubleSpinBox" name="aiFilterThresholdSpinBox">
                <property name="maximum">
                 <double>1.0</double>
@@ -471,19 +783,6 @@
                <property name="value">
                 <double>0.75</double>
                </property>
-               <property name="toolTip">
-                <string>Similarity Threshold (Higher = Stricter/Fewer Skips)</string>
-               </property>
-              </widget>
-             </item>
-             <item row="1" column="0" colspan="2">
-              <widget class="QLabel" name="aiInfoLabel">
-               <property name="text">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-style:italic;"&gt;Details on how the AI interprets the image context.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-               </property>
-               <property name="wordWrap">
-                <bool>true</bool>
-               </property>
               </widget>
              </item>
             </layout>
@@ -492,7 +791,7 @@
           <item>
            <widget class="QGroupBox" name="visualsGroupBox">
             <property name="title">
-             <string>Visualizations</string>
+             <string>Data Graph Visualizations</string>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_visuals">
              <item>
@@ -520,13 +819,15 @@
           </item>
          </layout>
         </widget>
+
+        <!-- Page 3: Plugins Manager -->
         <widget class="QWidget" name="page_plugins">
          <layout class="QHBoxLayout" name="horizontalLayout_plugins">
           <item>
            <widget class="QListWidget" name="pluginListWidget">
             <property name="maximumSize">
              <size>
-              <width>150</width>
+              <width>220</width>
               <height>16777215</height>
              </size>
             </property>
@@ -540,32 +841,51 @@
                <bool>false</bool>
               </property>
               <property name="text">
-               <string>Enable Plugin</string>
+               <string>Enable Plugin in NST System</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QScrollArea" name="pluginSettingsScrollArea">
-              <property name="widgetResizable">
-               <bool>true</bool>
+             <widget class="QGroupBox" name="pluginInfoGroupBox">
+              <property name="title">
+               <string>Plugin Information &amp; Metadata</string>
               </property>
-              <widget class="QWidget" name="pluginSettingsContainer">
-               <property name="geometry">
-                <rect>
-                 <x>0</x>
-                 <y>0</y>
-                 <width>256</width>
-                 <height>228</height>
-                </rect>
-               </property>
-               <layout class="QFormLayout" name="formLayout_plugins" />
-              </widget>
+              <layout class="QVBoxLayout" name="verticalLayout_plugin_info">
+               <item>
+                <widget class="QLabel" name="pluginInfoLabel">
+                 <property name="text">
+                  <string>Select a plugin from the list to view metadata and status.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignTop|Qt::AlignLeft</set>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="reloadPluginsButton">
+              <property name="text">
+               <string>Reload Plugins List</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_plugins">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </spacer>
             </item>
            </layout>
           </item>
          </layout>
         </widget>
+
        </widget>
       </item>
       <item>
@@ -580,7 +900,7 @@
    </item>
   </layout>
  </widget>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>

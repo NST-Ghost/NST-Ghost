@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
                             // ดัมพ์โครงสร้างออกมาให้ดู
                             let json = serde_json::to_string_pretty(&value).unwrap();
                             fs::write("tmp_font_dump.json", &json)?;
-                            println!("✅ Dumped to tmp_font_dump.json");
+                            println!("[SUCCESS] Dumped to tmp_font_dump.json");
                             
                             // โชว์เฉพาะคีย์ระดับบนสุด เพื่อดูว่ามันมีอะไรบ้าง
                             println!("\nTop-level keys in this FontAsset:");

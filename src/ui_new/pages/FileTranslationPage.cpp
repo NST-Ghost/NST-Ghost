@@ -42,10 +42,10 @@ void FileTranslationPage::setupUI()
     headerLayout->addStretch();
     
     // Toolbar buttons
-    QPushButton *btnOpen = new QPushButton("📂 Open Project", this);
-    QPushButton *btnSave = new QPushButton("💾 Save", this);
-    QPushButton *btnDeploy = new QPushButton("🚀 Deploy", this);
-    QPushButton *btnTranslate = new QPushButton("🌐 Translate All", this);
+    QPushButton *btnOpen = new QPushButton("Open Project", this);
+    QPushButton *btnSave = new QPushButton("Save", this);
+    QPushButton *btnDeploy = new QPushButton("Deploy", this);
+    QPushButton *btnTranslate = new QPushButton("Translate All", this);
     
     btnOpen->setProperty("class", "secondary");
     btnSave->setProperty("class", "secondary");

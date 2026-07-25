@@ -5,13 +5,44 @@
 #include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QLabel>
-#include <QFormLayout> // Ensure this is also included explicitly if not already by UI header
+#include <QFormLayout>
+#include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QUrl>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QMessageBox>
+#include <QListWidget>
+#include <QDir>
+#include <QDirIterator>
+#include <QSettings>
+#include <QFile>
+#include <QTextStream>
+#include <QElapsedTimer>
+#include <QDateTime>
+#include <lua.hpp>
+
+#include "src/llm_translation_service.h"
+
+static QString resolveScriptPath(const QString &scriptName) {
+    QDir dir(QCoreApplication::applicationDirPath());
+    if (!dir.cd("scripts")) { dir.cdUp(); dir.cd("scripts"); }
+    
+    // 1. Prefer lua/ subfolder if exists
+    QFileInfo luaSub(dir.absoluteFilePath("lua/" + scriptName));
+    if (luaSub.exists()) return luaSub.absoluteFilePath();
+
+    // 2. Search recursively across scripts directory
+    QDirIterator it(dir.absolutePath(), QStringList() << "*.lua", QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        if (it.fileName() == scriptName) {
+            return it.filePath();
+        }
+    }
+    return dir.absoluteFilePath(scriptName);
+}
 
 SettingsDialog::SettingsDialog(QWidget *parent)
     : QDialog(parent)
@@ -19,29 +50,53 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     , m_networkManager(new QNetworkAccessManager(this))
 {
     ui->setupUi(this);
+
+    // Dynamic Top Section Header Label
+    QLabel *headerTitleLabel = new QLabel("General Preferences", this);
+    headerTitleLabel->setObjectName("settingsHeaderTitle");
+    ui->verticalLayout_content->insertWidget(0, headerTitleLabel);
+
+    connect(ui->settingsListWidget, &QListWidget::currentRowChanged, this, [this, headerTitleLabel](int row) {
+        ui->configStackedWidget->setCurrentIndex(row);
+        if (auto *item = ui->settingsListWidget->item(row)) {
+            headerTitleLabel->setText(item->text());
+        }
+    });
+    ui->settingsListWidget->setCurrentRow(0);
+
+    // Sidebar Category Items Formatting
+    if (ui->settingsListWidget->count() >= 4) {
+        ui->settingsListWidget->item(0)->setText("General Settings");
+        ui->settingsListWidget->item(1)->setText("Translation Engine");
+        ui->settingsListWidget->item(2)->setText("AI Filter & Guard");
+        ui->settingsListWidget->item(3)->setText("Plugins Manager");
+    }
+
+    // Populate LLM Providers
     ui->llmProviderComboBox->clear();
     ui->llmProviderComboBox->addItems({
+        "NodeNetwork PAYG",
         "OpenAI",
+        "DeepSeek",
+        "Claude",
+        "Google AI Studio",
+        "Groq",
         "Custom (OpenAI-compatible)",
         "AI21",
         "AI/ML API",
         "Azure OpenAI",
         "Chutes",
-        "Claude",
         "Cohere",
-        "DeepSeek",
         "Electron Hub",
         "Fireworks AI",
-        "Groq",
-        "Google AI Studio",
         "Google Vertex AI",
         "MistralAI",
         "Moonshot AI",
         "NanoGPT"
     });
     ui->llmModelComboBox->setEditable(true);
-    
-    // Connect translator mode to stacked widget
+
+    // Connect translator mode to engine stacked widget
     connect(ui->translatorModeComboBox, &QComboBox::currentIndexChanged, ui->engineStackedWidget, &QStackedWidget::setCurrentIndex);
 
     // Populate Source Language
@@ -50,9 +105,8 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     ui->sourceLanguageComboBox->addItem("Japanese", "ja");
     ui->sourceLanguageComboBox->addItem("Korean", "ko");
     ui->sourceLanguageComboBox->addItem("Chinese (Simplified)", "zh-CN");
-    // Add more if needed
 
-    // Populate with some languages
+    // Populate Target Language
     ui->targetLanguageComboBox->addItem("English", "en");
     ui->targetLanguageComboBox->addItem("Spanish", "es");
     ui->targetLanguageComboBox->addItem("French", "fr");
@@ -68,13 +122,78 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     ui->targetLanguageComboBox->addItem("Thai", "th");
 
     connect(ui->llmProviderComboBox, &QComboBox::currentIndexChanged, this, &SettingsDialog::updateLlmModelComboBox);
-    
-    // Connect fetch models button
     connect(ui->fetchModelsButton, &QPushButton::clicked, this, &SettingsDialog::fetchLlmModels);
 
+    connect(ui->testConnectionBtn, &QPushButton::clicked, this, &SettingsDialog::testConnection);
+    connect(ui->clearConsoleBtn, &QPushButton::clicked, [this]() {
+        ui->devConsoleEdit->clear();
+    });
+
+    // Connect Lua Plugin ComboBox changes
+    connect(ui->luaPluginComboBox, &QComboBox::currentTextChanged, this, &SettingsDialog::updateLuaPluginEngineUI);
+
+    // Save changes for selected plugin
+    connect(ui->pluginApiKeyEdit, &QLineEdit::textChanged, [this](const QString &text) {
+        QString scriptName = ui->luaPluginComboBox->currentText();
+        if (!scriptName.isEmpty()) {
+            QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+            s.setValue("Plugins/" + scriptName + "/Settings/api_key", text);
+        }
+    });
+
+    connect(ui->pluginBaseUrlEdit, &QLineEdit::textChanged, [this](const QString &text) {
+        QString scriptName = ui->luaPluginComboBox->currentText();
+        if (!scriptName.isEmpty()) {
+            QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+            s.setValue("Plugins/" + scriptName + "/Settings/base_url", text);
+        }
+    });
+
+    connect(ui->pluginModelComboBox, &QComboBox::currentTextChanged, [this](const QString &text) {
+        QString scriptName = ui->luaPluginComboBox->currentText();
+        if (!scriptName.isEmpty()) {
+            QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+            s.setValue("Plugins/" + scriptName + "/Settings/model", text);
+        }
+    });
+
     updateLlmModelComboBox();
-    
     setupPluginsUI();
+
+    // --- Parallel Translation Workers & Console Log Settings ---
+    QGroupBox *parallelGroupBox = new QGroupBox("Performance & Parallel Translation Pipeline", this);
+    QFormLayout *formLayout = new QFormLayout(parallelGroupBox);
+
+    QComboBox *parallelWorkersCombo = new QComboBox(this);
+    parallelWorkersCombo->addItem("1 Worker (Sequential / Safest)", 1);
+    parallelWorkersCombo->addItem("2 Workers (Recommended / 2x Speed)", 2);
+    parallelWorkersCombo->addItem("3 Workers (High Speed / 3x Speed)", 3);
+    parallelWorkersCombo->addItem("4 Workers (Ultra Speed / 4x Speed)", 4);
+
+    QSettings settings;
+    int savedWorkers = settings.value("Translation/ParallelWorkers", 2).toInt();
+    int comboIndex = parallelWorkersCombo->findData(savedWorkers);
+    if (comboIndex >= 0) parallelWorkersCombo->setCurrentIndex(comboIndex);
+
+    connect(parallelWorkersCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), [parallelWorkersCombo]() {
+        int workers = parallelWorkersCombo->currentData().toInt();
+        QSettings s;
+        s.setValue("Translation/ParallelWorkers", workers);
+    });
+
+    QCheckBox *showConsoleCheckBox = new QCheckBox("Show Live Detailed Progress Console Modal", this);
+    showConsoleCheckBox->setChecked(settings.value("General/ShowDetailedProgressConsole", true).toBool());
+    connect(showConsoleCheckBox, &QCheckBox::toggled, [](bool checked) {
+        QSettings s;
+        s.setValue("General/ShowDetailedProgressConsole", checked);
+    });
+
+    formLayout->addRow("Parallel Worker Channels:", parallelWorkersCombo);
+    formLayout->addRow("Console Log Overlay:", showConsoleCheckBox);
+
+    if (ui->page_general && ui->page_general->layout()) {
+        ui->page_general->layout()->addWidget(parallelGroupBox);
+    }
 }
 
 SettingsDialog::~SettingsDialog()
@@ -84,8 +203,6 @@ SettingsDialog::~SettingsDialog()
 
 QString SettingsDialog::googleApiKey() const
 {
-    // Fix: Access line edit in new location (check object name in UI)
-    // In new UI, it's still googleApiKeyEdit
     return ui->googleApiKeyEdit->text();
 }
 
@@ -208,7 +325,7 @@ void SettingsDialog::setLlmBaseUrl(const QString &baseUrl)
 
 void SettingsDialog::setLlmModel(const QString &model)
 {
-    updateLlmModelComboBox(); // Ensure the models are populated for the current provider
+    updateLlmModelComboBox();
     if (ui->llmModelComboBox->isEditable()) {
         ui->llmModelComboBox->setCurrentText(model);
     } else {
@@ -216,7 +333,6 @@ void SettingsDialog::setLlmModel(const QString &model)
         if (index != -1) {
             ui->llmModelComboBox->setCurrentIndex(index);
         } else if (!model.isEmpty()) {
-            // Model was fetched dynamically before and is not in the default list, add it back.
             ui->llmModelComboBox->insertItem(0, model);
             ui->llmModelComboBox->setCurrentIndex(0);
         }
@@ -225,22 +341,16 @@ void SettingsDialog::setLlmModel(const QString &model)
 
 bool SettingsDialog::isGoogleApi() const
 {
-    // Mode 0: Google Translate. We consider it "API" mode if there's a key provided.
-    // Otherwise, we fall back to the free engine.
     return ui->translatorModeComboBox->currentIndex() == 0 && !ui->googleApiKeyEdit->text().trimmed().isEmpty();
 }
 
 void SettingsDialog::setGoogleApi(bool isApi)
 {
-    // If the user previously used any Google mode, set index to 0.
-    // As we combined them, we just set it to Google Translate if they weren't using LLM or Plugins.
     if (ui->translatorModeComboBox->currentIndex() != 1 && ui->translatorModeComboBox->currentIndex() != 2) {
          ui->translatorModeComboBox->setCurrentIndex(0);
     }
 }
 
-// Helper to determine active mode more generically if needed
-// 0: Quick, 1: Pro, 2: LLM, 3: Plugins
 int SettingsDialog::translationMode() const
 {
     return ui->translatorModeComboBox->currentIndex();
@@ -253,42 +363,84 @@ void SettingsDialog::setTranslationMode(int mode)
     }
 }
 
-void SettingsDialog::updateConfigPanel()
-{
-    // Logic to enable/disable tabs or show specific pages is now handled by the Sidebar.
-    // We might want to disable specific pages if they are not active? 
-    // For now, let's allow the user to browse settings freely.
-}
-
 void SettingsDialog::updateLlmModelComboBox()
 {
     QString provider = ui->llmProviderComboBox->currentText();
     ui->llmModelComboBox->clear();
+    if (ui->llmModelComboBox->view()) {
+        ui->llmModelComboBox->view()->setMinimumWidth(380);
+    }
 
-    if (provider == "OpenAI") {
+    if (provider == "NodeNetwork PAYG") {
+        ui->llmModelComboBox->addItems({
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.1-flash",
+            "gemini-3.1-pro",
+            "gpt-5.6-luna",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.5",
+            "gpt-5.5-instant",
+            "gpt-5.4",
+            "gpt-5.4-mini",
+            "gpt-5.4-nano",
+            "gpt-5.3-codex",
+            "gpt-5.3-codex-spark",
+            "claude-sonnet-5",
+            "claude-opus-5",
+            "claude-opus-4.8",
+            "claude-haiku-4.5",
+            "claude-fable-5",
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
+            "glm-5.2",
+            "grok-4.5",
+            "mimo-v2.5",
+            "mimo-v2.5-pro",
+            "minimax-m3",
+            "qwen-3.7-max",
+            "qwen-3.7-plus"
+        });
+        ui->llmBaseUrlEdit->setPlaceholderText("https://payg.nodenetwork.ovh");
+    } else if (provider == "OpenAI") {
         ui->llmModelComboBox->addItems({"gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "o3-mini", "o1-mini"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.openai.com/v1)");
     } else if (provider == "Claude") {
         ui->llmModelComboBox->addItems({"claude-3-5-sonnet-latest", "claude-3-5-haiku-latest", "claude-3-opus-latest"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.anthropic.com/v1/messages)");
     } else if (provider == "Google AI Studio") {
-        ui->llmModelComboBox->addItems({"gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"});
+        ui->llmModelComboBox->addItems({"gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default Google AI Studio endpoint)");
     } else if (provider == "Google Vertex AI") {
         ui->llmModelComboBox->addItems({"gemini-1.5-flash", "gemini-1.5-pro"});
+        ui->llmBaseUrlEdit->setPlaceholderText("Full Vertex AI generateContent endpoint URL");
     } else if (provider == "Groq") {
-        ui->llmModelComboBox->addItems({"llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"});
+        ui->llmModelComboBox->addItems({"llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.groq.com/openai/v1)");
     } else if (provider == "DeepSeek") {
         ui->llmModelComboBox->addItems({"deepseek-chat", "deepseek-reasoner"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.deepseek.com)");
     } else if (provider == "MistralAI") {
         ui->llmModelComboBox->addItems({"mistral-large-latest", "mistral-small-latest", "open-mistral-nemo"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.mistral.ai/v1)");
     } else if (provider == "Cohere") {
         ui->llmModelComboBox->addItems({"command-a-03-2025", "command-r-plus", "command-r"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.cohere.ai/compatibility/v1)");
     } else if (provider == "Fireworks AI") {
         ui->llmModelComboBox->addItems({"accounts/fireworks/models/llama-v3p1-8b-instruct", "accounts/fireworks/models/llama-v3p1-70b-instruct"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.fireworks.ai/inference/v1)");
     } else if (provider == "Moonshot AI") {
         ui->llmModelComboBox->addItems({"moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.moonshot.ai/v1)");
     } else if (provider == "AI21") {
         ui->llmModelComboBox->addItems({"jamba-large", "jamba-mini"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.ai21.com/studio/v1)");
     } else if (provider == "AI/ML API") {
         ui->llmModelComboBox->addItems({"deepseek/deepseek-chat", "meta-llama/Llama-3.3-70B-Instruct-Turbo", "mistralai/Mistral-Large-Instruct-2411"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.aimlapi.com/v1)");
+    } else {
+        ui->llmBaseUrlEdit->setPlaceholderText("Enter API Base URL (e.g. http://localhost:11434/v1)");
     }
 
     if (ui->llmModelComboBox->count() == 0) {
@@ -301,55 +453,33 @@ void SettingsDialog::fetchLlmModels()
     QString provider = ui->llmProviderComboBox->currentText();
     QString apiKey = ui->llmApiKeyEdit->text().trimmed();
 
-    auto baseUrlForProvider = [this, provider]() -> QString {
-        const QString customBaseUrl = ui->llmBaseUrlEdit->text().trimmed();
-        if (!customBaseUrl.isEmpty()) return customBaseUrl;
-        if (provider == "OpenAI") return "https://api.openai.com/v1";
-        if (provider == "AI21") return "https://api.ai21.com/studio/v1";
-        if (provider == "AI/ML API") return "https://api.aimlapi.com/v1";
-        if (provider == "Chutes") return "https://llm.chutes.ai/v1";
-        if (provider == "Cohere") return "https://api.cohere.ai/compatibility/v1";
-        if (provider == "DeepSeek") return "https://api.deepseek.com";
-        if (provider == "Electron Hub") return "https://api.electronhub.ai/v1";
-        if (provider == "Fireworks AI") return "https://api.fireworks.ai/inference/v1";
-        if (provider == "Groq") return "https://api.groq.com/openai/v1";
-        if (provider == "MistralAI") return "https://api.mistral.ai/v1";
-        if (provider == "Moonshot AI") return "https://api.moonshot.ai/v1";
-        if (provider == "NanoGPT") return "https://nano-gpt.com/api/v1";
-        return QString();
-    };
-
-    if (provider == "Claude" || provider == "Google AI Studio" || provider == "Google Vertex AI" || provider == "Azure OpenAI") {
-        QMessageBox::information(this, "Fetch Models", "Dynamic model fetching is currently available for OpenAI-compatible providers only.");
-        return;
-    }
-
     if (apiKey.isEmpty()) {
         QMessageBox::warning(this, "Fetch Models", "Please enter an API Key first.");
         return;
     }
 
-    // Disable button to prevent spamming
-    ui->fetchModelsButton->setEnabled(false);
-    ui->fetchModelsButton->setText("Fetching...");
-
-    QString baseUrl = baseUrlForProvider();
+    QString baseUrl = llmBaseUrl().trimmed();
     if (baseUrl.isEmpty()) {
-        ui->fetchModelsButton->setEnabled(true);
-        ui->fetchModelsButton->setText("Fetch");
-        QMessageBox::warning(this, "Fetch Models", "Please enter a Base URL for this provider first.");
-        return;
+        if (provider == "OpenAI") baseUrl = "https://api.openai.com/v1";
+        else if (provider == "Groq") baseUrl = "https://api.groq.com/openai/v1";
+        else if (provider == "DeepSeek") baseUrl = "https://api.deepseek.com";
+        else if (provider == "MistralAI") baseUrl = "https://api.mistral.ai/v1";
+        else if (provider == "AI/ML API") baseUrl = "https://api.aimlapi.com/v1";
+        else if (provider == "NodeNetwork PAYG") baseUrl = "https://payg.nodenetwork.ovh";
+        else {
+            QMessageBox::warning(this, "Fetch Models", "Automatic model fetching is currently supported for OpenAI-compatible providers.");
+            return;
+        }
     }
-    while (baseUrl.endsWith('/')) baseUrl.chop(1);
 
-    QNetworkRequest request(QUrl(baseUrl + "/models"));
-    request.setRawHeader("Authorization", QString("Bearer %1").arg(apiKey).toUtf8());
+    baseUrl = baseUrl.trimmed();
+    if (baseUrl.endsWith("/")) baseUrl.chop(1);
+    QUrl url(baseUrl.endsWith("/v1") ? baseUrl + "/models" : baseUrl + "/v1/models");
+    QNetworkRequest request(url);
+    request.setRawHeader("Authorization", "Bearer " + apiKey.toUtf8());
 
     QNetworkReply *reply = m_networkManager->get(request);
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        ui->fetchModelsButton->setEnabled(true);
-        ui->fetchModelsButton->setText("Fetch");
-
         if (reply->error() == QNetworkReply::NoError) {
             QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
             if (doc.isObject() && doc.object().contains("data")) {
@@ -367,7 +497,6 @@ void SettingsDialog::fetchLlmModels()
                 if (!models.isEmpty()) {
                     models.sort();
                     ui->llmModelComboBox->clear();
-                    
                     ui->llmModelComboBox->addItems(models);
                     QMessageBox::information(this, "Fetch Models", QString("Successfully fetched %1 models.").arg(models.size()));
                 } else {
@@ -383,26 +512,129 @@ void SettingsDialog::fetchLlmModels()
     });
 }
 
-// --- Plugin Manager Implementation ---
+void SettingsDialog::updateLuaPluginEngineUI(const QString &scriptName)
+{
+    if (scriptName.isEmpty()) return;
 
-#include <QListWidget>
-#include <QCheckBox>
-#include <QFormLayout>
-#include <QRadioButton>
-#include <QDir>
-#include <QSettings>
-#include <QScrollArea>
-#include <QLabel>
-#include <QLineEdit>
-#include <QGroupBox>
-#include <lua.hpp>
-#include <QJsonDocument>
-#include <QJsonObject>
+    QSignalBlocker modelBlocker(ui->pluginModelComboBox);
+    QSignalBlocker apiKeyBlocker(ui->pluginApiKeyEdit);
+    QSignalBlocker baseUrlBlocker(ui->pluginBaseUrlEdit);
+
+    ui->pluginModelComboBox->clear();
+    if (ui->pluginModelComboBox->view()) {
+        ui->pluginModelComboBox->view()->setMinimumWidth(380);
+    }
+    QString filePath = resolveScriptPath(scriptName);
+
+    // Load saved settings for this script first
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+    settings.setValue("Plugins/" + scriptName + "/Enabled", true);
+    settings.setValue("Plugins/" + scriptName + "/Installed", true);
+    settings.setValue("ActiveLuaPlugin", scriptName);
+
+    QString savedApiKey = settings.value("Plugins/" + scriptName + "/Settings/api_key", "").toString();
+
+    QString defaultBaseUrl = "";
+    QStringList modelList;
+
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+
+    // Register dummy API functions
+    lua_register(L, "nst_http_request", [](lua_State* L) -> int {
+        lua_pushstring(L, "");
+        lua_pushinteger(L, 0);
+        return 2;
+    });
+
+    if (luaL_dofile(L, filePath.toStdString().c_str()) == LUA_OK) {
+        // 1. Check on_get_models() hook first
+        lua_getglobal(L, "on_get_models");
+        if (lua_isfunction(L, -1)) {
+            if (lua_pcall(L, 0, 1, 0) == LUA_OK && lua_istable(L, -1)) {
+                int len = lua_rawlen(L, -1);
+                for (int i = 1; i <= len; ++i) {
+                    lua_rawgeti(L, -1, i);
+                    if (lua_isstring(L, -1)) {
+                        modelList.append(QString::fromUtf8(lua_tostring(L, -1)));
+                    }
+                    lua_pop(L, 1);
+                }
+            }
+        }
+
+        // 2. Check on_define_settings() hook
+        lua_getglobal(L, "on_define_settings");
+        if (lua_isfunction(L, -1)) {
+            if (lua_pcall(L, 0, 1, 0) == LUA_OK && lua_istable(L, -1)) {
+                int len = lua_rawlen(L, -1);
+                for (int i = 1; i <= len; ++i) {
+                    lua_rawgeti(L, -1, i);
+                    if (lua_istable(L, -1)) {
+                        QString key, defVal;
+                        QStringList options;
+
+                        lua_pushnil(L);
+                        while (lua_next(L, -2) != 0) {
+                            QString k = QString::fromUtf8(lua_tostring(L, -2));
+                            if (lua_isstring(L, -1)) {
+                                QString v = QString::fromUtf8(lua_tostring(L, -1));
+                                if (k == "key") key = v;
+                                else if (k == "default") defVal = v;
+                            } else if (lua_istable(L, -1) && k == "options") {
+                                int optLen = lua_rawlen(L, -1);
+                                for (int j = 1; j <= optLen; ++j) {
+                                    lua_rawgeti(L, -1, j);
+                                    if (lua_isstring(L, -1)) {
+                                        options.append(QString::fromUtf8(lua_tostring(L, -1)));
+                                    }
+                                    lua_pop(L, 1);
+                                }
+                            }
+                            lua_pop(L, 1);
+                        }
+
+                        if (key == "base_url" && !defVal.isEmpty()) {
+                            defaultBaseUrl = defVal;
+                        }
+                        if (key == "model" && modelList.isEmpty() && !options.isEmpty()) {
+                            modelList = options;
+                        }
+                    }
+                    lua_pop(L, 1);
+                }
+            }
+        }
+    }
+    lua_close(L);
+
+    if (!modelList.isEmpty()) {
+        ui->pluginModelComboBox->addItems(modelList);
+    }
+
+    QString savedBaseUrl = settings.value("Plugins/" + scriptName + "/Settings/base_url", defaultBaseUrl).toString();
+    QString savedModel = settings.value("Plugins/" + scriptName + "/Settings/model", "").toString();
+
+    ui->pluginApiKeyEdit->setText(savedApiKey);
+    ui->pluginBaseUrlEdit->setText(savedBaseUrl);
+    ui->pluginBaseUrlEdit->setPlaceholderText(defaultBaseUrl.isEmpty() ? "Default Endpoint URL" : defaultBaseUrl);
+
+    if (!savedModel.isEmpty()) {
+        int idx = ui->pluginModelComboBox->findText(savedModel);
+        if (idx != -1) {
+            ui->pluginModelComboBox->setCurrentIndex(idx);
+        } else {
+            ui->pluginModelComboBox->setEditText(savedModel);
+        }
+    } else if (ui->pluginModelComboBox->count() > 0) {
+        ui->pluginModelComboBox->setCurrentIndex(0);
+    }
+}
+
+// --- Plugins Manager Implementation ---
 
 void SettingsDialog::setupPluginsUI()
 {
-    // Removed RadioButton toggle connection as it's no longer used for page switching
-    
     connect(ui->pluginListWidget, &QListWidget::itemClicked, this, &SettingsDialog::onPluginSelected);
     
     connect(ui->pluginEnabledCheckBox, &QCheckBox::toggled, [this](bool checked){
@@ -413,9 +645,9 @@ void SettingsDialog::setupPluginsUI()
         }
     });
 
-    // Make sure we update the enabled state check
+    connect(ui->reloadPluginsButton, &QPushButton::clicked, this, &SettingsDialog::loadPluginList);
+
     ui->pluginEnabledCheckBox->setEnabled(false);
-    
     loadPluginList();
 }
 
@@ -423,26 +655,67 @@ void SettingsDialog::loadPluginList()
 {
     QDir scriptDir(QCoreApplication::applicationDirPath());
     if (!scriptDir.cd("scripts")) {
-        // Try one level up (for dev environment)
         scriptDir.cdUp();
         scriptDir.cd("scripts");
     }
     
     ui->pluginListWidget->clear();
-    for (const QString &fileName : scriptDir.entryList({"*.lua"}, QDir::Files)) {
-        // Filter logic (same as plugin)
-        // For now, list all, or check for on_text_extract?
-        // Let's check for on_text_extract to be consistent.
-        QString filePath = scriptDir.absoluteFilePath(fileName);
+    ui->luaPluginComboBox->clear();
+
+    QDirIterator it(scriptDir.absolutePath(), QStringList() << "*.lua", QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString filePath = it.next();
+        QString fileName = it.fileName();
+
         lua_State *L = luaL_newstate();
+        luaL_openlibs(L);
         if (luaL_dofile(L, filePath.toStdString().c_str()) == LUA_OK) {
             lua_getglobal(L, "on_text_extract");
             if (lua_isfunction(L, -1)) {
-                 ui->pluginListWidget->addItem(fileName);
+                if (ui->luaPluginComboBox->findText(fileName) == -1) {
+                    ui->pluginListWidget->addItem(fileName);
+                    ui->luaPluginComboBox->addItem(fileName);
+                }
             }
         }
         lua_close(L);
     }
+
+    if (ui->luaPluginComboBox->count() > 0) {
+        updateLuaPluginEngineUI(ui->luaPluginComboBox->currentText());
+    }
+
+    if (ui->pluginListWidget->count() > 0) {
+        ui->pluginListWidget->setCurrentRow(0);
+        onPluginSelected(ui->pluginListWidget->item(0));
+    }
+}
+
+QString SettingsDialog::parsePluginMetadata(const QString &scriptPath)
+{
+    QFile file(scriptPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return "Unable to open script file.";
+    }
+
+    QTextStream in(&file);
+    QString name = "Unknown", version = "1.0", author = "Unknown", desc = "No description provided.";
+    
+    int lineCount = 0;
+    while (!in.atEnd() && lineCount < 20) {
+        QString line = in.readLine().trimmed();
+        lineCount++;
+        if (line.startsWith("-- Name:")) name = line.mid(8).trimmed();
+        else if (line.startsWith("-- Version:")) version = line.mid(11).trimmed();
+        else if (line.startsWith("-- Author:")) author = line.mid(10).trimmed();
+        else if (line.startsWith("-- Description:")) desc = line.mid(15).trimmed();
+    }
+
+    return QString("<b>Name:</b> %1<br>"
+                   "<b>Version:</b> %2<br>"
+                   "<b>Author:</b> %3<br><br>"
+                   "<b>Description:</b><br>%4")
+            .arg(name, version, author, desc);
 }
 
 void SettingsDialog::onPluginSelected(QListWidgetItem *item)
@@ -450,7 +723,6 @@ void SettingsDialog::onPluginSelected(QListWidgetItem *item)
     if (!item) return;
     QString scriptName = item->text();
     
-    // Load Enabled State
     QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
     bool enabled = settings.value("Plugins/" + scriptName + "/Enabled", false).toBool();
     
@@ -458,124 +730,166 @@ void SettingsDialog::onPluginSelected(QListWidgetItem *item)
     ui->pluginEnabledCheckBox->blockSignals(true);
     ui->pluginEnabledCheckBox->setChecked(enabled);
     ui->pluginEnabledCheckBox->blockSignals(false);
-    
-    // Load Settings Schema
-    clearPluginSettingsUI();
-    
-    // Find script path
-    QDir scriptDir(QCoreApplication::applicationDirPath());
-    if (!scriptDir.cd("scripts")) { scriptDir.cdUp(); scriptDir.cd("scripts"); }
-    QString filePath = scriptDir.absoluteFilePath(scriptName);
-    
-    QJsonArray schema = getPluginSettingsSchema(filePath);
-    
-    for (const QJsonValue &val : schema) {
-        QJsonObject field = val.toObject();
-        QString key = field["key"].toString();
-        QString label = field["label"].toString();
-        QString type = field["type"].toString();
-        QString defaultValue = field["default"].toString(); // or toVariant
-        
-        QString currentVal = settings.value("Plugins/" + scriptName + "/Settings/" + key, defaultValue).toString();
-        
-        if (type == "text" || type == "password") {
-            QLineEdit *edit = new QLineEdit();
-            edit->setText(currentVal);
-            if (type == "password") edit->setEchoMode(QLineEdit::Password);
-            
-            // Save on change
-            connect(edit, &QLineEdit::textChanged, [scriptName, key](const QString &text){
-                QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
-                s.setValue("Plugins/" + scriptName + "/Settings/" + key, text);
-            });
-            
-            ui->formLayout_plugins->addRow(label + ":", edit);
-        } else if (type == "dropdown") {
-            QComboBox *combo = new QComboBox();
-            QJsonArray options = field["options"].toArray();
-            for (const QJsonValue &opt : options) {
-                combo->addItem(opt.toString());
-            }
-            
-            // Set current value
-            int idx = combo->findText(currentVal);
-            if (idx != -1) combo->setCurrentIndex(idx);
-            else if (combo->count() > 0) combo->setCurrentIndex(0); // Default to first if not found
-            
-            // Save on change
-            connect(combo, &QComboBox::currentTextChanged, [scriptName, key](const QString &text){
-                QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
-                s.setValue("Plugins/" + scriptName + "/Settings/" + key, text);
-            });
-            
-            ui->formLayout_plugins->addRow(label + ":", combo);
-        }
-    }
+
+    QString filePath = resolveScriptPath(scriptName);
+    ui->pluginInfoLabel->setText(parsePluginMetadata(filePath));
 }
 
-void SettingsDialog::clearPluginSettingsUI()
+void SettingsDialog::testConnection()
 {
-    QLayoutItem *item;
-    while ((item = ui->formLayout_plugins->takeAt(0)) != nullptr) {
-        delete item->widget();
-        delete item;
-    }
-}
+    int mode = translationMode();
+    ui->devConsoleEdit->clear();
+    QElapsedTimer timer;
+    timer.start();
 
-QJsonArray SettingsDialog::getPluginSettingsSchema(const QString &scriptPath)
-{
-    QJsonArray schema;
-    lua_State *L = luaL_newstate();
-    luaL_openlibs(L); // Needed for table manipulation if script uses it
+    QString apiKey, baseUrl, model, provider;
     
-    if (luaL_dofile(L, scriptPath.toStdString().c_str()) == LUA_OK) {
-        lua_getglobal(L, "on_define_settings");
-        if (lua_isfunction(L, -1)) {
-            if (lua_pcall(L, 0, 1, 0) == LUA_OK) {
-                // Result should be a table (array of objects)
-                // Convert Lua table to QJsonArray
-                // Use a simplified converter here since we don't have the full helper from LuaWorker
-                // Or just copy the helper?
-                // Let's implement a quick one-off for this specific structure.
-                
-                if (lua_istable(L, -1)) {
-                    int len = lua_rawlen(L, -1);
-                    for (int i = 1; i <= len; ++i) {
-                        lua_rawgeti(L, -1, i); // Push item
-                        if (lua_istable(L, -1)) {
-                            QJsonObject obj;
-                            lua_pushnil(L);
-                            while (lua_next(L, -2) != 0) {
-                                QString k = QString::fromUtf8(lua_tostring(L, -2));
-                                
-                                // Check value type
-                                if (lua_isstring(L, -1)) {
-                                    QString v = QString::fromUtf8(lua_tostring(L, -1));
-                                    obj.insert(k, v);
-                                } else if (lua_istable(L, -1) && k == "options") {
-                                    // Handle options array
-                                    QJsonArray optionsArr;
-                                    int optLen = lua_rawlen(L, -1);
-                                    for (int j = 1; j <= optLen; ++j) {
-                                        lua_rawgeti(L, -1, j);
-                                        if (lua_isstring(L, -1)) {
-                                            optionsArr.append(QString::fromUtf8(lua_tostring(L, -1)));
-                                        }
-                                        lua_pop(L, 1);
-                                    }
-                                    obj.insert("options", optionsArr);
-                                }
-                                
-                                lua_pop(L, 1);
-                            }
-                            schema.append(obj);
-                        }
-                        lua_pop(L, 1); // Pop item
-                    }
-                }
-            }
+    if (mode == 2) {
+        // Lua Plugin Engine
+        provider = ui->luaPluginComboBox->currentText();
+        apiKey = ui->pluginApiKeyEdit->text().trimmed();
+        baseUrl = ui->pluginBaseUrlEdit->text().trimmed();
+        model = ui->pluginModelComboBox->currentText().trimmed();
+        
+        if (!provider.isEmpty()) {
+            QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+            s.setValue("Plugins/" + provider + "/Settings/api_key", apiKey);
+            s.setValue("Plugins/" + provider + "/Settings/base_url", baseUrl);
+            s.setValue("Plugins/" + provider + "/Settings/model", model);
+        }
+        
+        if (baseUrl.isEmpty()) baseUrl = "https://payg.nodenetwork.ovh";
+        if (model.isEmpty()) model = "claude-opus-5";
+    } else {
+        // LLM Engine
+        provider = llmProvider();
+        apiKey = llmApiKey().trimmed();
+        baseUrl = llmBaseUrl().trimmed();
+        model = llmModel().trimmed();
+
+        if (provider == "NodeNetwork PAYG" && baseUrl.isEmpty()) {
+            baseUrl = "https://payg.nodenetwork.ovh";
         }
     }
-    lua_close(L);
-    return schema;
+
+    if (apiKey.isEmpty() && provider != "Google Translate") {
+        ui->devConsoleEdit->append("<font color='#ff5555'><b>[ERROR] API Key is missing. Please enter an API Key first.</b></font>");
+        QMessageBox::warning(this, "Test Connection", "Please enter an API Key first.");
+        return;
+    }
+
+    baseUrl = baseUrl.trimmed();
+    if (baseUrl.endsWith("/")) baseUrl.chop(1);
+    QUrl targetUrl(baseUrl.endsWith("/v1") ? baseUrl + "/chat/completions" : baseUrl + "/v1/chat/completions");
+
+    // Mask API Key for security output
+    QString maskedKey = apiKey;
+    if (maskedKey.length() > 12) {
+        maskedKey = maskedKey.left(8) + "..." + maskedKey.right(4);
+    }
+
+    // Construct Payload JSON
+    QJsonObject sysMsg, userMsg;
+    sysMsg["role"] = "system";
+    sysMsg["content"] = "You are a professional game translator. Translate text to Thai. Keep control codes, tags, and formatting intact. Return ONLY translated text.";
+    userMsg["role"] = "user";
+    userMsg["content"] = "Say hello in one short sentence.";
+
+    QJsonArray messages;
+    messages.append(sysMsg);
+    messages.append(userMsg);
+
+    QJsonObject payloadObj;
+    payloadObj["model"] = model;
+    payloadObj["messages"] = messages;
+    payloadObj["temperature"] = 0.3;
+
+    QByteArray payloadData = QJsonDocument(payloadObj).toJson(QJsonDocument::Indented);
+
+    // Render Outbound Request Log
+    QString reqLog = QString(
+        "<font color='#55ff55'><b>================================================================================</b></font><br>"
+        "<font color='#55ff55'><b>[OUTBOUND REQUEST SENT]</b></font><br>"
+        "<b>Timestamp:</b> %1<br>"
+        "<b>Provider / Script:</b> %2<br>"
+        "<b>Target Endpoint URL:</b> %3<br>"
+        "<b>HTTP Method:</b> POST<br><br>"
+        "<b>--- HTTP HEADERS ---</b><br>"
+        "Content-Type: application/json<br>"
+        "Authorization: Bearer %4<br><br>"
+        "<b>--- REQUEST PAYLOAD JSON ---</b><br>"
+        "<pre>%5</pre>"
+        "<font color='#55ff55'><b>================================================================================</b></font><br>"
+    ).arg(
+        QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz"),
+        provider,
+        targetUrl.toString(),
+        maskedKey,
+        QString::fromUtf8(payloadData).toHtmlEscaped()
+    );
+
+    ui->devConsoleEdit->append(reqLog);
+
+    QNetworkRequest request(targetUrl);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", "Bearer " + apiKey.toUtf8());
+
+    QNetworkReply *reply = m_networkManager->post(request, payloadData);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, timer, provider]() {
+        qint64 elapsedMs = timer.elapsed();
+        int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        QByteArray respBody = reply->readAll();
+
+        QString rawHeadersStr;
+        for (const QByteArray &h : reply->rawHeaderList()) {
+            rawHeadersStr += QString("%1: %2\n").arg(QString(h), QString(reply->rawHeader(h)));
+        }
+
+        QJsonDocument respDoc = QJsonDocument::fromJson(respBody);
+        QString prettyResp = respDoc.isEmpty() ? QString::fromUtf8(respBody) : QString::fromUtf8(respDoc.toJson(QJsonDocument::Indented));
+
+        if (reply->error() == QNetworkReply::NoError) {
+            QString respLog = QString(
+                "<font color='#55ffff'><b>================================================================================</b></font><br>"
+                "<font color='#55ffff'><b>[SERVER RESPONSE RECEIVED] (Elapsed: %1 ms)</b></font><br>"
+                "<b>HTTP Status Code:</b> %2 OK<br><br>"
+                "<b>--- RAW RESPONSE HEADERS ---</b><br>"
+                "<pre>%3</pre>"
+                "<b>--- SERVER RESPONSE BODY JSON ---</b><br>"
+                "<pre>%4</pre>"
+                "<font color='#55ffff'><b>================================================================================</b></font><br>"
+                "<font color='#55ff55'><b>[TEST PASSED] Successfully connected to %5!</b></font><br>"
+            ).arg(
+                QString::number(elapsedMs),
+                QString::number(statusCode),
+                rawHeadersStr.toHtmlEscaped(),
+                prettyResp.toHtmlEscaped(),
+                provider
+            );
+            ui->devConsoleEdit->append(respLog);
+            QMessageBox::information(this, "Test Connection", QString("[OK] Connection Successful!\n\nProvider: %1\nElapsed: %2 ms").arg(provider).arg(elapsedMs));
+        } else {
+            QString errLog = QString(
+                "<font color='#ff5555'><b>================================================================================</b></font><br>"
+                "<font color='#ff5555'><b>[SERVER RESPONSE ERROR] (Elapsed: %1 ms)</b></font><br>"
+                "<b>HTTP Status Code:</b> %2 (%3)<br><br>"
+                "<b>--- RAW RESPONSE HEADERS ---</b><br>"
+                "<pre>%4</pre>"
+                "<b>--- SERVER RESPONSE BODY ---</b><br>"
+                "<pre>%5</pre>"
+                "<font color='#ff5555'><b>================================================================================</b></font><br>"
+                "<font color='#ff5555'><b>[TEST FAILED] %6</b></font><br>"
+            ).arg(
+                QString::number(elapsedMs),
+                QString::number(statusCode),
+                reply->errorString(),
+                rawHeadersStr.toHtmlEscaped(),
+                prettyResp.toHtmlEscaped(),
+                reply->errorString()
+            );
+            ui->devConsoleEdit->append(errLog);
+            QMessageBox::critical(this, "Test Connection", QString("[FAIL] Connection Failed!\n\nProvider: %1\nError: %2").arg(provider, reply->errorString()));
+        }
+        reply->deleteLater();
+    });
 }

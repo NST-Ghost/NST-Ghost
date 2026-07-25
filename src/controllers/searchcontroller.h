@@ -12,14 +12,17 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 
+class NstDatabase;
+
 class SearchController : public QObject
 {
     Q_OBJECT
 public:
-    explicit SearchController(QStandardItemModel *model, QTableView *view, QObject *parent = nullptr);
+    explicit SearchController(QAbstractItemModel *model, QTableView *view, QObject *parent = nullptr);
 
-    void setTranslationModel(QStandardItemModel *model);
+    void setTranslationModel(QAbstractItemModel *model);
     void setLoadedGameProjectData(const QMap<QString, QJsonArray> *data);
+    void setDatabase(const NstDatabase *db);
     void setFileListModel(QStandardItemModel *model);
 
     QList<QPair<QString, QPair<int, QString>>> searchAllFiles(const QString &query) const;
@@ -49,9 +52,10 @@ private:
     bool matchesModelRow(int row, const ParsedQuery &query) const;
     QString buildResultPreview(const QJsonObject &object, const SearchTerm *matchedTerm = nullptr) const;
 
-    QStandardItemModel *m_translationModel;
+    QAbstractItemModel *m_translationModel;
     QTableView *m_view;
     const QMap<QString, QJsonArray> *m_loadedGameProjectData;
+    const NstDatabase *m_db = nullptr;
     QStandardItemModel *m_fileListModel;
     bool m_hideCompleted = false; // New member
     QString m_currentQuery; // Store current query to re-apply filter

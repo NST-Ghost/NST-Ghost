@@ -85,6 +85,8 @@ void MenuBar::createActions()
     editEngineScriptAction = new QAction(tr("Edit Engine Script..."), this);
     connect(editEngineScriptAction, &QAction::triggered, this, &MenuBar::editEngineScript);
 
+
+
     // View Actions
     toggleContextAction = new QAction(tr("Show Context Column"), this);
     toggleContextAction->setCheckable(true);

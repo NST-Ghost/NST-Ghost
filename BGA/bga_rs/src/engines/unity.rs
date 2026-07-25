@@ -4,10 +4,7 @@
 
 use crate::analyzer::{AnalyzerOutput, GameAnalyzer, TextEntry};
 use serde_json::json;
-use std::fs;
 use std::path::Path;
-use unity_asset_binary::asset::SerializedFile;
-use unity_asset_binary::reader::BinaryReader;
 use walkdir::WalkDir;
 
 pub struct UnityAnalyzer;
@@ -32,21 +29,11 @@ impl GameAnalyzer for UnityAnalyzer {
             if entry.file_type().is_file() {
                 if let Some(ext) = entry.path().extension() {
                     let ext_str = ext.to_string_lossy().to_lowercase();
-                    if ext_str == "assets" || ext_str == "sharedassets" {
-                        if let Ok(data) = fs::read(entry.path()) {
-                            let mut reader = BinaryReader::new(&data);
-                            // SerializedFile::read typically takes a reader and options (None for default)
-                            if let Ok(asset) = SerializedFile::read(&mut reader, None) {
-                                for object in &asset.objects {
-                                    entries.push(json!({
-                                        "path": entry.path().to_string_lossy(),
-                                        "path_id": object.path_id,
-                                        "type_id": object.type_id,
-                                        "text": format!("Object PathID: {}", object.path_id)
-                                    }));
-                                }
-                            }
-                        }
+                    if ext_str == "assets" || ext_str == "sharedassets" || ext_str == "bundle" {
+                        entries.push(json!({
+                            "path": entry.path().to_string_lossy(),
+                            "text": format!("Found Unity asset file: {:?}", entry.path().file_name().unwrap_or_default())
+                        }));
                     }
                 }
             }

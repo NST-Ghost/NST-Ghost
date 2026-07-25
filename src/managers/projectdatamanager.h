@@ -2,8 +2,6 @@
 #define PROJECTDATAMANAGER_H
 
 #include <QObject>
-#include <QStandardItemModel>
-#include <QStringListModel>
 #include <QMap>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -11,15 +9,21 @@
 #include <QPair>
 #include <QSet>
 #include <QStringList>
+#include <QModelIndex>
+
+#include "../db/nstdatabase.h"
 
 class ProjectDataManager : public QObject
 {
     Q_OBJECT
 public:
-    explicit ProjectDataManager(QStandardItemModel *fileListModel = nullptr, QStandardItemModel *translationModel = nullptr, QObject *parent = nullptr);
+    explicit ProjectDataManager(QObject *parent = nullptr);
 
     QMap<QString, QJsonArray> &getLoadedGameProjectData();
     QString &getCurrentLoadedFilePath();
+
+    NstDatabase &database() { return m_db; }
+    const NstDatabase &database() const { return m_db; }
 
     void clearAllData();
 
@@ -28,12 +32,16 @@ public:
     void exportGameProject(const QString &targetDir);
     void setProjectPath(const QString &path);
     void setHideCompleted(bool hide);
-    QString getProjectPath() const { return m_projectPath; }
-    void setEngineName(const QString &name) { m_engineName = name; }
-    QString getEngineName() const { return m_engineName; }
+    bool hideCompleted() const { return m_hideCompleted; }
+    QString getProjectPath() const;
+    void setEngineName(const QString &name);
+    QString getEngineName() const;
 
     bool saveTranslationWorkspace(const QString &filePath);
     bool loadTranslationWorkspace(const QString &filePath);
+
+    // Headless-compatible file selection
+    void selectFile(const QString &filePath);
 
 public slots:
     void onLoadingFinished(const QJsonArray &extractedTextsArray, bool sync = false);
@@ -42,14 +50,18 @@ public slots:
 
 private slots:
     void onProcessingFinished();
-    
 
 signals:
     void processingFinished();
+    void fileListUpdated(const QStringList &filePaths);
+    void fileSelected(const QString &filePath, const QJsonArray &entries);
+    void translationUpdated(const QString &filePath, const QString &source, const QString &translation);
+    void dataCleared();
 
 private:
-    QStandardItemModel *m_fileListModel;
-    QStandardItemModel *m_translationModel;
+    void syncCacheFromDb();
+
+    NstDatabase m_db;
     QMap<QString, QJsonArray> m_loadedGameProjectData;
     QString m_currentLoadedFilePath;
     QFutureWatcher<QPair<QMap<QString, QJsonArray>, QStringList>> m_processingFutureWatcher;

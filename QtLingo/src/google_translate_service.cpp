@@ -37,13 +37,13 @@ void GoogleTranslateService::setGoogleTranslateMode(bool isApi)
     m_isApi = isApi;
 }
 
-void GoogleTranslateService::configure(const QVariantMap &settings)
+void GoogleTranslateService::configure(const TranslationSettings &settings)
 {
-    setTargetLanguage(settings.value("targetLanguage").toString());
-    setSourceLanguage(settings.value("sourceLanguage", "auto").toString());
-    m_isApi = settings.value("googleApi").toBool();
+    setTargetLanguage(settings.targetLanguage);
+    setSourceLanguage(settings.sourceLanguage);
+    m_isApi = settings.googleApiEnabled;
     if (m_isApi) {
-        setApiKey(settings.value("googleApiKey").toString());
+        setApiKey(settings.googleApiKey);
     }
 }
 

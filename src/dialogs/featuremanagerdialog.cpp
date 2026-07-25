@@ -128,7 +128,7 @@ void FeatureManagerDialog::refreshStatus()
 
 QString FeatureManagerDialog::getStatusIcon(bool installed) const
 {
-    return installed ? "✓" : "✗";
+    return installed ? "[OK]" : "[NO]";
 }
 
 QString FeatureManagerDialog::getStatusText(bool installed) const

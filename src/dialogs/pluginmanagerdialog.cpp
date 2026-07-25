@@ -115,16 +115,16 @@ void PluginManagerDialog::appendLog(const QString& msg) {
 }
 
 QString PluginManagerDialog::getPluginStatus(const QString& pluginName) {
-    QSettings settings("NST", "PluginSettings");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
     bool installed = settings.value("Plugins/" + pluginName + "/Installed", false).toBool();
     bool enabled = settings.value("Plugins/" + pluginName + "/Enabled", false).toBool();
     
     QString status;
-    if (installed) status += "✓ Installed";
-    else status += "✗ Not installed";
+    if (installed) status += "[OK] Installed";
+    else status += "[NO] Not installed";
     
-    if (enabled) status += " | ✓ Enabled";
-    else status += " | ✗ Disabled";
+    if (enabled) status += " | [OK] Enabled";
+    else status += " | [OFF] Disabled";
     
     return status;
 }
@@ -142,7 +142,7 @@ void PluginManagerDialog::onPluginSelected() {
         "Status: " + getPluginStatus(pluginName)
     );
     
-    QSettings settings("NST", "PluginSettings");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
     bool enabled = settings.value("Plugins/" + pluginName + "/Enabled", false).toBool();
     m_enableCheckBox->setChecked(enabled);
     
@@ -154,13 +154,13 @@ void PluginManagerDialog::onEnableToggled(int state) {
     if (!item) return;
     
     QString pluginName = item->text();
-    QSettings settings("NST", "PluginSettings");
+    QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
     settings.setValue("Plugins/" + pluginName + "/Enabled", state == Qt::Checked);
     
     if (state == Qt::Checked) {
-        appendLog("✓ Enabled: " + pluginName + " (will load on next startup)");
+        appendLog("[OK] Enabled: " + pluginName + " (will load on next startup)");
     } else {
-        appendLog("✗ Disabled: " + pluginName);
+        appendLog("[OFF] Disabled: " + pluginName);
     }
     
     onPluginSelected(); // Refresh info
@@ -177,9 +177,9 @@ void PluginManagerDialog::onInstallClicked() {
     // Check if on_install hook exists
     if (!LuaScriptManager::instance().hasHook(pluginName, "on_install")) {
         // No installation hook needed, treat as success
-        QSettings settings("NST", "PluginSettings");
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
         settings.setValue("Plugins/" + pluginName + "/Installed", true);
-        appendLog("✓ Installation completed (No dependencies)");
+        appendLog("[OK] Installation completed (No dependencies)");
         onPluginSelected();
         return;
     }
@@ -187,14 +187,14 @@ void PluginManagerDialog::onInstallClicked() {
     auto result = LuaScriptManager::instance().executeHookForPlugin(pluginName, "on_install");
     
     if (result.toBool()) {
-        QSettings settings("NST", "PluginSettings");
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
         settings.setValue("Plugins/" + pluginName + "/Installed", true);
-        appendLog("✓ Installation completed successfully");
+        appendLog("[OK] Installation completed successfully");
     } else {
-        QSettings settings("NST", "PluginSettings");
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
         settings.setValue("Plugins/" + pluginName + "/Installed", false);
         settings.setValue("Plugins/" + pluginName + "/Enabled", false); // Disable if install failed
-        appendLog("✗ Installation failed");
+        appendLog("[FAIL] Installation failed");
     }
     
     onPluginSelected(); // Refresh status
@@ -211,7 +211,7 @@ void PluginManagerDialog::onRunActionClicked() {
     
     LuaScriptManager::instance().executeHookForPlugin(pluginName, "on_menu_click");
     
-    appendLog("✓ Action completed");
+    appendLog("[OK] Action completed");
 #endif
 }
 
@@ -222,6 +222,6 @@ void PluginManagerDialog::onReloadClicked() {
     LuaScriptManager::instance().loadScriptsFromDir(scriptPath);
     LuaScriptManager::instance().registerAPI();
     loadPlugins();
-    appendLog("✓ Plugins reloaded successfully");
+    appendLog("[OK] Plugins reloaded successfully");
 #endif
 }

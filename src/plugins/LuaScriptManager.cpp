@@ -11,11 +11,16 @@ LuaScriptManager& LuaScriptManager::instance() {
     return inst;
 }
 
+#include <QDirIterator>
+
 void LuaScriptManager::loadScriptsFromDir(const QString& dir) {
-    QDir scriptDir(dir);
-    for (const QString& file : scriptDir.entryList({"*.lua"}, QDir::Files)) {
+    QDirIterator it(dir, {"*.lua"}, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString filePath = it.next();
+        QFileInfo fileInfo(filePath);
+        QString file = fileInfo.fileName();
         auto* plugin = new LuaPlugin(this);
-        if (plugin->loadScript(scriptDir.absoluteFilePath(file))) {
+        if (plugin->loadScript(filePath)) {
             m_scripts[file] = plugin;
             qDebug() << "Loaded Lua script:" << file;
         } else {

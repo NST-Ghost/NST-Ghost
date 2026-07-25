@@ -1,6 +1,6 @@
 ---
 Language:        Cpp
-BasedOnStyle:  LLVM
+BasedOnStyle:    LLVM
 IndentWidth:     4
 TabWidth:        4
 UseTab:          Never
@@ -15,7 +15,7 @@ AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: false
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: All
+AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakAfterDefinitionReturnType: None
@@ -48,4 +48,12 @@ BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: BeforeColon
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
+SortIncludes: true
+IncludeCategories:
+  - Regex:           '^<Q[A-Za-z0-9_]+>'
+    Priority:        1
+  - Regex:           '^<[a-z0-9_]+>'
+    Priority:        2
+  - Regex:           '.*'
+    Priority:        3
 ...

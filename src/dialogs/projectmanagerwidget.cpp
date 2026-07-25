@@ -12,8 +12,8 @@
 #include <QScreen>
 #include <QGraphicsDropShadowEffect>
 #include <QProgressBar>
+#include <QStyle>
 #include <QDebug>
-
 #include <QClipboard>
 
 /* =========================================================================
@@ -60,8 +60,6 @@ void ProjectManagerWidget::setupTopBar()
     QWidget *topBar = new QWidget(this);
     topBar->setObjectName("pmTopBar");
     topBar->setFixedHeight(56);
-    topBar->setStyleSheet(
-        "#pmTopBar { background-color: #0d0d0d; border-bottom: 1px solid #252525; }");
 
     QHBoxLayout *layout = new QHBoxLayout(topBar);
     layout->setContentsMargins(20, 0, 20, 0);
@@ -73,26 +71,21 @@ void ProjectManagerWidget::setupTopBar()
     if (!appIcon.isNull()) {
         iconLabel->setPixmap(appIcon.scaled(28, 28, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     }
-    iconLabel->setStyleSheet("background: transparent;");
     layout->addWidget(iconLabel);
 
     // Title
     m_titleLabel = new QLabel("NST Project Manager");
-    m_titleLabel->setStyleSheet(
-        "font-size: 16px; font-weight: bold; color: #ffffff; background: transparent;");
+    m_titleLabel->setObjectName("pmTitleLabel");
     layout->addWidget(m_titleLabel);
 
     layout->addStretch();
 
     // Search
     m_searchEdit = new QLineEdit();
+    m_searchEdit->setObjectName("pmSearchEdit");
     m_searchEdit->setPlaceholderText("Search projects...");
     m_searchEdit->setFixedWidth(260);
     m_searchEdit->setClearButtonEnabled(true);
-    m_searchEdit->setStyleSheet(
-        "QLineEdit { background-color: #1a1a1a; border: 1px solid #3a3a3a; "
-        "border-radius: 6px; padding: 8px 12px; color: #cccccc; font-size: 12px; }"
-        "QLineEdit:focus { border: 2px solid #3399ff; padding: 7px 11px; }");
     connect(m_searchEdit, &QLineEdit::textChanged,
             this, &ProjectManagerWidget::onSearchTextChanged);
     layout->addWidget(m_searchEdit);
@@ -103,12 +96,8 @@ void ProjectManagerWidget::setupCardArea()
     m_scrollArea = new QScrollArea(this);
     m_scrollArea->setWidgetResizable(true);
     m_scrollArea->setFrameShape(QFrame::NoFrame);
-    m_scrollArea->setStyleSheet(
-        "QScrollArea { background-color: #1a1a1a; border: none; }"
-        "QScrollArea > QWidget > QWidget { background-color: #1a1a1a; }");
 
     m_cardContainer = new QWidget();
-    m_cardContainer->setStyleSheet("background-color: #1a1a1a;");
 
     m_cardLayout = new QGridLayout(m_cardContainer);
     m_cardLayout->setContentsMargins(32, 32, 32, 32);
@@ -122,8 +111,6 @@ void ProjectManagerWidget::setupBottomBar()
     QWidget *bottomBar = new QWidget(this);
     bottomBar->setObjectName("pmBottomBar");
     bottomBar->setFixedHeight(60);
-    bottomBar->setStyleSheet(
-        "#pmBottomBar { background-color: #0d0d0d; border-top: 1px solid #252525; }");
 
     QHBoxLayout *layout = new QHBoxLayout(bottomBar);
     layout->setContentsMargins(20, 0, 20, 0);
@@ -131,11 +118,6 @@ void ProjectManagerWidget::setupBottomBar()
 
     // Import button
     m_importButton = new QPushButton("Import");
-    m_importButton->setStyleSheet(
-        "QPushButton { background-color: #3a3a3a; border: 1px solid #4a4a4a; "
-        "border-radius: 6px; padding: 10px 28px; color: #cccccc; font-weight: bold; font-size: 12px; }"
-        "QPushButton:hover { background-color: #4a4a4a; border-color: #5a5a5a; }"
-        "QPushButton:pressed { background-color: #3399ff; color: #ffffff; }");
     connect(m_importButton, &QPushButton::clicked, this, &ProjectManagerWidget::onImportClicked);
     layout->addWidget(m_importButton);
 
@@ -143,22 +125,12 @@ void ProjectManagerWidget::setupBottomBar()
 
     // New Project button
     m_newProjectButton = new QPushButton("New Project");
-    m_newProjectButton->setStyleSheet(
-        "QPushButton { background-color: #3a3a3a; border: 1px solid #4a4a4a; "
-        "border-radius: 6px; padding: 10px 28px; color: #cccccc; font-weight: bold; font-size: 12px; }"
-        "QPushButton:hover { background-color: #4a4a4a; border-color: #5a5a5a; }"
-        "QPushButton:pressed { background-color: #3399ff; color: #ffffff; }");
     connect(m_newProjectButton, &QPushButton::clicked, this, &ProjectManagerWidget::onNewProjectClicked);
     layout->addWidget(m_newProjectButton);
 
     // Open button
     m_openButton = new QPushButton("Open");
-    m_openButton->setStyleSheet(
-        "QPushButton { background-color: #3399ff; border: none; "
-        "border-radius: 6px; padding: 10px 28px; color: #ffffff; font-weight: bold; font-size: 12px; }"
-        "QPushButton:hover { background-color: #4da6ff; }"
-        "QPushButton:pressed { background-color: #2680d9; }"
-        "QPushButton:disabled { background-color: #252525; color: #666666; }");
+    m_openButton->setDefault(true);
     m_openButton->setEnabled(false);
     connect(m_openButton, &QPushButton::clicked, this, &ProjectManagerWidget::onOpenClicked);
     layout->addWidget(m_openButton);
@@ -171,13 +143,9 @@ void ProjectManagerWidget::setupBottomBar()
 QFrame *ProjectManagerWidget::createProjectCard(const ProjectRegistry::ProjectEntry &entry)
 {
     QFrame *card = new QFrame();
-    card->setObjectName("projectCard");
+    card->setObjectName("pmCard");
     card->setFixedSize(CARD_WIDTH, CARD_HEIGHT);
     card->setCursor(Qt::PointingHandCursor);
-    card->setStyleSheet(
-        "QFrame#projectCard { background-color: #2b2b2b; border: 2px solid #3a3a3a; "
-        "border-radius: 8px; }"
-        "QFrame#projectCard:hover { border-color: #4a4a4a; background-color: #303030; }");
 
     // Store project path in the card
     card->setProperty("projectPath", entry.filePath);
@@ -190,32 +158,25 @@ QFrame *ProjectManagerWidget::createProjectCard(const ProjectRegistry::ProjectEn
     // ── Icon area ──
     QWidget *iconArea = new QWidget();
     iconArea->setFixedHeight(120);
-    iconArea->setStyleSheet("background-color: #222222; border-top-left-radius: 6px; "
-                            "border-top-right-radius: 6px;");
 
     QVBoxLayout *iconLayout = new QVBoxLayout(iconArea);
     iconLayout->setContentsMargins(0, 0, 0, 0);
 
     QLabel *iconLabel = new QLabel();
     iconLabel->setAlignment(Qt::AlignCenter);
-    iconLabel->setStyleSheet("background: transparent;");
     QPixmap icon = loadEngineIcon(entry.engineName);
     if (!icon.isNull()) {
         iconLabel->setPixmap(icon.scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
     } else {
-        iconLabel->setText("📁");
-        iconLabel->setStyleSheet("background: transparent; font-size: 36px; color: #666666;");
+        iconLabel->setText("[DIR]");
     }
     iconLayout->addWidget(iconLabel, 0, Qt::AlignCenter);
 
     // Engine badge
     if (!entry.engineName.isEmpty()) {
         QLabel *engineBadge = new QLabel(entry.engineName);
+        engineBadge->setObjectName("pmEngineBadge");
         engineBadge->setAlignment(Qt::AlignCenter);
-        engineBadge->setStyleSheet(
-            "background-color: rgba(51, 153, 255, 0.2); color: #3399ff; "
-            "font-size: 9px; font-weight: bold; padding: 2px 8px; "
-            "border-radius: 3px; margin: 0px 30px;");
         iconLayout->addWidget(engineBadge, 0, Qt::AlignCenter);
     }
 
@@ -227,15 +188,10 @@ QFrame *ProjectManagerWidget::createProjectCard(const ProjectRegistry::ProjectEn
     progressBar->setRange(0, 100);
     progressBar->setValue(entry.translatedPercent);
     progressBar->setTextVisible(false);
-    progressBar->setStyleSheet(
-        "QProgressBar { background-color: #3a3a3a; border: none; border-radius: 0px; }"
-        "QProgressBar::chunk { background-color: #3399ff; border-radius: 0px; }");
     layout->addWidget(progressBar);
 
     // ── Info area ──
     QWidget *infoArea = new QWidget();
-    infoArea->setStyleSheet("background-color: #2b2b2b; border-bottom-left-radius: 6px; "
-                            "border-bottom-right-radius: 6px;");
 
     QVBoxLayout *infoLayout = new QVBoxLayout(infoArea);
     infoLayout->setContentsMargins(10, 6, 10, 8);
@@ -243,8 +199,7 @@ QFrame *ProjectManagerWidget::createProjectCard(const ProjectRegistry::ProjectEn
 
     // Project name
     QLabel *nameLabel = new QLabel(entry.displayName);
-    nameLabel->setStyleSheet(
-        "color: #ffffff; font-size: 11px; font-weight: bold; background: transparent;");
+    nameLabel->setObjectName("pmCardName");
     nameLabel->setWordWrap(false);
     nameLabel->setTextInteractionFlags(Qt::NoTextInteraction);
     nameLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -258,15 +213,13 @@ QFrame *ProjectManagerWidget::createProjectCard(const ProjectRegistry::ProjectEn
     QString dateStr = formatDate(entry.lastModified);
     QString progressStr = QString("%1%").arg(entry.translatedPercent);
     QLabel *metaLabel = new QLabel(dateStr + "  •  " + progressStr);
-    metaLabel->setStyleSheet(
-        "color: #777777; font-size: 9px; background: transparent;");
+    metaLabel->setObjectName("pmCardMeta");
     metaLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     infoLayout->addWidget(metaLabel);
 
     // File count
     QLabel *filesLabel = new QLabel(QString("%1 files").arg(entry.fileCount));
-    filesLabel->setStyleSheet(
-        "color: #555555; font-size: 9px; background: transparent;");
+    filesLabel->setObjectName("pmCardMeta");
     filesLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     infoLayout->addWidget(filesLabel);
 
@@ -280,7 +233,10 @@ QFrame *ProjectManagerWidget::createProjectCard(const ProjectRegistry::ProjectEn
     card->setGraphicsEffect(shadow);
 
     // ── Event handling via event filter ──
-    card->installEventFilter(this->parent() ? this : this);
+    card->installEventFilter(this);
+    for (auto *child : card->findChildren<QWidget*>()) {
+        child->installEventFilter(this);
+    }
 
     return card;
 }
@@ -385,22 +341,22 @@ void ProjectManagerWidget::selectCard(QFrame *card)
 {
     // Deselect previous
     if (m_selectedCard) {
-        m_selectedCard->setStyleSheet(
-            "QFrame#projectCard { background-color: #2b2b2b; border: 2px solid #3a3a3a; "
-            "border-radius: 8px; }"
-            "QFrame#projectCard:hover { border-color: #4a4a4a; background-color: #303030; }");
+        m_selectedCard->setObjectName("pmCard");
+        m_selectedCard->style()->unpolish(m_selectedCard);
+        m_selectedCard->style()->polish(m_selectedCard);
     }
 
     m_selectedCard = card;
-    m_selectedProjectPath = card->property("projectPath").toString();
+    m_selectedProjectPath = card ? card->property("projectPath").toString() : QString();
 
     // Highlight selected
-    card->setStyleSheet(
-        "QFrame#projectCard { background-color: #2b2b2b; border: 3px solid #3399ff; "
-        "border-radius: 8px; }"
-        "QFrame#projectCard:hover { border-color: #4da6ff; background-color: #303030; }");
+    if (m_selectedCard) {
+        m_selectedCard->setObjectName("pmCardSelected");
+        m_selectedCard->style()->unpolish(m_selectedCard);
+        m_selectedCard->style()->polish(m_selectedCard);
+    }
 
-    m_openButton->setEnabled(true);
+    m_openButton->setEnabled(m_selectedCard != nullptr);
 }
 
 void ProjectManagerWidget::showCardContextMenu(QFrame *card, const QPoint &globalPos)
@@ -472,10 +428,20 @@ void ProjectManagerWidget::resizeEvent(QResizeEvent *event)
 bool ProjectManagerWidget::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::MouseButtonDblClick) {
-        QFrame *card = qobject_cast<QFrame*>(obj);
-        if (card && card->objectName() == "projectCard") {
+        QWidget *w = qobject_cast<QWidget*>(obj);
+        QFrame *card = nullptr;
+        while (w && w != this) {
+            if (QFrame *f = qobject_cast<QFrame*>(w)) {
+                if (f->objectName() == "pmCard" || f->objectName() == "pmCardSelected" || f->objectName() == "projectCard") {
+                    card = f;
+                    break;
+                }
+            }
+            w = w->parentWidget();
+        }
+
+        if (card) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-            
             if (event->type() == QEvent::MouseButtonPress) {
                 if (mouseEvent->button() == Qt::LeftButton) {
                     selectCard(card);

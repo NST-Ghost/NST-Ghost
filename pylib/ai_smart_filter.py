@@ -32,7 +32,7 @@ class AISmartFilter:
             logger.info(f"Loaded SentenceTransformer model: {model_name}")
         except ImportError:
             logger.warning("sentence-transformers not found. Falling back to heuristic mode.")
-            print("WARNING: sentence-transformers not installed. AI Smart Filter running in simple mode.")
+            print("WARNING: sentence-transformers not installed. AI Smart Filter running in simple mode.", file=sys.stderr)
             self.use_ai = False
         except Exception as e:
             logger.error(f"Failed to load model: {e}")

@@ -83,10 +83,10 @@ void TranslationTable::setupContextMenu()
     connect(this, &QTableView::customContextMenuRequested, this, [this](const QPoint &pos) {
         QMenu menu(this);
         
-        QAction *translateAction = menu.addAction("🌐 Translate Selected");
-        QAction *copyAction = menu.addAction("📋 Copy Source");
+        QAction *translateAction = menu.addAction("Translate Selected");
+        QAction *copyAction = menu.addAction("Copy Source");
         menu.addSeparator();
-        QAction *ignoreAction = menu.addAction("🚫 Mark as Ignored");
+        QAction *ignoreAction = menu.addAction("Mark as Ignored");
         
         connect(translateAction, &QAction::triggered, this, [this]() {
             // TODO: Emit translate signal

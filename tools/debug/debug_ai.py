@@ -37,7 +37,7 @@ def main():
     print_header("DLL Search Configuration")
     if sys.platform == 'win32':
         if hasattr(os, 'add_dll_directory'):
-            print("✓ os.add_dll_directory is available (Python 3.8+)")
+            print("[OK] os.add_dll_directory is available (Python 3.8+)")
         else:
             print("! os.add_dll_directory is MISSING (Old Python?)")
             
@@ -66,26 +66,26 @@ def main():
         # Check Torch
         torch_dir = os.path.join(site_packages, 'torch')
         if os.path.exists(torch_dir):
-            print(f"✓ Torch directory found: {torch_dir}")
+            print(f"[OK] Torch directory found: {torch_dir}")
             
             # Check Torch Lib
             torch_lib = os.path.join(torch_dir, 'lib')
             if os.path.exists(torch_lib):
-                print(f"✓ Torch Lib found: {torch_lib}")
+                print(f"[OK] Torch Lib found: {torch_lib}")
                 
                 # Check for critical DLLs
                 critical_dlls = ['fbgemm.dll', 'torch_cpu.dll', 'c10.dll', 'libomp140.x86_64.dll']
                 for dll in critical_dlls:
                     if os.path.exists(os.path.join(torch_lib, dll)):
-                        print(f"  ✓ Found {dll}")
+                        print(f"  [OK] Found {dll}")
                     else:
-                        print(f"  ❌ MISSING {dll}")
+                        print(f"  [FAIL] MISSING {dll}")
             else:
-                print(f"❌ Torch Lib NOT found at {torch_lib}")
+                print(f"[FAIL] Torch Lib NOT found at {torch_lib}")
         else:
-            print(f"❌ Torch NOT installed in {site_packages}")
+            print(f"[FAIL] Torch NOT installed in {site_packages}")
     else:
-        print("❌ Could not locate site-packages directory")
+        print("[FAIL] Could not locate site-packages directory")
 
     # 4. Attempt Import
     print_header("Attempting Imports")
@@ -93,18 +93,18 @@ def main():
     # 4.1 Try importing ctypes and loading VC Runtime
     try:
         import ctypes
-        print("✓ ctypes imported")
+        print("[OK] ctypes imported")
         
         # Try to find VCRUNTIME140.dll
         try:
             ctypes.CDLL("vcruntime140.dll")
-            print("✓ vcruntime140.dll loadable (VC++ Redist seems okay)")
+            print("[OK] vcruntime140.dll loadable (VC++ Redist seems okay)")
         except Exception as e:
-            print(f"❌ Failed to load vcruntime140.dll: {e}")
+            print(f"[FAIL] Failed to load vcruntime140.dll: {e}")
             print("  -> Try installing Visual C++ Redistributable 2015-2022")
             
     except Exception as e:
-        print(f"❌ ctypes check failed: {e}")
+        print(f"[FAIL] ctypes check failed: {e}")
 
     # 4.2 Try importing Torch
     print("\nImporting torch...")
@@ -120,13 +120,13 @@ def main():
                     pass
         
         import torch
-        print(f"✅ Torch imported successfully! Version: {torch.__version__}")
+        print(f"[OK] Torch imported successfully! Version: {torch.__version__}")
         print(f"   CUDA Available: {torch.cuda.is_available()}")
         
     except ImportError as e:
-        print(f"❌ ImportError loading torch: {e}")
+        print(f"[FAIL] ImportError loading torch: {e}")
     except OSError as e:
-        print(f"❌ OSError loading torch (likely DLL missing): {e}")
+        print(f"[FAIL] OSError loading torch (likely DLL missing): {e}")
         if "126" in str(e):
             print("\nAnalysis: WinError 126 detected.")
             print("Suggestions:")
@@ -134,7 +134,7 @@ def main():
             print("2. Install Visual C++ Redistributable.")
             print("3. Check if your CPU supports basic AVX instructions.")
     except Exception as e:
-        print(f"❌ Unexpected error loading torch: {e}")
+        print(f"[FAIL] Unexpected error loading torch: {e}")
 
     print("\nPress Enter to exit...")
     input()

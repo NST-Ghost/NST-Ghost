@@ -21,9 +21,13 @@ public slots:
     void setRange(int min, int max);
     void setMaximum(int max);
 
+signals:
+    void canceled();
+
 private:
     QProgressBar *m_progressBar;
     QLabel *m_labelText;
+    QPushButton *m_cancelButton;
 };
 
 #endif // CUSTOMPROGRESSDIALOG_H

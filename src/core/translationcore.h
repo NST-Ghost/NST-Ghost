@@ -14,6 +14,8 @@
 #include "smartfiltermanager.h"
 #include "projectdatamanager.h"
 #include "rpgm_injection_exporter.h"
+#include <qtlingo/translationsettings.h>
+#include <qtlingo/mcpclient.h>
 
 namespace qtlingo {
     struct TranslationResult;
@@ -31,6 +33,7 @@ public:
     BGADataManager* bgaDataManager() const { return m_bgaDataManager; }
     SmartFilterManager* smartFilterManager() const { return m_smartFilterManager; }
     ProjectDataManager* projectDataManager() const { return m_projectDataManager; }
+    qtlingo::McpClient* mcpClient() const { return m_mcpClient; }
 
     // Project Actions
     bool loadProject(const QString &engineName, const QString &projectPath);
@@ -44,8 +47,12 @@ public:
     void translateFiles(const QStringList &filePaths, const QString &serviceName = QString());
     
     // Settings
-    void setTranslationSettings(const QVariantMap &settings);
-    QVariantMap translationSettings() const { return m_settings; }
+    void setTranslationSettings(const TranslationSettings &settings);
+    TranslationSettings translationSettings() const { return m_settings; }
+    
+    // JSON Output option for CLI
+    void setJsonOutput(bool enabled);
+    bool jsonOutput() const { return m_jsonOutput; }
 
 signals:
     void projectLoaded(const QString &projectPath);
@@ -68,7 +75,7 @@ private:
     struct TranslationJob {
         QString serviceName;
         QStringList sourceTexts;
-        QVariantMap settings;
+        TranslationSettings settings;
         QString filePath;
     };
 
@@ -87,15 +94,19 @@ private:
     BGADataManager *m_bgaDataManager;
     SmartFilterManager *m_smartFilterManager;
     ProjectDataManager *m_projectDataManager;
+    qtlingo::McpClient *m_mcpClient;
 
     // State
     QQueue<TranslationJob> m_jobQueue;
     QQueue<QueuedResult> m_incomingResults;
     QMultiMap<QString, PendingTranslation> m_pendingTranslations;
     bool m_isTranslating = false;
-    QVariantMap m_settings;
+    TranslationSettings m_settings;
+    QString m_currentFilePath;
+    bool m_jsonOutput = false;
 
     QTimer *m_resultTimer;
+    QMap<QString, QMap<QString, QString>> m_rpgmTagMaps;
 };
 
 #endif // TRANSLATIONCORE_H

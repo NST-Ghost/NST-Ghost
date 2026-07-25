@@ -19,7 +19,11 @@
 #include "translationservicemanager.h"
 #include "smartfiltermanager.h"
 #include "projectdatamanager.h"
+#include <qtlingo/translationsettings.h>
 // #include "qtlingo/TranslationResult.h" // Removed: Defined in translationservice.h
+
+#include "models/virtualtranslationmodel.h"
+#include "dialogs/translationprogressdialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FileTranslationWidget; }
@@ -64,12 +68,16 @@ public:
     bool isAiFilterEnabled() const;
     void setAiFilterThreshold(double threshold);
     double aiFilterThreshold() const;
+    bool isTranslating() const { return m_isTranslating; }
 
     // Use this path for deployment if set (avoids dialog)
     void setDefaultDeploymentPath(const QString &path);
     QString defaultDeploymentPath() const;
 
     void openFontManager(); // Added
+    
+    bool loadProjectFile(const QString &filePath);
+    QString currentProjectFile() const { return m_currentProjectFile; }
     
 signals:
     void projectLoaded(const QString &projectPath);
@@ -79,6 +87,7 @@ signals:
 public slots:
     void openSearchDialog();
     void onSelectAllRequested();
+    void cancelTranslation();
 
 private slots:
     void onLoadingFinished();
@@ -109,6 +118,11 @@ private slots:
     void processIncomingResults();
     void displayFile(const QModelIndex &index);
 
+    // Project Data Manager handlers
+    void onFileListUpdated(const QStringList &filePaths);
+    void onFileSelected(const QString &filePath, const QJsonArray &entries);
+    void onDataCleared();
+
 private:
     // Setup methods (constructor organization)
     void initializeModels();
@@ -126,7 +140,7 @@ private:
     TranslationServiceManager *m_translationServiceManager; // Owned by MainWindow
     
     QStandardItemModel *m_fileListModel;
-    QStandardItemModel *m_translationModel;
+    VirtualTranslationModel *m_translationModel;
     
     SearchController *m_searchController;
     SearchDialog *m_searchDialog;
@@ -136,6 +150,7 @@ private:
     ProjectDataManager *m_projectDataManager;
     
     CustomProgressDialog *m_progressDialog;
+    TranslationProgressDialog *m_progressConsoleDialog = nullptr;
     QFutureWatcher<QJsonArray> m_loadFutureWatcher;
     
     // Settings (cached locally for use in translation jobs)
@@ -152,14 +167,21 @@ private:
     
     QString m_defaultDeploymentPath; // Path set via CLI/Config to use as default
     
+    enum Column {
+        ColumnContext = 0,
+        ColumnSourceText = 1,
+        ColumnTranslation = 2
+    };
+
     // Queues and Timers
     struct PendingTranslation {
-        QModelIndex index;
+        QPersistentModelIndex index;
         QString filePath;
+        QString contextStr;
     };
     QMultiMap<QString, PendingTranslation> m_pendingTranslations;
     
-    QVector<QModelIndex> m_pendingUIUpdates;
+    QVector<QPersistentModelIndex> m_pendingUIUpdates;
     QTimer *m_uiUpdateTimer;
     
     bool m_isImporting = false; // Flag to track import state
@@ -173,7 +195,7 @@ private:
     struct TranslationJob {
         QString serviceName;
         QStringList sourceTexts;
-        QVariantMap settings;
+        TranslationSettings settings;
         QModelIndex fileIndex;
     };
     QQueue<TranslationJob> m_translationQueue;
@@ -186,6 +208,9 @@ private:
     QQueue<QueuedTranslationResult> m_incomingResults;
     QTimer *m_resultProcessingTimer;
     QTimer *m_searchRefreshTimer;
+
+    // RPG Maker Pre-Translation Masking
+    QMap<QString, QMap<QString, QString>> m_rpgmTagMaps;
 };
 
 #endif // FILETRANSLATIONWIDGET_H

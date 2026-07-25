@@ -92,19 +92,17 @@ QString fieldValue(const QJsonObject &object, const QString &filePath, const QSt
     }).join('\n');
 }
 
-QString fieldValue(QStandardItemModel *model, int row, const QString &field)
+QString fieldValue(QAbstractItemModel *model, int row, const QString &field)
 {
     auto textAt = [model, row](int column) {
-        QStandardItem *item = model->item(row, column);
-        return item ? item->text() : QString();
+        return model->data(model->index(row, column)).toString();
     };
 
     if (field == "key") return textAt(0);
     if (field == "source") return textAt(1);
     if (field == "translation") return textAt(2);
     if (field == "warning") {
-        QStandardItem *item = model->item(row, 0);
-        return item ? item->data(Qt::UserRole + 2).toString() : QString();
+        return model->data(model->index(row, 0), Qt::UserRole + 2).toString();
     }
 
     QStringList values;
@@ -132,12 +130,12 @@ bool isTruthy(const QString &value)
 }
 }
 
-SearchController::SearchController(QStandardItemModel *model, QTableView *view, QObject *parent)
+SearchController::SearchController(QAbstractItemModel *model, QTableView *view, QObject *parent)
     : QObject(parent), m_translationModel(model), m_view(view), m_loadedGameProjectData(nullptr), m_fileListModel(nullptr)
 {
 }
 
-void SearchController::setTranslationModel(QStandardItemModel *model)
+void SearchController::setTranslationModel(QAbstractItemModel *model)
 {
     m_translationModel = model;
 }
@@ -145,6 +143,11 @@ void SearchController::setTranslationModel(QStandardItemModel *model)
 void SearchController::setLoadedGameProjectData(const QMap<QString, QJsonArray> *data)
 {
     m_loadedGameProjectData = data;
+}
+
+void SearchController::setDatabase(const NstDatabase *db)
+{
+    m_db = db;
 }
 
 void SearchController::setFileListModel(QStandardItemModel *model)
@@ -376,8 +379,8 @@ void SearchController::onSearchQueryChanged(const QString &query)
         
         // Check hide completed filter first
         if (m_hideCompleted) {
-             QStandardItem *translationItem = m_translationModel->item(i, 2); // Translation is col 2
-             if (translationItem && !translationItem->text().isEmpty()) {
+             QString transText = m_translationModel->data(m_translationModel->index(i, 2)).toString();
+             if (!transText.isEmpty()) {
                  shouldHide = true;
              }
         }

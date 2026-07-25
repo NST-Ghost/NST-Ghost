@@ -362,3 +362,91 @@ BGADataManager: After QJsonDocument::fromJson
 BGADataManager: Extracted 16908 entries.
 BGADataManager: After extracting entries
 BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: Unit-Test/RPGM
+BGADataManager: Analyzer output payload size:1034609bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 6347 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Flesh, Blood, & Concrete 1.01
+BGADataManager: Analyzer output payload size:375656bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 2208 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Flesh, Blood, & Concrete 1.01
+BGADataManager: Analyzer output payload size:386174bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 2208 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/Flesh, Blood, & Concrete 1.01
+BGADataManager: Analyzer output payload size:386174bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 2208 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/New Folder (13)/NTR Ero Trap Dungeon ~Kensei Elisa ga Ochiru Made/
+BGADataManager: Analyzer output payload size:6387900bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 31298 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: rpgm
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/New Folder (13)/NTR Ero Trap Dungeon ~Kensei Elisa ga Ochiru Made/
+BGADataManager: Analyzer output payload size:6387900bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 31298 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/13123/ScapeSir - Final X v0.2.7 dev/Scapesir
+BGADataManager: Analyzer output payload size:381640bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 2182 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/13123/ScapeSir - Final X v0.2.7 dev/Scapesir
+BGADataManager: Analyzer output payload size:381640bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 2182 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/13123/ScapeSir - Final X v0.2.7 dev/Scapesir
+BGADataManager: Analyzer output payload size:381640bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 2182 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/RJ01668207/Game
+BGADataManager: Analyzer output payload size:1257840bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 8092 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.
+BGADataManager: Creating analyzer for engine: RPGM
+BGADataManager: Calling analyzer->analyze for project: /home/jop/Downloads/RJ01668207/Game
+BGADataManager: Analyzer output payload size:1257840bytes
+BGADataManager: Before QJsonDocument::fromJson
+BGADataManager: After QJsonDocument::fromJson
+BGADataManager: Extracted 8092 entries.
+BGADataManager: After extracting entries
+BGADataManager: loadStringsFromGameProject returning.

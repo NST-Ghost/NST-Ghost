@@ -12,6 +12,8 @@ LuaTranslationPlugin::LuaTranslationPlugin()
     scanScripts();
 }
 
+#include <QDirIterator>
+
 void LuaTranslationPlugin::scanScripts()
 {
     m_scriptMap.clear();
@@ -36,9 +38,12 @@ void LuaTranslationPlugin::scanScripts()
          scriptDir.cd("scripts");
     }
 
-    std::cout << "Scanning scripts in: " << scriptDir.absolutePath().toStdString() << std::endl;
-    for (const QString &fileName : scriptDir.entryList({"*.lua"}, QDir::Files)) {
-        QString filePath = scriptDir.absoluteFilePath(fileName);
+    std::cerr << "Scanning scripts in: " << scriptDir.absolutePath().toStdString() << std::endl;
+    QDirIterator it(scriptDir.absolutePath(), {"*.lua"}, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString filePath = it.next();
+        QFileInfo fileInfo(filePath);
+        QString fileName = fileInfo.fileName();
         
         // Check if script has on_text_extract
         lua_State *L = luaL_newstate();
@@ -71,23 +76,23 @@ void LuaTranslationPlugin::scanScripts()
             lua_getglobal(L, "on_text_extract");
             if (lua_isfunction(L, -1)) {
                 
-                // Check if enabled AND installed
+                // Local scripts in scripts directory are installed by default
                 QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
-                bool enabled = settings.value("Plugins/" + fileName + "/Enabled", false).toBool();
-                bool installed = settings.value("Plugins/" + fileName + "/Installed", false).toBool();
+                bool enabled = settings.value("Plugins/" + fileName + "/Enabled", true).toBool();
+                bool installed = settings.value("Plugins/" + fileName + "/Installed", true).toBool();
                 
                 if (enabled && installed) {
-                    std::cout << "Found translation script (Enabled): " << fileName.toStdString() << std::endl;
+                    std::cerr << "Found translation script (Enabled): " << fileName.toStdString() << std::endl;
                     QString serviceName = "Lua: " + fileName;
                     m_scriptMap.insert(serviceName, filePath);
                 } else {
-                    std::cout << "Found translation script (Disabled/Not Installed): " << fileName.toStdString() << std::endl;
+                    std::cerr << "Found translation script (Disabled/Not Installed): " << fileName.toStdString() << std::endl;
                 }
             } else {
-                std::cout << "Skipping script (no on_text_extract): " << fileName.toStdString() << std::endl;
+                std::cerr << "Skipping script (no on_text_extract): " << fileName.toStdString() << std::endl;
             }
         } else {
-            std::cout << "Failed to load script for check: " << fileName.toStdString() << " Error: " << lua_tostring(L, -1) << std::endl;
+            std::cerr << "Failed to load script for check: " << fileName.toStdString() << " Error: " << lua_tostring(L, -1) << std::endl;
         }
         lua_close(L);
     }

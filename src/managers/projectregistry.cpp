@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 #include <QDebug>
+#include "../db/nstdatabase.h"
 
 /* =========================================================================
  *  ProjectEntry serialization
@@ -247,7 +248,21 @@ ProjectRegistry::ProjectEntry ProjectRegistry::readProjectMetadata(const QString
     entry.lastModified = fi.lastModified();
     entry.displayName = fi.baseName();  // Default name from filename
 
-    // Read the .nst JSON to extract metadata
+    if (NstDatabase::isSQLiteFile(filePath)) {
+        NstDatabase db;
+        if (db.open(filePath)) {
+            entry.engineName = db.getMeta("engineName");
+            entry.projectPath = db.getMeta("projectPath");
+            entry.fileCount = db.getFileList().size();
+            int total = 0, translated = 0;
+            db.getStats(total, translated);
+            entry.translatedPercent = total > 0 ? qRound(100.0 * translated / total) : 0;
+            db.close();
+        }
+        return entry;
+    }
+
+    // Read legacy .nst JSON to extract metadata
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
         return entry;

@@ -85,7 +85,7 @@ for _ in range(obj_count):
                     'class_id': class_id, 'byte_size': byte_size, 'name': name})
 
 assert errors == 0, f"{errors} out-of-bounds objects!"
-print(f"✓ All {len(objects)} objects parsed with 0 errors\n")
+print(f"[OK] All {len(objects)} objects parsed with 0 errors\n")
 
 cc = Counter(CLASS_NAMES.get(int(o['class_id']), f"class_{o['class_id']}") for o in objects)
 print("Class distribution (top 15):")

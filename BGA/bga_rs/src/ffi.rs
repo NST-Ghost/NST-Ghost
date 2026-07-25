@@ -3,7 +3,7 @@
 //! These functions allow C/C++ code to call into the Rust library.
 
 use crate::analyzer::TextEntry;
-use crate::engines::{renpy::RenpyAnalyzer, rpgm::RpgmAnalyzer, unity::UnityAnalyzer};
+use crate::engines::{godot::GodotAnalyzer, renpy::RenpyAnalyzer, rpgm::RpgmAnalyzer, unity::UnityAnalyzer};
 use crate::GameAnalyzer;
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
@@ -11,7 +11,7 @@ use std::path::Path;
 /// Analyze a game project
 ///
 /// # Arguments
-/// * `engine` - Engine name ("rpgm", "unity", "renpy")
+/// * `engine` - Engine name ("rpgm", "unity", "renpy", "godot")
 /// * `path` - Path to the game project
 ///
 /// # Returns
@@ -49,6 +49,10 @@ pub unsafe extern "C" fn bga_analyze(engine: *const c_char, path: *const c_char)
             let analyzer = RenpyAnalyzer::new();
             analyzer.analyze(Path::new(path_str))
         }
+        "godot" => {
+            let analyzer = GodotAnalyzer::new();
+            analyzer.analyze(Path::new(path_str))
+        }
         _ => {
             println!("[BGA-Rust-FFI] Unknown engine: '{}'", engine_str);
             return std::ptr::null_mut();
@@ -65,7 +69,7 @@ pub unsafe extern "C" fn bga_analyze(engine: *const c_char, path: *const c_char)
 /// Save translated texts back to game files
 ///
 /// # Arguments
-/// * `engine` - Engine name ("rpgm", "unity", "renpy")
+/// * `engine` - Engine name ("rpgm", "unity", "renpy", "godot")
 /// * `texts_json` - JSON array of text entries with translations
 ///
 /// # Returns
@@ -103,6 +107,10 @@ pub unsafe extern "C" fn bga_save(engine: *const c_char, texts_json: *const c_ch
             let analyzer = RenpyAnalyzer::new();
             analyzer.save(&texts)
         }
+        "godot" => {
+            let analyzer = GodotAnalyzer::new();
+            analyzer.save(&texts)
+        }
         _ => return -4,
     };
 
@@ -118,7 +126,7 @@ pub unsafe extern "C" fn bga_save(engine: *const c_char, texts_json: *const c_ch
 /// A JSON array of analyzer names (caller must free with `bga_free_string`)
 #[no_mangle]
 pub extern "C" fn bga_available_analyzers() -> *mut c_char {
-    let analyzers = vec!["rpgm", "unity", "renpy"];
+    let analyzers = vec!["rpgm", "unity", "renpy", "godot"];
     let json = serde_json::to_string(&analyzers).unwrap_or_else(|_| "[]".to_string());
 
     match CString::new(json) {

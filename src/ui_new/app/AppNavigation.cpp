@@ -32,8 +32,8 @@ void AppNavigation::setupUI()
     m_buttonGroup = new QButtonGroup(this);
     m_buttonGroup->setExclusive(true);
     
-    m_btnFileTranslation = createNavButton("📄 File Translation", "file");
-    m_btnSettings = createNavButton("⚙️ Settings", "settings");
+    m_btnFileTranslation = createNavButton("File Translation", "file");
+    m_btnSettings = createNavButton("Settings", "settings");
     
     m_buttonGroup->addButton(m_btnFileTranslation, 0);
     m_buttonGroup->addButton(m_btnSettings, 1);

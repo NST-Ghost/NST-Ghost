@@ -8,17 +8,19 @@
 #include <QFile>
 #include <QDir>
 #include <QSignalBlocker>
+#include <QElapsedTimer>
 
-ProjectDataManager::ProjectDataManager(QStandardItemModel *fileListModel, QStandardItemModel *translationModel, QObject *parent)
+ProjectDataManager::ProjectDataManager(QObject *parent)
     : QObject(parent)
-    , m_fileListModel(fileListModel)
-    , m_translationModel(translationModel)
 {
     connect(&m_processingFutureWatcher, &QFutureWatcher<QPair<QMap<QString, QJsonArray>, QStringList>>::finished, this, &ProjectDataManager::onProcessingFinished);
 }
 
 QMap<QString, QJsonArray> &ProjectDataManager::getLoadedGameProjectData()
 {
+    if (m_loadedGameProjectData.isEmpty() && m_db.isOpen()) {
+        syncCacheFromDb();
+    }
     return m_loadedGameProjectData;
 }
 
@@ -27,22 +29,59 @@ QString &ProjectDataManager::getCurrentLoadedFilePath()
     return m_currentLoadedFilePath;
 }
 
+void ProjectDataManager::syncCacheFromDb()
+{
+    if (m_db.isOpen()) {
+        m_loadedGameProjectData = m_db.getAllDataMap();
+    }
+}
+
 void ProjectDataManager::clearAllData()
 {
-    // Disconnect to signal to prevent handling "finished" from the cancelled future
     disconnect(&m_processingFutureWatcher, nullptr, this, nullptr);
     m_processingFutureWatcher.cancel();
     
-    // Do NOT set empty future as it might cause Qt internal crash with complex types
-    // m_processingFutureWatcher.setFuture(...); 
-
+    m_db.close();
     m_loadedGameProjectData.clear();
     m_currentLoadedFilePath.clear();
-    if (m_fileListModel) m_fileListModel->clear();
-    if (m_translationModel) m_translationModel->clear();
+    
+    emit dataCleared();
 
-    // Reconnect the signal for the future usage
     connect(&m_processingFutureWatcher, &QFutureWatcher<QPair<QMap<QString, QJsonArray>, QStringList>>::finished, this, &ProjectDataManager::onProcessingFinished);
+}
+
+void ProjectDataManager::setProjectPath(const QString &path)
+{
+    m_projectPath = path;
+    if (m_db.isOpen()) {
+        m_db.setMeta("projectPath", path);
+    }
+}
+
+QString ProjectDataManager::getProjectPath() const
+{
+    if (m_db.isOpen()) {
+        QString dbProjPath = m_db.getMeta("projectPath");
+        if (!dbProjPath.isEmpty()) return dbProjPath;
+    }
+    return m_projectPath;
+}
+
+void ProjectDataManager::setEngineName(const QString &name)
+{
+    m_engineName = name;
+    if (m_db.isOpen()) {
+        m_db.setMeta("engineName", name);
+    }
+}
+
+QString ProjectDataManager::getEngineName() const
+{
+    if (m_db.isOpen()) {
+        QString dbEngName = m_db.getMeta("engineName");
+        if (!dbEngName.isEmpty()) return dbEngName;
+    }
+    return m_engineName;
 }
 
 void ProjectDataManager::onLoadingFinished(const QJsonArray &extractedTextsArray, bool sync)
@@ -76,14 +115,10 @@ void ProjectDataManager::onLoadingFinished(const QJsonArray &extractedTextsArray
     if (sync) {
         auto result = processFunc();
         m_loadedGameProjectData = result.first;
-        if (m_fileListModel) {
-            m_fileListModel->clear();
-            for (const QString &path : result.second) {
-                QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
-                item->setData(path, Qt::UserRole);
-                m_fileListModel->appendRow(item);
-            }
+        if (m_db.isOpen()) {
+            m_db.insertOrReplaceAll(m_loadedGameProjectData);
         }
+        emit fileListUpdated(result.second);
         emit processingFinished();
     } else {
         QFuture<QPair<QMap<QString, QJsonArray>, QStringList>> future = QtConcurrent::run(processFunc);
@@ -95,7 +130,6 @@ void ProjectDataManager::mergeLoadingFinished(const QJsonArray &newExtractedText
 {
     qDebug() << "ProjectDataManager: mergeLoadingFinished called with " << newExtractedTextsArray.size() << " entries. Sync =" << sync;
 
-    // 1. Create a map from existing data: (source + key) -> translation
     QMap<QString, QString> translationMemory;
     for (auto it = m_loadedGameProjectData.begin(); it != m_loadedGameProjectData.end(); ++it) {
         const QJsonArray &arr = it.value();
@@ -124,7 +158,6 @@ void ProjectDataManager::mergeLoadingFinished(const QJsonArray &newExtractedText
             QString source = obj["source"].toString();
             QString key = obj["key"].toString();
             
-            // Check for match in translation memory
             QString tmKey = source + "|" + key;
             if (translationMemory.contains(tmKey)) {
                 obj["text"] = translationMemory.value(tmKey);
@@ -147,14 +180,10 @@ void ProjectDataManager::mergeLoadingFinished(const QJsonArray &newExtractedText
     if (sync) {
         auto result = processFunc();
         m_loadedGameProjectData = result.first;
-        if (m_fileListModel) {
-            m_fileListModel->clear();
-            for (const QString &path : result.second) {
-                QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
-                item->setData(path, Qt::UserRole);
-                m_fileListModel->appendRow(item);
-            }
+        if (m_db.isOpen()) {
+            m_db.insertOrReplaceAll(m_loadedGameProjectData);
         }
+        emit fileListUpdated(result.second);
         emit processingFinished();
     } else {
         QFuture<QPair<QMap<QString, QJsonArray>, QStringList>> future = QtConcurrent::run(processFunc);
@@ -168,116 +197,65 @@ void ProjectDataManager::onProcessingFinished()
     QPair<QMap<QString, QJsonArray>, QStringList> result = m_processingFutureWatcher.result();
     m_loadedGameProjectData = result.first;
     
-    m_fileListModel->clear();
-    for (const QString &path : result.second) {
-        QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
-        item->setData(path, Qt::UserRole);
-        m_fileListModel->appendRow(item);
+    if (m_db.isOpen()) {
+        m_db.insertOrReplaceAll(m_loadedGameProjectData);
     }
 
-    qDebug() << "ProjectDataManager: Models updated. Emitting processingFinished signal.";
+    emit fileListUpdated(result.second);
+
+    qDebug() << "ProjectDataManager: Data loaded. Emitting processingFinished signal.";
     emit processingFinished();
 }
 
-
 void ProjectDataManager::onFileSelected(const QModelIndex &index)
 {
-    QStandardItem *item = m_fileListModel->itemFromIndex(index);
-    if (!item) return;
-    
-    QString fullFilePath = item->data(Qt::UserRole).toString();
-
-    QSignalBlocker modelSignalBlocker(m_translationModel);
-    m_translationModel->clear();
-    m_translationModel->setHorizontalHeaderLabels(QStringList() << "Context" << "Source Text" << "Translation");
-
-    m_currentLoadedFilePath = fullFilePath;
-
-    if (m_loadedGameProjectData.contains(fullFilePath)) {
-        const QJsonArray &textsArray = m_loadedGameProjectData.value(fullFilePath);
-        QList<QList<QStandardItem*>> rows;
-        rows.reserve(textsArray.size());
-
-        for (const QJsonValue &value : textsArray) {
-            QJsonObject obj = value.toObject();
-            QString source = obj["source"].toString();
-            QString translation = obj["text"].toString();
-            QString key = obj["key"].toString();
-            QString warning = obj["warning"].toString();
-
-            if (m_hideCompleted && !translation.isEmpty()) {
-                 continue;
-            }
-
-            QStandardItem *contextItem = new QStandardItem(key);
-            contextItem->setEditable(false); // Context should be read-only
-            contextItem->setForeground(QBrush(QColor(150, 150, 150))); // Grey out context text
-            
-            if (!warning.isEmpty()) {
-                contextItem->setIcon(QIcon::fromTheme("dialog-warning")); // Or built-in standard icon
-                contextItem->setToolTip("Warning: " + warning);
-                contextItem->setData(warning, Qt::UserRole + 2); // Store warning data
-            }
-
-            QStandardItem *sourceItem = new QStandardItem(source);
-            QStandardItem *transItem = new QStandardItem(translation);
-
-            // Store key in source item as well for backward compatibility if needed, 
-            // but now it's visible in the first column.
-            sourceItem->setData(key, Qt::UserRole + 1);
-
-            rows.append(QList<QStandardItem*>() << contextItem << sourceItem << transItem);
-        }
-
-        if (!rows.isEmpty()) {
-            m_translationModel->setRowCount(rows.size());
-            for (int row = 0; row < rows.size(); ++row) {
-                const QList<QStandardItem*> &items = rows.at(row);
-                for (int col = 0; col < items.size(); ++col) {
-                    m_translationModel->setItem(row, col, items.at(col));
-                }
-            }
-        }
+    QString fullFilePath = index.data(Qt::UserRole).toString();
+    if (!fullFilePath.isEmpty()) {
+        selectFile(fullFilePath);
     }
+}
 
-    modelSignalBlocker.unblock();
-    emit m_translationModel->layoutChanged();
+void ProjectDataManager::selectFile(const QString &filePath)
+{
+    m_currentLoadedFilePath = filePath;
+    if (m_db.isOpen()) {
+        QJsonArray entries = m_db.getEntriesForFile(filePath);
+        emit fileSelected(filePath, entries);
+    } else if (m_loadedGameProjectData.contains(filePath)) {
+        emit fileSelected(filePath, m_loadedGameProjectData.value(filePath));
+    }
 }
 
 void ProjectDataManager::updateTranslation(const QString &source, const QString &translation, const QString &filePath)
 {
     QString targetPath = filePath.isEmpty() ? m_currentLoadedFilePath : filePath;
-    if (targetPath.isEmpty() || !m_loadedGameProjectData.contains(targetPath))
-        return;
+    if (targetPath.isEmpty()) return;
 
-    QJsonArray textsArray = m_loadedGameProjectData[targetPath];
-    bool modified = false;
-    for (int i = 0; i < textsArray.size(); ++i) {
-        QJsonObject obj = textsArray.at(i).toObject();
-        if (obj["source"].toString() == source) {
-            obj["text"] = translation;
-            textsArray.replace(i, obj);
-            modified = true;
-        }
+    if (m_db.isOpen()) {
+        m_db.updateTranslation(targetPath, source, translation);
     }
-    
-    if (modified) {
-        m_loadedGameProjectData[targetPath] = textsArray;
-        
-        // Also update UI if model is present and we're looking at this file
-        if (m_translationModel && targetPath == m_currentLoadedFilePath) {
-            for (int i = 0; i < m_translationModel->rowCount(); ++i) {
-                if (m_translationModel->data(m_translationModel->index(i, 1)).toString() == source) {
-                    m_translationModel->setData(m_translationModel->index(i, 2), translation);
-                }
+
+    if (m_loadedGameProjectData.contains(targetPath)) {
+        QJsonArray textsArray = m_loadedGameProjectData[targetPath];
+        bool modified = false;
+        for (int i = 0; i < textsArray.size(); ++i) {
+            QJsonObject obj = textsArray.at(i).toObject();
+            if (obj["source"].toString() == source) {
+                obj["text"] = translation;
+                textsArray.replace(i, obj);
+                modified = true;
             }
         }
+        if (modified) {
+            m_loadedGameProjectData[targetPath] = textsArray;
+        }
     }
+
+    emit translationUpdated(targetPath, source, translation);
 }
 
 void ProjectDataManager::saveGameProject()
 {
-    // Iterate over all loaded files and save them back to disk
     QMapIterator<QString, QJsonArray> i(m_loadedGameProjectData);
     while (i.hasNext()) {
         i.next();
@@ -300,88 +278,85 @@ void ProjectDataManager::setHideCompleted(bool hide)
     m_hideCompleted = hide;
 }
 
-void ProjectDataManager::setProjectPath(const QString &path)
-{
-    m_projectPath = path;
-}
-
 void ProjectDataManager::exportGameProject(const QString &targetDir)
 {
-    // Deprecated or delegated to BGA via FileTranslationWidget
-    // Keeping empty or removing implementation if not used.
-    // For now, let's leave it but it shouldn't be called directly without BGA logic.
+    Q_UNUSED(targetDir)
 }
 
 bool ProjectDataManager::saveTranslationWorkspace(const QString &filePath)
 {
-    QJsonObject rootObj;
-    rootObj.insert("projectPath", m_projectPath);
-    rootObj.insert("engineName", m_engineName);
-    
-    QJsonObject dataObj;
-    QMapIterator<QString, QJsonArray> i(m_loadedGameProjectData);
-    while (i.hasNext()) {
-        i.next();
-        dataObj.insert(i.key(), i.value());
-    }
-    rootObj.insert("data", dataObj);
+    if (filePath.isEmpty()) return false;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        qWarning() << "Failed to open workspace file for writing:" << filePath;
-        return false;
+    if (!m_db.isOpen() || m_db.currentDatabasePath() != filePath) {
+        // Create/open database at target file path
+        if (!m_db.create(filePath)) {
+            qWarning() << "ProjectDataManager: Failed to create SQLite workspace at:" << filePath;
+            return false;
+        }
+        m_db.setMeta("projectPath", m_projectPath);
+        m_db.setMeta("engineName", m_engineName);
+        m_db.insertOrReplaceAll(m_loadedGameProjectData);
+    } else {
+        // DB is already open at target path, update metadata
+        m_db.setMeta("projectPath", m_projectPath);
+        m_db.setMeta("engineName", m_engineName);
     }
 
-    QJsonDocument doc(rootObj);
-    file.write(doc.toJson());
-    file.close();
+    qDebug() << "ProjectDataManager: Successfully saved workspace to SQLite database:" << filePath;
     return true;
 }
 
 bool ProjectDataManager::loadTranslationWorkspace(const QString &filePath)
 {
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Failed to open workspace file for reading:" << filePath;
+    if (!QFile::exists(filePath)) {
+        qWarning() << "ProjectDataManager: Workspace file does not exist:" << filePath;
         return false;
     }
 
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    file.close();
+    QElapsedTimer loadTimer;
+    loadTimer.start();
 
-    if (doc.isNull() || !doc.isObject()) {
-        qWarning() << "Invalid workspace file format.";
-        return false;
-    }
+    if (NstDatabase::isSQLiteFile(filePath)) {
+        // Modern SQLite workspace
+        if (!m_db.open(filePath)) {
+            qWarning() << "ProjectDataManager: Failed to open SQLite workspace:" << filePath;
+            return false;
+        }
+    } else {
+        // Legacy JSON workspace — auto-migrate to SQLite
+        qDebug() << "ProjectDataManager: Detecting legacy JSON workspace, converting to SQLite database:" << filePath;
 
-    QJsonObject rootObj = doc.object();
-    m_projectPath = rootObj["projectPath"].toString();
-    m_engineName = rootObj["engineName"].toString();
-    
-    QJsonObject dataObj = rootObj["data"].toObject();
-    m_loadedGameProjectData.clear();
-    
-    for (auto it = dataObj.begin(); it != dataObj.end(); ++it) {
-        if (it.value().isArray()) {
-            m_loadedGameProjectData.insert(it.key(), it.value().toArray());
+        // Backup original JSON file
+        QString backupPath = filePath + ".json.bak";
+        if (!QFile::exists(backupPath)) {
+            QFile::copy(filePath, backupPath);
+        }
+
+        if (!m_db.create(filePath)) {
+            qWarning() << "ProjectDataManager: Failed to create SQLite database for migration:" << filePath;
+            return false;
+        }
+
+        if (!m_db.importFromJson(backupPath)) {
+            qWarning() << "ProjectDataManager: Failed to import legacy JSON into SQLite:" << filePath;
+            return false;
         }
     }
 
-    // Refresh models
-    m_fileListModel->clear();
-    m_translationModel->clear();
-    
-    // Populate file list sorted by name
-    QStringList files = m_loadedGameProjectData.keys();
+    m_projectPath = m_db.getMeta("projectPath");
+    m_engineName = m_db.getMeta("engineName");
+
+    // Skip synchronous in-memory full cache dump; SQLite indexes getList and getEntries instantly on demand.
+
+    QStringList files = m_db.getFileList();
     std::sort(files.begin(), files.end(), [](const QString &a, const QString &b) {
          return QFileInfo(a).fileName() < QFileInfo(b).fileName();
     });
 
-    for (const QString &path : files) {
-        QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
-        item->setData(path, Qt::UserRole);
-        m_fileListModel->appendRow(item);
-    }
-    
+    emit fileListUpdated(files);
+    qInfo().noquote() << QString("[PERF] Workspace DB '%1' loaded (%2 files) in %3 ms")
+                        .arg(QFileInfo(filePath).fileName())
+                        .arg(files.size())
+                        .arg(loadTimer.elapsed());
     return true;
 }

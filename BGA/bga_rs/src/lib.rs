@@ -7,7 +7,7 @@ pub mod engines;
 mod ffi;
 
 pub use analyzer::{AnalyzerOutput, GameAnalyzer, TextEntry};
-pub use engines::{renpy::RenpyAnalyzer, rpgm::RpgmAnalyzer, unity::UnityAnalyzer};
+pub use engines::{godot::GodotAnalyzer, renpy::RenpyAnalyzer, rpgm::RpgmAnalyzer, unity::UnityAnalyzer};
 
 // Re-export FFI functions
 pub use ffi::*;

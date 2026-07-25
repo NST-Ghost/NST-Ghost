@@ -42,7 +42,7 @@ NST_ROOT="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
 if [ ! -d "$NST_ROOT/usr/lib" ]; then
     NST_ROOT="$(dirname "$SCRIPT_DIR")"
     if [ ! -d "$NST_ROOT/usr/lib" ]; then
-        echo "❌ Error: Cannot find NST installation directory."
+        echo "[ERROR] Cannot find NST installation directory."
         exit 1
     fi
 fi
@@ -59,12 +59,12 @@ for pydir in "$NST_ROOT/usr/lib"/python3.*; do
 done
 
 if [ -z "$PY_SITE_PACKAGES" ]; then
-    echo "❌ Error: Cannot find bundled Python in NST."
+    echo "[ERROR] Cannot find bundled Python in NST."
     exit 1
 fi
 
-echo "✓ NST bundled Python: $BUNDLED_PY_VER"
-echo "✓ Install target: $PY_SITE_PACKAGES"
+echo "[OK] NST bundled Python: $BUNDLED_PY_VER"
+echo "[OK] Install target: $PY_SITE_PACKAGES"
 
 # Check if uv is installed
 UV_CMD=""
@@ -78,7 +78,7 @@ fi
 
 if [ -z "$UV_CMD" ]; then
     echo ""
-    echo "📦 Installing uv (fast Python package manager)..."
+    echo "[SETUP] Installing uv (fast Python package manager)..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     
     # Add to path for this session
@@ -90,17 +90,17 @@ if [ -z "$UV_CMD" ]; then
     fi
     
     if [ ! -f "$UV_CMD" ]; then
-        echo "❌ Error: Failed to install uv."
+        echo "[ERROR] Failed to install uv."
         exit 1
     fi
 fi
 
-echo "✓ Using uv: $UV_CMD"
+echo "[OK] Using uv: $UV_CMD"
 
 # Create temp venv with correct Python version
 TEMP_VENV="/tmp/nst-install-venv"
 echo ""
-echo "📦 Setting up Python $BUNDLED_PY_VER environment..."
+echo "[SETUP] Setting up Python $BUNDLED_PY_VER environment..."
 
 # Clean up any previous venv
 rm -rf "$TEMP_VENV"
@@ -116,7 +116,7 @@ $UV_CMD venv --python "$BUNDLED_PY_VER" "$TEMP_VENV" 2>/dev/null || {
 echo "Installing pip in temporary environment..."
 $UV_CMD pip install --python "$TEMP_VENV/bin/python" pip
 
-echo "✓ Python $BUNDLED_PY_VER environment ready"
+echo "[OK] Python $BUNDLED_PY_VER environment ready"
 
 # Ask for confirmation
 echo ""
@@ -136,7 +136,7 @@ if [[ $REPLY =~ ^[Nn]$ ]]; then
 fi
 
 echo ""
-echo "📦 Installing packages..."
+echo "[SETUP] Installing packages..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Install PaddlePaddle
@@ -172,7 +172,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  ✅ Installation Complete!                                       ║"
+echo "║  [OK] Installation Complete!                                     ║"
 echo "╠══════════════════════════════════════════════════════════════════╣"
 echo "║  Please restart NST to enable AI features.                       ║"
 echo "║                                                                  ║"

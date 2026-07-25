@@ -7,13 +7,6 @@
 #include <QNetworkReply>
 
 class QListWidgetItem;
-class QListWidget;
-class QCheckBox;
-class QFormLayout;
-class QRadioButton;
-class QLabel;
-class QLineEdit;
-class QDoubleSpinBox;
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -44,7 +37,7 @@ public:
     bool isAiFilterEnabled() const;
     double aiFilterThreshold() const;
     
-    // New logic for Sidebar layout
+    // Sidebar & Translation Mode
     int translationMode() const;
     void setTranslationMode(int mode);
 
@@ -65,25 +58,19 @@ public:
     void setBackupEnabled(bool enabled);
 
 private slots:
-    void updateConfigPanel();
     void updateLlmModelComboBox();
     void fetchLlmModels();
+    void testConnection();
+    void updateLuaPluginEngineUI(const QString &scriptName);
 
 private:
     Ui::SettingsDialog *ui;
     QNetworkAccessManager *m_networkManager;
     
-    // Plugin UI members
-
-    
     void setupPluginsUI();
     void loadPluginList();
     void onPluginSelected(QListWidgetItem *item);
-    void saveCurrentPluginSettings();
-    void clearPluginSettingsUI();
-    
-    // Helper to get settings schema from Lua
-    QJsonArray getPluginSettingsSchema(const QString &scriptPath);
+    QString parsePluginMetadata(const QString &scriptPath);
 };
 
 #endif // SETTINGSDIALOG_H

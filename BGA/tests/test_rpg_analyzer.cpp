@@ -181,6 +181,7 @@ private slots:
         // 2. Prepare translation payload
         // We know the key path will be "1.list[0].parameters[0]" based on analysis
         QJsonObject entry;
+        entry.insert("source", "Original Text");
         entry.insert("path", mockFilePath);
         entry.insert("key", "1.list[0].parameters[0]");
         entry.insert("text", "Translated Text");

@@ -5,14 +5,18 @@
 #include <QStringList>
 #include <QRegularExpression>
 #include <QSettings>
-#include <memory>
+#include "../core/engine_rules.h"
 
-
+/**
+ * @class SmartFilterManager
+ * @brief High-performance Manager interfacing with EngineRules & learned user patterns.
+ */
 class SmartFilterManager : public QObject
 {
     Q_OBJECT
 public:
     explicit SmartFilterManager(QObject *parent = nullptr);
+    ~SmartFilterManager() override = default;
 
     // Adds a text pattern to the ignore list
     void learn(const QString &text);
@@ -20,8 +24,9 @@ public:
     // Removes a text pattern from the ignore list
     void unlearn(const QString &text);
 
-    // Sets the current engine context
+    // Sets the current engine context (e.g. "rpgm", "renpy", "unity", "wolf")
     void setEngine(const QString &engineName);
+    QString currentEngine() const { return m_currentEngine; }
 
     // Export all learned rules to a JSON file
     bool exportRules(const QString &filePath);
@@ -29,7 +34,7 @@ public:
     // Import rules from a JSON file and merge with existing ones
     bool importRules(const QString &filePath);
 
-    // Checks if the text should be skipped based on learned patterns or heuristics
+    // Checks if the text should be skipped based on engine rules, learned patterns, or heuristics
     bool shouldSkip(const QString &text) const;
 
     // Checks a batch of texts and returns a list of booleans (true = skip)
@@ -38,11 +43,9 @@ public:
     // Returns the list of ignored patterns
     QStringList ignoredPatterns() const;
     
-    // AI Configuration
-    void setAIEnabled(bool enabled);
-    bool isAIEnabled() const;
-    void setAIThreshold(double threshold);
-    double aiThreshold() const;
+    // Engine Filter Configuration
+    void setEngineFilterEnabled(bool enabled);
+    bool isEngineFilterEnabled() const;
 
 public slots:
     void savePatterns();
@@ -51,28 +54,8 @@ public slots:
 private:
     QStringList m_ignoredPatterns;
     QList<QRegularExpression> m_compiledPatterns;
-    QString m_currentEngine = "Global"; // Default to Global
-    
-private:
-    ~SmartFilterManager(); // Required for PIMPL with unique_ptr
-
-private:
-#ifdef HAS_PYTHON
-    struct SmartFilterManagerPrivate;
-    std::unique_ptr<SmartFilterManagerPrivate> d;
-#endif
-    bool m_aiEnabled = true;
-    double m_aiThreshold = 0.75;
-
-    // Heuristic checks
-    bool isNumericOrSymbol(const QString &text) const;
-    bool isFilePath(const QString &text) const;
-    bool isVariableLike(const QString &text) const;
-    bool isCamelCase(const QString &text) const;
-    bool isSnakeCase(const QString &text) const;
-    bool isTagOrMarkup(const QString &text) const;
-    bool isTechnicalString(const QString &text) const;
-    bool isRepeatedSymbol(const QString &text) const;
+    QString m_currentEngine = "Global";
+    bool m_engineFilterEnabled = true;
 };
 
 #endif // SMARTFILTERMANAGER_H

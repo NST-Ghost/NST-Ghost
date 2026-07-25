@@ -7,6 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 enable_testing()
 
@@ -18,7 +19,7 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Concurrent Network)
+find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools Concurrent Network Sql)
 find_package(Lua REQUIRED)
 message(STATUS "LUA_INCLUDE_DIR: ${LUA_INCLUDE_DIR}")
 message(STATUS "LUA_LIBRARIES: ${LUA_LIBRARIES}")
@@ -44,14 +45,68 @@ else()
     message(STATUS "Python integration DISABLED (explicitly set OFF)")
 endif()
 
+# Fetch FTXUI for TUI support
+include(FetchContent)
+FetchContent_Declare(
+    ftxui
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
+    GIT_TAG        v5.0.0
+)
+FetchContent_MakeAvailable(ftxui)
+
+# Fetch GoogleTest for C++ unit tests
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        v1.14.0
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+include(GoogleTest)
+
+
 set(TS_FILES src/NST_en_US.ts)
 
-set(PROJECT_SOURCES
-    src/core/main.cpp
+set(CORE_SOURCES
+    src/db/nstdatabase.cpp
+    src/db/nstdatabase.h
     src/core/translationcore.cpp
     src/core/translationcore.h
     src/core/rpgm_injection_exporter.cpp
     src/core/rpgm_injection_exporter.h
+    src/core/rpgm_control_masker.cpp
+    src/core/rpgm_control_masker.h
+    src/core/engine_rules.cpp
+    src/core/engine_rules.h
+    src/managers/bgadatamanager.cpp
+    src/managers/bgadatamanager.h
+    src/managers/translationservicemanager.cpp
+    src/managers/translationservicemanager.h
+    src/managers/smartfiltermanager.cpp
+    src/managers/smartfiltermanager.h
+    src/managers/projectdatamanager.cpp
+    src/managers/projectdatamanager.h
+    src/plugins/LuaTranslationPlugin/luatranslationservice.cpp
+    src/plugins/LuaTranslationPlugin/luatranslationservice.h
+    src/models/virtualtranslationmodel.cpp
+    src/models/virtualtranslationmodel.h
+)
+
+# Lua plugin sources (optional)
+if(LUA_FOUND)
+    list(APPEND CORE_SOURCES
+        src/plugins/LuaPlugin.cpp
+        src/plugins/LuaPlugin.h
+        src/plugins/LuaScriptManager.cpp
+        src/plugins/LuaScriptManager.h
+        src/plugins/PluginManager.cpp
+        src/plugins/PluginManager.h
+    )
+endif()
+
+set(PROJECT_SOURCES
+    src/core/main.cpp
+    ${CORE_SOURCES}
     src/ui/mainwindow.cpp
     src/ui/menubar.cpp
     src/dialogs/loadprojectdialog.cpp
@@ -59,8 +114,6 @@ set(PROJECT_SOURCES
     src/dialogs/settingsdialog.cpp
     src/controllers/searchcontroller.cpp
     src/controllers/shortcutcontroller.cpp
-    src/managers/bgadatamanager.cpp
-    src/managers/translationservicemanager.cpp
     src/ui/realtimetranslationwidget.cpp
     src/ui/realtimetranslationwidget.h
     
@@ -75,8 +128,8 @@ set(PROJECT_SOURCES
     src/dialogs/fontmanagerdialog.cpp
     src/dialogs/pluginmanagerdialog.cpp
     src/dialogs/plugindebuggerdialog.cpp
-    src/plugins/LuaTranslationPlugin/luatranslationservice.cpp
-    src/managers/projectdatamanager.cpp
+    src/dialogs/translationprogressdialog.cpp
+    src/dialogs/translationprogressdialog.h
     src/ui/mainwindow.h
     src/ui/globalstatuswidget.cpp
     src/ui/globalstatuswidget.h
@@ -91,16 +144,12 @@ set(PROJECT_SOURCES
     src/dialogs/plugindebuggerdialog.h
     src/dialogs/featuremanagerdialog.cpp
     src/dialogs/featuremanagerdialog.h
-    src/plugins/LuaTranslationPlugin/luatranslationservice.h
     src/controllers/searchcontroller.h
     src/controllers/shortcutcontroller.h
-    src/managers/bgadatamanager.h
-    src/managers/translationservicemanager.h
     src/ui/translationcontextmenu.h
     src/controllers/updatecontroller.h
     src/dialogs/customprogressdialog.cpp
     src/dialogs/customprogressdialog.h
-    src/managers/projectdatamanager.h
     src/ui/customtitlebar.cpp
     src/ui/customtitlebar.h
     src/ui/filetranslationwidget.cpp
@@ -111,20 +160,10 @@ set(PROJECT_SOURCES
     src/dialogs/processselectordialog.cpp
     src/dialogs/processselectordialog.h
     src/resources.qrc
+    src/tui/main_tui.cpp
+    src/core/mcpserver.cpp
+    src/core/mcpserver.h
 )
-
-
-# Lua plugin sources (optional)
-if(LUA_FOUND)
-    list(APPEND PROJECT_SOURCES
-        src/plugins/LuaPlugin.cpp
-        src/plugins/LuaPlugin.h
-        src/plugins/LuaScriptManager.cpp
-        src/plugins/LuaScriptManager.h
-        src/plugins/PluginManager.cpp
-        src/plugins/PluginManager.h
-    )
-endif()
 
 # Add BGA as a subdirectory
 add_subdirectory(BGA)
@@ -143,8 +182,12 @@ target_link_libraries(NST PRIVATE
     Qt6::Widgets
     Qt6::Concurrent
     Qt6::Network
+    Qt6::Sql
     BGACore
     QtLingo
+    ftxui::screen
+    ftxui::dom
+    ftxui::component
 )
 
 # Conditionally link Python (only when enabled)
@@ -178,6 +221,61 @@ else()
     message(WARNING "Lua not found (LUA_FOUND and Lua_FOUND are false)")
 endif()
 
+# Unit Test for NstDatabase using GoogleTest
+qt_add_executable(test_nstdatabase
+    tests/test_nstdatabase.cpp
+    src/db/nstdatabase.cpp
+    src/db/nstdatabase.h
+    src/managers/projectdatamanager.cpp
+    src/managers/projectdatamanager.h
+)
+target_link_libraries(test_nstdatabase PRIVATE
+    gtest
+    Qt6::Core
+    Qt6::Concurrent
+    Qt6::Sql
+    ${LUA_LIBRARIES}
+)
+target_include_directories(test_nstdatabase PRIVATE ${LUA_INCLUDE_DIR})
+gtest_discover_tests(test_nstdatabase)
+
+# Unit Test for LLM Translation Service & Settings
+qt_add_executable(test_llm_service
+    tests/test_llm_service.cpp
+)
+target_include_directories(test_llm_service PRIVATE
+    ${CMAKE_SOURCE_DIR}/QtLingo/include
+    ${CMAKE_SOURCE_DIR}/QtLingo/src
+)
+target_link_libraries(test_llm_service PRIVATE
+    gtest
+    gtest_main
+    Qt6::Core
+    Qt6::Network
+    QtLingo
+)
+gtest_discover_tests(test_llm_service)
+
+# CLI Simulation Tool for Lua Plugins
+qt_add_executable(test_lua_simulation
+    tests/test_lua_simulation.cpp
+    src/plugins/LuaTranslationPlugin/luatranslationservice.cpp
+    src/plugins/LuaTranslationPlugin/luatranslationservice.h
+)
+target_include_directories(test_lua_simulation PRIVATE
+    ${CMAKE_SOURCE_DIR}/QtLingo/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${LUA_INCLUDE_DIR}
+)
+target_link_libraries(test_lua_simulation PRIVATE
+    Qt6::Core
+    Qt6::Network
+    QtLingo
+    ${LUA_LIBRARIES}
+)
+
+
+
 target_include_directories(NST PRIVATE 
     ${CMAKE_SOURCE_DIR}/BGA/core/include 
     ${CMAKE_SOURCE_DIR}/QtLingo/include 
@@ -203,11 +301,19 @@ add_custom_command(TARGET NST POST_BUILD
         ${CMAKE_BINARY_DIR}/scripts
     COMMENT "Syncing Lua scripts to build directory..."
 )
-# Copy RPGM injection plugin to build directory
+# Copy RPGM injection plugin to build directory.
+# The NST_TranslationLayer.js plugin is the build output of the TypeScript
+# sub-project at Injection/rpgm_ts/. It is generated by running
+# `scripts/build-translator.sh` (or .bat). When it is present, it is copied
+# along with the rest of Injection/rpgm/ into the build tree. When absent,
+# emit a warning but do not fail the build — this keeps CMake builds working
+# on machines that do not have Node.js installed.
 add_custom_command(TARGET NST POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/Injection/rpgm
-        ${CMAKE_BINARY_DIR}/Injection/rpgm
+    COMMAND ${CMAKE_COMMAND}
+        -DSRC=${CMAKE_SOURCE_DIR}/Injection/rpgm
+        -DDST=${CMAKE_BINARY_DIR}/Injection/rpgm
+        -DPLUGIN_FILE=NST_TranslationLayer.js
+        -P ${CMAKE_SOURCE_DIR}/cmake/SyncRpgmInjection.cmake
     COMMENT "Syncing RPGM injection plugin to build directory..."
 )
 
@@ -370,6 +476,8 @@ endif()
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(NST)
 endif()
+
+
 
 # CPack configuration
 set(CPACK_PACKAGE_NAME "NST")

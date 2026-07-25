@@ -165,7 +165,7 @@ static SYMBOL_ONLY_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[^a-zA-Z0-9
 static ARRAY_INDEX_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\[(\d+)\]").unwrap());
 
 static WHITELISTED_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
-    ["name", "description", "message1", "message2", "message3", "message4", "note", "nickname", "profile", "gameTitle", "currencyUnit", "terms", "basic", "commands", "params", "messages", "actionFailure", "actorDamage", "actorDrain", "actorGain", "actorLoss", "actorNoDamage", "actorNoHit", "actorRecovery", "alwaysDash", "bgmVolume", "bgsVolume", "buffAdd", "buffRemove", "commandRemember", "counterAttack", "criticalToActor", "criticalToEnemy", "debuffAdd", "defeat", "emerge", "enemyDamage", "enemyDrain", "enemyGain", "enemyLoss", "enemyNoDamage", "enemyNoHit", "enemyRecovery", "escapeFailure", "escapeStart", "evasion", "expNext", "expTotal", "file", "levelUp", "loadMessage", "magicEvasion", "magicReflection", "meVolume", "obtainExp", "obtainGold", "obtainItem", "obtainSkill", "partyName", "possession", "preemptive", "saveMessage", "seVolume", "substitute", "surprise", "useItem", "victory"].into_iter().collect()
+    ["name", "description", "message1", "message2", "message3", "message4", "note", "nickname", "profile", "gameTitle", "currencyUnit", "terms", "basic", "commands", "params", "messages", "actionFailure", "actorDamage", "actorDrain", "actorGain", "actorLoss", "actorNoDamage", "actorNoHit", "actorRecovery", "alwaysDash", "bgmVolume", "bgsVolume", "buffAdd", "buffRemove", "commandRemember", "counterAttack", "criticalToActor", "criticalToEnemy", "debuffAdd", "defeat", "emerge", "enemyDamage", "enemyDrain", "enemyGain", "enemyLoss", "enemyNoDamage", "enemyNoHit", "enemyRecovery", "escapeFailure", "escapeStart", "evasion", "expNext", "expTotal", "file", "levelUp", "loadMessage", "magicEvasion", "magicReflection", "meVolume", "obtainExp", "obtainGold", "obtainItem", "obtainSkill", "partyName", "possession", "preemptive", "saveMessage", "seVolume", "substitute", "surprise", "useItem", "victory", "title", "memo", "text", "caption", "label", "comment"].into_iter().collect()
 });
 
 static BLACKLISTED_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
@@ -359,12 +359,26 @@ impl RpgmAnalyzer {
 
     fn find_json_files(project_path: &Path) -> Vec<std::path::PathBuf> {
         let mut files = Vec::new();
-        let data_dirs = [project_path.join("data"), project_path.join("www/data"), project_path.join("js/plugins"), project_path.join("www/js/plugins")];
+        let data_dirs = [
+            project_path.join("data"),
+            project_path.join("Data"),
+            project_path.join("www/data"),
+            project_path.join("www/Data"),
+            project_path.join("Resources/data"),
+            project_path.join("Resources/Data"),
+            project_path.join("Resources"),
+            project_path.join("js/plugins"),
+            project_path.join("www/js/plugins"),
+            project_path.join("Resources/js/plugins"),
+        ];
         for dir in &data_dirs {
             if dir.exists() {
                 for entry in WalkDir::new(dir).max_depth(1).into_iter().filter_map(|e| e.ok()) {
                     if entry.file_type().is_file() && entry.path().extension().map(|e| e == "json").unwrap_or(false) {
-                        files.push(entry.into_path());
+                        let name = entry.file_name().to_string_lossy().to_lowercase();
+                        if name != "package.json" {
+                            files.push(entry.into_path());
+                        }
                     }
                 }
             }
@@ -373,7 +387,7 @@ impl RpgmAnalyzer {
             for entry in WalkDir::new(project_path).into_iter().filter_map(|e| e.ok()) {
                 if entry.file_type().is_file() && entry.path().extension().map(|e| e == "json").unwrap_or(false) {
                     let name = entry.file_name().to_string_lossy().to_lowercase();
-                    if name != "package.json" && name != "project.json" { files.push(entry.into_path()); }
+                    if name != "package.json" { files.push(entry.into_path()); }
                 }
             }
         }
@@ -425,6 +439,21 @@ pub unsafe extern "C" fn rpgm_save(path: *const c_char, texts_json: *const c_cha
             if let Ok(mut doc) = serde_json::from_str::<Value>(&content) {
                 for (key_path, new_value) in updates {
                     RpgmAnalyzer::update_json_value(&mut doc, key_path, new_value);
+                }
+                // Automatically disable imageFontFlag for PGMMV games so TTF font rendering is used for translations
+                if let Some(font_list) = doc.get_mut("fontList").and_then(|v| v.as_array_mut()) {
+                    for font in font_list {
+                        if let Some(obj) = font.as_object_mut() {
+                            obj.insert("imageFontFlag".to_string(), Value::Bool(false));
+                            if let Some(locs) = obj.get_mut("localeSettings").and_then(|l| l.as_object_mut()) {
+                                for loc in locs.values_mut() {
+                                    if let Some(loc_obj) = loc.as_object_mut() {
+                                        loc_obj.insert("imageFontFlag".to_string(), Value::Bool(false));
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 if let Ok(output) = serde_json::to_string_pretty(&doc) {
                     let _ = fs::write(&file_path, output);

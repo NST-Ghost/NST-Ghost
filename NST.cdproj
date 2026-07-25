@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NDepend AppName="NST" Platform="x64">
+  <OutputDir>/home/jop/work/NST/build/CppDependReport</OutputDir>
+  <CompilerCommandsFile>/home/jop/work/NST/build/compile_commands.json</CompilerCommandsFile>
+</NDepend>

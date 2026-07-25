@@ -4,6 +4,8 @@
 #include "pluginmanagerdialog.h"
 #include "loadprojectdialog.h"
 #include "fontmanagerdialog.h"
+#include "projectregistry.h"
+#include "core/rpgm_control_masker.h"
 
 #include <QFileIconProvider>
 #include <QInputDialog>
@@ -17,6 +19,7 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QApplication>
+#include <QElapsedTimer>
 #include <iostream>
 
 FileTranslationWidget::FileTranslationWidget(TranslationServiceManager *serviceManager, QWidget *parent)
@@ -46,8 +49,7 @@ FileTranslationWidget::FileTranslationWidget(TranslationServiceManager *serviceM
 void FileTranslationWidget::initializeModels()
 {
     m_fileListModel = new QStandardItemModel(this);
-    m_translationModel = new QStandardItemModel(this);
-    m_translationModel->setHorizontalHeaderLabels({"Context", "Source Text", "Translation"});
+    m_translationModel = new VirtualTranslationModel(this);
 }
 
 void FileTranslationWidget::setupFileListView()
@@ -102,7 +104,7 @@ void FileTranslationWidget::setupTableView()
 void FileTranslationWidget::initializeManagers()
 {
     // Project data manager
-    m_projectDataManager = new ProjectDataManager(m_fileListModel, m_translationModel, this);
+    m_projectDataManager = new ProjectDataManager(this);
     
     // Search controller and dialog
     m_searchController = new SearchController(m_translationModel, ui->translationTableView, this);
@@ -122,6 +124,10 @@ void FileTranslationWidget::initializeManagers()
     
     // Smart filter manager
     m_smartFilterManager = new SmartFilterManager(this);
+
+    // Live progress console dialog
+    m_progressConsoleDialog = new TranslationProgressDialog(this);
+    connect(m_progressConsoleDialog, &TranslationProgressDialog::canceled, this, &FileTranslationWidget::cancelTranslation);
     m_smartFilterManager->loadPatterns();
 }
 
@@ -130,6 +136,12 @@ void FileTranslationWidget::connectManagerSignals()
     // Project data manager
     connect(m_projectDataManager, &ProjectDataManager::processingFinished, 
             this, &FileTranslationWidget::onProjectProcessingFinished);
+    connect(m_projectDataManager, &ProjectDataManager::fileListUpdated,
+            this, &FileTranslationWidget::onFileListUpdated);
+    connect(m_projectDataManager, &ProjectDataManager::fileSelected,
+            this, &FileTranslationWidget::onFileSelected);
+    connect(m_projectDataManager, &ProjectDataManager::dataCleared,
+            this, &FileTranslationWidget::onDataCleared);
     
     // Search dialog
     connect(m_searchDialog, &SearchDialog::searchRequested, 
@@ -163,10 +175,20 @@ void FileTranslationWidget::connectManagerSignals()
                 this, &FileTranslationWidget::onTranslationFinished);
         connect(m_translationServiceManager, &TranslationServiceManager::errorOccurred, 
                 this, &FileTranslationWidget::onTranslationServiceError);
+        connect(m_translationServiceManager, &TranslationServiceManager::logMessage, 
+                this, [this](const QString &msg) {
+            if (m_progressConsoleDialog) {
+                m_progressConsoleDialog->appendLog(msg);
+            }
+        });
         connect(m_translationServiceManager, &TranslationServiceManager::progressUpdated, 
                 this, [this](int current, int total) {
             if (total == 0) return;
             
+            if (m_progressConsoleDialog) {
+                m_progressConsoleDialog->setProgress(current, total);
+            }
+
             if (current == 1 && m_currentTranslatingFileIndex.isValid()) {
                 m_spinnerTimer->start(300);
             }
@@ -178,9 +200,13 @@ void FileTranslationWidget::connectManagerSignals()
                     if (item) {
                         QString originalText = item->data(Qt::UserRole + 1).toString();
                         if (!originalText.isEmpty()) {
-                            item->setText("✓ " + originalText);
+                            item->setText("[OK] " + originalText);
                         }
                     }
+                }
+                if (m_progressConsoleDialog) {
+                    m_progressConsoleDialog->setStatusText("Batch Completed!");
+                    m_progressConsoleDialog->appendLog("[OK] Batch Translation Completed!");
                 }
                 m_isTranslating = false;
                 QTimer::singleShot(25, this, &FileTranslationWidget::processNextTranslationJob);
@@ -390,6 +416,8 @@ void FileTranslationWidget::onProjectProcessingFinished()
     
     if (!m_currentProjectFile.isEmpty()) {
         m_projectDataManager->saveTranslationWorkspace(m_currentProjectFile);
+        ProjectRegistry registry;
+        registry.registerProject(m_currentProjectFile);
     }
 
     if (m_isUpdating) {
@@ -543,8 +571,26 @@ void FileTranslationWidget::processIncomingResults()
     while (!m_incomingResults.isEmpty() && processedCount < BATCH_SIZE) {
         QueuedTranslationResult queuedResult = m_incomingResults.dequeue();
         processedCount++;
-        const QString &sourceText = queuedResult.result.sourceText;
-        const QString &translatedText = queuedResult.result.translatedText;
+        QString sourceText = queuedResult.result.sourceText;
+        QString translatedText = queuedResult.result.translatedText;
+
+        // RPG Maker Pre-Translation Control Code Restoration (Unmasking)
+        if (RpgmControlMasker::isRpgmEngine(m_engineName)) {
+            if (m_rpgmTagMaps.contains(sourceText)) {
+                QMap<QString, QString> tagMap = m_rpgmTagMaps.value(sourceText);
+                translatedText = RpgmControlMasker::unmask(translatedText, tagMap);
+                for (auto tagIt = tagMap.constBegin(); tagIt != tagMap.constEnd(); ++tagIt) {
+                    if (sourceText.contains(tagIt.key())) {
+                        sourceText.replace(tagIt.key(), tagIt.value());
+                    }
+                }
+            } else if (translatedText.contains("__NST_TAG_")) {
+                for (auto mapIt = m_rpgmTagMaps.constBegin(); mapIt != m_rpgmTagMaps.constEnd(); ++mapIt) {
+                    translatedText = RpgmControlMasker::unmask(translatedText, mapIt.value());
+                }
+            }
+        }
+
         const QString &targetFilePath = queuedResult.filePath;
         QString currentLoadedPath = m_projectDataManager->getCurrentLoadedFilePath();
 
@@ -556,27 +602,20 @@ void FileTranslationWidget::processIncomingResults()
                 if (!pending.index.isValid()) continue;
                 if (pending.index.model() != m_translationModel) continue;
                 int row = pending.index.row();
-                int col = pending.index.column();
                 if (row < 0 || row >= m_translationModel->rowCount()) continue;
-                if (col < 0 || col >= m_translationModel->columnCount()) continue;
-                QStandardItem *item = m_translationModel->item(row, col);
-                if (item) {
-                    item->setText(translatedText);
-                    m_pendingUIUpdates.append(pending.index);
-                    updatedVisibleRows = true;
-                }
+                
+                m_translationModel->setData(pending.index, translatedText, Qt::EditRole);
+                m_pendingUIUpdates.append(pending.index);
+                updatedVisibleRows = true;
             }
             if (!updatedVisibleRows) {
                 for (int row = 0; row < m_translationModel->rowCount(); ++row) {
-                    QModelIndex sourceIndex = m_translationModel->index(row, 1);
+                    QModelIndex sourceIndex = m_translationModel->index(row, ColumnSourceText);
                     if (m_translationModel->data(sourceIndex).toString() != sourceText) continue;
 
-                    QModelIndex translationIndex = m_translationModel->index(row, 2);
-                    QStandardItem *item = m_translationModel->item(row, 2);
-                    if (item) {
-                        item->setText(translatedText);
-                        m_pendingUIUpdates.append(translationIndex);
-                    }
+                    QModelIndex translationIndex = m_translationModel->index(row, ColumnTranslation);
+                    m_translationModel->setData(translationIndex, translatedText, Qt::EditRole);
+                    m_pendingUIUpdates.append(QPersistentModelIndex(translationIndex));
                 }
             }
         }
@@ -652,6 +691,12 @@ void FileTranslationWidget::onTranslationTableViewCustomContextMenuRequested(con
     connect(aiLearnAction, &QAction::triggered, this, &FileTranslationWidget::onAILearnRequested);
     connect(aiUnlearnAction, &QAction::triggered, this, &FileTranslationWidget::onAIUnlearnRequested);
     connect(selectAllAction, &QAction::triggered, this, &FileTranslationWidget::onSelectAllRequested);
+
+    if (m_isTranslating || !m_translationQueue.isEmpty()) {
+        contextMenu.addSeparator();
+        QAction *cancelAction = contextMenu.addAction("Cancel Translation");
+        connect(cancelAction, &QAction::triggered, this, &FileTranslationWidget::cancelTranslation);
+    }
 
     contextMenu.exec(ui->translationTableView->mapToGlobal(pos));
 }
@@ -740,7 +785,8 @@ void FileTranslationWidget::onTranslateSelectedTextWithService()
             }
             sourceTexts.append(sourceText);
             PendingTranslation pending;
-            pending.index = m_translationModel->index(selectedIndex.row(), 2);
+            pending.index = QPersistentModelIndex(m_translationModel->index(selectedIndex.row(), ColumnTranslation));
+            pending.contextStr = m_translationModel->data(m_translationModel->index(selectedIndex.row(), ColumnContext)).toString();
             pending.filePath = m_projectDataManager->getCurrentLoadedFilePath();
             m_pendingTranslations.insert(sourceText, pending);
         }
@@ -748,15 +794,15 @@ void FileTranslationWidget::onTranslateSelectedTextWithService()
     // if (skippedCount > 0) statusBar()->showMessage(...)
     if (!sourceTexts.isEmpty()) {
         
-        QVariantMap settings;
-        settings["googleApiKey"] = m_apiKey;
-        settings["targetLanguage"] = m_targetLanguage;
-        settings["googleApi"] = m_googleApi;
-        settings["llmProvider"] = m_llmProvider;
-        settings["llmApiKey"] = m_llmApiKey;
-        settings["llmModel"] = m_llmModel;
-        settings["llmBaseUrl"] = m_llmBaseUrl;
-        settings["sourceLanguage"] = m_sourceLanguage;
+        TranslationSettings settings;
+        settings.googleApiKey = m_apiKey;
+        settings.targetLanguage = m_targetLanguage;
+        settings.googleApiEnabled = m_googleApi;
+        settings.llmProvider = m_llmProvider;
+        settings.llmApiKey = m_llmApiKey;
+        settings.llmModel = m_llmModel;
+        settings.llmBaseUrl = m_llmBaseUrl;
+        settings.sourceLanguage = m_sourceLanguage;
 
         TranslationJob job;
         job.serviceName = serviceName;
@@ -770,7 +816,7 @@ void FileTranslationWidget::onTranslateSelectedTextWithService()
             if (originalText.isEmpty()) {
                 item->setData(item->text(), Qt::UserRole + 1);
             }
-            item->setText("⏳ " + item->data(Qt::UserRole + 1).toString());
+            item->setText("[WAIT] " + item->data(Qt::UserRole + 1).toString());
         }
         m_translationQueue.enqueue(job);
         processNextTranslationJob();
@@ -839,14 +885,52 @@ void FileTranslationWidget::onSaveProject()
      bool success = m_projectDataManager->saveTranslationWorkspace(filePath);
      
      if (success) {
-         // Optional: flash status bar instead of annoying popup
-         // QMessageBox::information(this, tr("Success"), tr("Project saved.")); 
-         // For now, let's keep popup or just debug log? User requested less confusion.
-         // A subtle confirmation is better.
+         ProjectRegistry registry;
+         registry.registerProject(filePath);
          QMessageBox::information(this, tr("Saved"), tr("Project saved successfully."));
      } else {
          QMessageBox::critical(this, tr("Error"), tr("Failed to save project."));
      }
+}
+
+bool FileTranslationWidget::loadProjectFile(const QString &filePath)
+{
+    if (filePath.isEmpty()) return false;
+    
+    QElapsedTimer uiLoadTimer;
+    uiLoadTimer.start();
+
+    if (!m_progressDialog) {
+         m_progressDialog = new CustomProgressDialog(this);
+         connect(m_progressDialog, &CustomProgressDialog::canceled, this, &FileTranslationWidget::cancelTranslation);
+    }
+    m_progressDialog->setLabelText(tr("Loading project..."));
+    m_progressDialog->setRange(0, 0); 
+    m_progressDialog->show();
+    
+    m_currentProjectFile = filePath;
+
+    bool success = m_projectDataManager->loadTranslationWorkspace(filePath);
+    m_progressDialog->close();
+
+    if (success) {
+        ProjectRegistry registry;
+        registry.registerProject(filePath);
+        m_engineName = m_projectDataManager->getEngineName();
+        QString projectPath = m_projectDataManager->getProjectPath();
+        if (!QFileInfo::exists(projectPath)) {
+             QMessageBox::warning(this, tr("Warning"), tr("The original game folder for this project was not found:\n%1\nYou can continue translating, but you won't be able to Deploy/Export until you fix the path.").arg(projectPath));
+        }
+        
+        emit projectLoaded(projectPath);
+        qInfo().noquote() << QString("[PERF] UI Project Load for '%1' completed in %2 ms")
+                            .arg(QFileInfo(filePath).fileName())
+                            .arg(uiLoadTimer.elapsed());
+    } else {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to load project file."));
+        m_currentProjectFile.clear(); 
+    }
+    return success;
 }
 
 void FileTranslationWidget::onOpenProject()
@@ -855,34 +939,7 @@ void FileTranslationWidget::onOpenProject()
                                                     "", 
                                                     tr("NST Workspace Files (*.nst)"));
     if (filePath.isEmpty()) return;
-    
-    if (!m_progressDialog) {
-         m_progressDialog = new CustomProgressDialog(this);
-    }
-    m_progressDialog->setLabelText(tr("Loading project..."));
-    m_progressDialog->setRange(0, 0); 
-    m_progressDialog->show();
-    
-    // Clear current state first?
-    m_currentProjectFile = filePath;
-
-    bool success = m_projectDataManager->loadTranslationWorkspace(filePath);
-    m_progressDialog->close();
-
-    if (success) {
-        m_engineName = m_projectDataManager->getEngineName();
-        // Check if project path is valid?
-        QString projectPath = m_projectDataManager->getProjectPath();
-        if (!QFileInfo::exists(projectPath)) {
-             QMessageBox::warning(this, tr("Warning"), tr("The original game folder for this project was not found:\n%1\nYou can continue translating, but you won't be able to Deploy/Export until you fix the path.").arg(projectPath));
-             // TODO: Allow fixing path
-        }
-        
-        emit projectLoaded(projectPath);
-    } else {
-        QMessageBox::critical(this, tr("Error"), tr("Failed to load project file."));
-        m_currentProjectFile.clear(); 
-    }
+    loadProjectFile(filePath);
 }
 
 // Accessors for Default Deployment Path
@@ -1134,14 +1191,15 @@ void FileTranslationWidget::onTranslateSelectedFiles()
     if (!ok || serviceName.isEmpty()) return;
 
     // Collect settings
-    QVariantMap settings;
-    settings["googleApiKey"] = m_apiKey;
-    settings["targetLanguage"] = m_targetLanguage;
-    settings["googleApi"] = m_googleApi;
-    settings["llmProvider"] = m_llmProvider;
-    settings["llmApiKey"] = m_llmApiKey;
-    settings["llmModel"] = m_llmModel;
-    settings["llmBaseUrl"] = m_llmBaseUrl;
+    TranslationSettings settings;
+    settings.googleApiKey = m_apiKey;
+    settings.targetLanguage = m_targetLanguage;
+    settings.googleApiEnabled = m_googleApi;
+    settings.llmProvider = m_llmProvider;
+    settings.llmApiKey = m_llmApiKey;
+    settings.llmModel = m_llmModel;
+    settings.llmBaseUrl = m_llmBaseUrl;
+    settings.sourceLanguage = m_sourceLanguage;
 
     int queuedCount = 0;
 
@@ -1191,7 +1249,7 @@ void FileTranslationWidget::onTranslateSelectedFiles()
             if (originalText.isEmpty()) {
                 item->setData(item->text(), Qt::UserRole + 1);
             }
-            item->setText("⏳ " + item->data(Qt::UserRole + 1).toString());
+            item->setText("[WAIT] " + item->data(Qt::UserRole + 1).toString());
 
             m_translationQueue.enqueue(job);
             queuedCount++;
@@ -1218,14 +1276,15 @@ void FileTranslationWidget::onTranslateAllCLI()
     qDebug() << "[NST] CLI Translate: Using service:" << serviceName;
 
     // Collect settings
-    QVariantMap settings;
-    settings["googleApiKey"] = m_apiKey;
-    settings["targetLanguage"] = m_targetLanguage;
-    settings["googleApi"] = m_googleApi;
-    settings["llmProvider"] = m_llmProvider;
-    settings["llmApiKey"] = m_llmApiKey;
-    settings["llmModel"] = m_llmModel;
-    settings["llmBaseUrl"] = m_llmBaseUrl;
+    TranslationSettings settings;
+    settings.googleApiKey = m_apiKey;
+    settings.targetLanguage = m_targetLanguage;
+    settings.googleApiEnabled = m_googleApi;
+    settings.llmProvider = m_llmProvider;
+    settings.llmApiKey = m_llmApiKey;
+    settings.llmModel = m_llmModel;
+    settings.llmBaseUrl = m_llmBaseUrl;
+    settings.sourceLanguage = m_sourceLanguage;
 
     int queuedCount = 0;
 
@@ -1273,7 +1332,7 @@ void FileTranslationWidget::onTranslateAllCLI()
             if (originalText.isEmpty()) {
                 item->setData(item->text(), Qt::UserRole + 1);
             }
-            item->setText("⏳ " + item->data(Qt::UserRole + 1).toString());
+            item->setText("[WAIT] " + item->data(Qt::UserRole + 1).toString());
 
             m_translationQueue.enqueue(job);
             queuedCount++;
@@ -1317,7 +1376,85 @@ void FileTranslationWidget::processNextTranslationJob()
     m_currentTranslatingFileIndex = job.fileIndex;
     m_isTranslating = true;
     emit translationStateChanged(true);
+
+    QSettings settings;
+    bool showDetailedConsole = settings.value("General/ShowDetailedProgressConsole", true).toBool();
+    if (showDetailedConsole && m_progressConsoleDialog) {
+        QString activeModel = job.settings.llmModel;
+        if (job.serviceName.startsWith("Lua: ")) {
+            QString scriptName = job.serviceName.mid(5).trimmed();
+            QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+            activeModel = s.value("Plugins/" + scriptName + "/Settings/model", activeModel).toString();
+        }
+
+        QJsonObject optionsObj;
+        optionsObj["ignoreTranslated"] = true;
+        optionsObj["sourceLanguage"] = job.settings.sourceLanguage;
+        optionsObj["targetLanguage"] = job.settings.targetLanguage;
+        optionsObj["llmModel"] = activeModel;
+        optionsObj["batchSize"] = job.sourceTexts.size();
+
+        QString targetFile = "Selected Table Rows";
+        if (job.fileIndex.isValid()) {
+            QStandardItem *item = m_fileListModel->itemFromIndex(job.fileIndex);
+            if (item) {
+                targetFile = item->data(Qt::UserRole + 1).toString();
+                if (targetFile.isEmpty()) {
+                    targetFile = item->text();
+                }
+                targetFile = targetFile.remove(QString::fromUtf8("\xE2\x8F\xB3 ")).remove(QString::fromUtf8("\xE2\x9C\x93 ")).remove("[WAIT] ").remove("[OK] ").trimmed();
+            }
+        }
+
+        m_progressConsoleDialog->setOptionsHeader(job.serviceName, QStringList({targetFile}), optionsObj);
+        m_progressConsoleDialog->setStatusText(QString("Translating %1 items...").arg(job.sourceTexts.size()));
+        m_progressConsoleDialog->show();
+        m_progressConsoleDialog->raise();
+    }
+
+    // RPG Maker Pre-Translation Control Code Masking
+    if (RpgmControlMasker::isRpgmEngine(m_engineName)) {
+        QStringList maskedTexts;
+        for (const QString &src : job.sourceTexts) {
+            RpgmControlMasker::MaskResult res = RpgmControlMasker::mask(src);
+            maskedTexts.append(res.maskedText);
+            if (res.hasMaskedTags) {
+                m_rpgmTagMaps[res.maskedText] = res.tagMap;
+                m_rpgmTagMaps[src] = res.tagMap;
+            }
+        }
+        job.sourceTexts = maskedTexts;
+    }
+
     m_translationServiceManager->translate(job.serviceName, job.sourceTexts, job.settings);
+}
+
+void FileTranslationWidget::cancelTranslation()
+{
+    m_translationQueue.clear();
+    m_spinnerTimer->stop();
+    m_isTranslating = false;
+
+    if (m_translationServiceManager) {
+        m_translationServiceManager->cancel();
+    }
+
+    for (int i = 0; i < m_fileListModel->rowCount(); ++i) {
+        QStandardItem *item = m_fileListModel->item(i);
+        if (item) {
+            QString originalText = item->data(Qt::UserRole + 1).toString();
+            if (!originalText.isEmpty()) {
+                item->setText(originalText);
+            }
+        }
+    }
+
+    if (m_progressDialog) {
+        m_progressDialog->close();
+    }
+
+    emit translationStateChanged(false);
+    qDebug() << "[NST] Translation canceled by user.";
 }
 
 bool FileTranslationWidget::isLikelyCode(const QString &text) const
@@ -1361,20 +1498,72 @@ void FileTranslationWidget::onFontsLoaded(const QJsonArray &fonts)
 
 void FileTranslationWidget::setAiFilterEnabled(bool enabled)
 {
-    m_smartFilterManager->setAIEnabled(enabled);
+    m_smartFilterManager->setEngineFilterEnabled(enabled);
 }
 
 bool FileTranslationWidget::isAiFilterEnabled() const
 {
-    return m_smartFilterManager->isAIEnabled();
+    return m_smartFilterManager->isEngineFilterEnabled();
 }
 
 void FileTranslationWidget::setAiFilterThreshold(double threshold)
 {
-    m_smartFilterManager->setAIThreshold(threshold);
+    Q_UNUSED(threshold);
 }
 
 double FileTranslationWidget::aiFilterThreshold() const
 {
-    return m_smartFilterManager->aiThreshold();
+    return 1.0;
 }
+
+void FileTranslationWidget::onFileListUpdated(const QStringList &filePaths)
+{
+    m_fileListModel->clear();
+    for (const QString &path : filePaths) {
+        QStandardItem *item = new QStandardItem(QFileInfo(path).fileName());
+        item->setData(path, Qt::UserRole);
+        m_fileListModel->appendRow(item);
+    }
+    if (m_fileListModel->rowCount() > 0) {
+        QModelIndex firstIndex = m_fileListModel->index(0, 0);
+        ui->fileListView->setCurrentIndex(firstIndex);
+        m_projectDataManager->onFileSelected(firstIndex);
+    }
+}
+
+void FileTranslationWidget::onFileSelected(const QString &filePath, const QJsonArray &entries)
+{
+    Q_UNUSED(filePath);
+    QVector<TranslationRowItem> items;
+    items.reserve(entries.size());
+
+    bool hideCompleted = m_projectDataManager ? m_projectDataManager->hideCompleted() : false;
+
+    for (const QJsonValue &value : entries) {
+        QJsonObject obj = value.toObject();
+        QString source = obj["source"].toString();
+        QString translation = obj["text"].toString();
+        QString key = obj["key"].toString();
+        QString warning = obj["warning"].toString();
+
+        if (hideCompleted && !translation.isEmpty()) {
+             continue;
+        }
+
+        TranslationRowItem item;
+        item.context = key;
+        item.sourceText = source;
+        item.translation = translation;
+        item.warning = warning;
+        items.append(item);
+    }
+
+    m_translationModel->setRows(items);
+}
+
+void FileTranslationWidget::onDataCleared()
+{
+    m_fileListModel->clear();
+    m_translationModel->clear();
+}
+

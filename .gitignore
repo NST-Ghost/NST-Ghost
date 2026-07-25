@@ -35,6 +35,8 @@ CMakeCache.txt
 cmake_install.cmake
 Makefile
 build-verify/
+build-*/
+build-gtest/
 *.d
 BGA/bga_rs/target/*
 
@@ -56,6 +58,13 @@ bgadatamanager_log.txt
 
 # Rust build artifacts
 **/target/
+
+# Node.js / TypeScript (Injection/rpgm_ts) build artifacts
+node_modules/
+Injection/rpgm_ts/dist/
+# Generated plugin output: produced by scripts/build-translator.sh from
+# Injection/rpgm_ts/. Remove the comment to track the built file in git.
+# Injection/rpgm/NST_TranslationLayer.js
 
 # Demo games and test data
 renpy_rs/demo-renpy/

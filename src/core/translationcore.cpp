@@ -3,6 +3,7 @@
 
 #include "translationcore.h"
 #include "rpgm_injection_exporter.h"
+#include "rpgm_control_masker.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QDebug>
@@ -20,15 +21,44 @@ TranslationCore::TranslationCore(QObject *parent)
     m_resultTimer = new QTimer(this);
     m_resultTimer->setInterval(100);
     connect(m_resultTimer, &QTimer::timeout, this, &TranslationCore::processIncomingResults);
+
+    // JSON interceptors
+    connect(this, &TranslationCore::projectLoaded, this, [this](const QString &path) {
+        if (m_jsonOutput) {
+            std::cout << "{\"status\":\"loaded\",\"projectPath\":\"" << path.toStdString() << "\"}" << std::endl;
+        }
+    });
+    connect(this, &TranslationCore::translationStarted, this, [this]() {
+        if (m_jsonOutput) {
+            std::cout << "{\"status\":\"started\"}" << std::endl;
+        }
+    });
+    connect(this, &TranslationCore::fileProgressUpdated, this, [this](const QString &filePath, int processed, int total) {
+        if (m_jsonOutput) {
+            std::cout << "{\"status\":\"progress\",\"filePath\":\"" << filePath.toStdString() << "\",\"processed\":" << processed << ",\"total\":" << total << "}" << std::endl;
+        }
+    });
+    connect(this, &TranslationCore::errorOccurred, this, [this](const QString &msg) {
+        if (m_jsonOutput) {
+            std::cout << "{\"status\":\"error\",\"message\":\"" << msg.toStdString() << "\"}" << std::endl;
+        }
+    });
+    connect(this, &TranslationCore::translationFinished, this, [this]() {
+        if (m_jsonOutput) {
+            std::cout << "{\"status\":\"finished\"}" << std::endl;
+        }
+    });
 }
 
 TranslationCore::~TranslationCore()
 {
+    if (m_mcpClient) {
+        m_mcpClient->stop();
+    }
 }
 
 void TranslationCore::initializeManagers()
 {
-    // Managers are independent of UI now
     std::cerr << "[Core] Debug: Creating TranslationServiceManager..." << std::endl;
     m_serviceManager = new TranslationServiceManager(this);
     std::cerr << "[Core] Debug: Creating BGADataManager..." << std::endl;
@@ -36,7 +66,10 @@ void TranslationCore::initializeManagers()
     std::cerr << "[Core] Debug: Creating SmartFilterManager..." << std::endl;
     m_smartFilterManager = new SmartFilterManager(this);
     std::cerr << "[Core] Debug: Creating ProjectDataManager..." << std::endl;
-    m_projectDataManager = new ProjectDataManager(nullptr, nullptr, this); // No UI models
+    m_projectDataManager = new ProjectDataManager(this); // No UI models
+    
+    std::cerr << "[Core] Debug: Creating McpClient..." << std::endl;
+    m_mcpClient = new qtlingo::McpClient(this);
     std::cerr << "[Core] Debug: All managers created." << std::endl;
 
     connect(m_serviceManager, &TranslationServiceManager::translationFinished, 
@@ -44,6 +77,10 @@ void TranslationCore::initializeManagers()
     
     connect(m_serviceManager, &TranslationServiceManager::errorOccurred, this, [this](const QString &msg) {
         emit errorOccurred(msg);
+    });
+
+    connect(m_serviceManager, &TranslationServiceManager::progressUpdated, this, [this](int current, int total) {
+        emit fileProgressUpdated(m_currentFilePath, current, total);
     });
 }
 
@@ -137,9 +174,43 @@ bool TranslationCore::deployAsInjection(const QString &languageName)
     return success;
 }
 
-void TranslationCore::setTranslationSettings(const QVariantMap &settings)
+void TranslationCore::setTranslationSettings(const TranslationSettings &settings)
 {
     m_settings = settings;
+
+    if (m_mcpClient) {
+        if (settings.mcpEnabled) {
+            qtlingo::McpServerConfig current = m_mcpClient->config();
+            QStringList newArgs = settings.mcpServerArgs.split(' ', Qt::SkipEmptyParts);
+            if (!m_mcpClient->isRunning() || 
+                current.name != settings.mcpServerName || 
+                current.command != settings.mcpServerCommand || 
+                current.arguments != newArgs) 
+            {
+                std::cerr << "[Core] Debug: Restarting MCP Client: " << settings.mcpServerName.toStdString() << std::endl;
+                m_mcpClient->stop();
+                
+                qtlingo::McpServerConfig config;
+                config.name = settings.mcpServerName;
+                config.command = settings.mcpServerCommand;
+                config.arguments = newArgs;
+                config.workingDirectory = QDir::currentPath();
+                config.enabled = true;
+                
+                m_mcpClient->start(config);
+            }
+        } else {
+            if (m_mcpClient->isRunning()) {
+                std::cerr << "[Core] Debug: Stopping MCP Client..." << std::endl;
+                m_mcpClient->stop();
+            }
+        }
+    }
+}
+
+void TranslationCore::setJsonOutput(bool enabled)
+{
+    m_jsonOutput = enabled;
 }
 
 void TranslationCore::translateAll(const QString &serviceName)
@@ -213,10 +284,27 @@ void TranslationCore::onTranslationFinished(const qtlingo::TranslationResult &re
 {
     QueuedResult qr;
     qr.result = result;
+
+    // RPG Maker Pre-Translation Control Code Restoration (Unmasking)
+    if (RpgmControlMasker::isRpgmEngine(m_projectDataManager->getEngineName())) {
+        if (m_rpgmTagMaps.contains(qr.result.sourceText)) {
+            QMap<QString, QString> tagMap = m_rpgmTagMaps.value(qr.result.sourceText);
+            qr.result.translatedText = RpgmControlMasker::unmask(qr.result.translatedText, tagMap);
+            for (auto tagIt = tagMap.constBegin(); tagIt != tagMap.constEnd(); ++tagIt) {
+                if (qr.result.sourceText.contains(tagIt.key())) {
+                    qr.result.sourceText.replace(tagIt.key(), tagIt.value());
+                }
+            }
+        } else if (qr.result.translatedText.contains("__NST_TAG_")) {
+            for (auto mapIt = m_rpgmTagMaps.constBegin(); mapIt != m_rpgmTagMaps.constEnd(); ++mapIt) {
+                qr.result.translatedText = RpgmControlMasker::unmask(qr.result.translatedText, mapIt.value());
+            }
+        }
+    }
     
     // Find file path for this result
-    if (m_pendingTranslations.contains(result.sourceText)) {
-        qr.filePath = m_pendingTranslations.value(result.sourceText).filePath;
+    if (m_pendingTranslations.contains(qr.result.sourceText)) {
+        qr.filePath = m_pendingTranslations.value(qr.result.sourceText).filePath;
     }
 
     m_incomingResults.enqueue(qr);
@@ -238,7 +326,22 @@ void TranslationCore::processNextJob()
 
     m_isTranslating = true;
     TranslationJob job = m_jobQueue.dequeue();
+    m_currentFilePath = job.filePath;
     
+    // RPG Maker Pre-Translation Control Code Masking
+    if (RpgmControlMasker::isRpgmEngine(m_projectDataManager->getEngineName())) {
+        QStringList maskedTexts;
+        for (const QString &src : job.sourceTexts) {
+            RpgmControlMasker::MaskResult res = RpgmControlMasker::mask(src);
+            maskedTexts.append(res.maskedText);
+            if (res.hasMaskedTags) {
+                m_rpgmTagMaps[res.maskedText] = res.tagMap;
+                m_rpgmTagMaps[src] = res.tagMap;
+            }
+        }
+        job.sourceTexts = maskedTexts;
+    }
+
     // Call the service manager
     m_serviceManager->translate(job.serviceName, job.sourceTexts, job.settings);
     

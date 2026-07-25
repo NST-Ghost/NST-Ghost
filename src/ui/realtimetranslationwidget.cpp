@@ -21,7 +21,7 @@ RealTimeTranslationWidget::RealTimeTranslationWidget(QWidget *parent)
     m_toggleServerButton->setFixedHeight(40);
     
     m_statusLabel = new QLabel("Server Status: Stopped", this);
-    m_statusLabel->setStyleSheet("color: #ccc; font-weight: bold; margin-left: 10px;");
+    m_statusLabel->setObjectName("realtimeStatusIdle");
     
     controlsLayout->addWidget(portLabel);
     controlsLayout->addWidget(m_portSpinBox);
@@ -44,7 +44,7 @@ RealTimeTranslationWidget::RealTimeTranslationWidget(QWidget *parent)
     
     m_logViewer = new QTextEdit(this);
     m_logViewer->setReadOnly(true);
-    m_logViewer->setStyleSheet("background-color: #0d0d0d; color: #00ff00; font-family: Monospace; font-size: 9pt;");
+    m_logViewer->setObjectName("realtimeLogViewer");
     layout->addWidget(m_logViewer);
 
     // Connections
@@ -67,7 +67,9 @@ void RealTimeTranslationWidget::onToggleServer()
         m_server->stopServer();
         m_toggleServerButton->setText("Start Translation Server");
         m_statusLabel->setText("Server Status: Stopped");
-        m_statusLabel->setStyleSheet("color: #ccc; font-weight: bold; margin-left: 10px;");
+        m_statusLabel->setObjectName("realtimeStatusIdle");
+        m_statusLabel->style()->unpolish(m_statusLabel);
+        m_statusLabel->style()->polish(m_statusLabel);
         m_portSpinBox->setEnabled(true);
         m_isServerRunning = false;
     } else {
@@ -75,7 +77,9 @@ void RealTimeTranslationWidget::onToggleServer()
         if (m_server->startServer(port)) {
             m_toggleServerButton->setText("Stop Translation Server");
             m_statusLabel->setText(QString("Server Status: Listening on port %1").arg(port));
-            m_statusLabel->setStyleSheet("color: #4CAF50; font-weight: bold; margin-left: 10px;");
+            m_statusLabel->setObjectName("realtimeStatusActive");
+            m_statusLabel->style()->unpolish(m_statusLabel);
+            m_statusLabel->style()->polish(m_statusLabel);
             m_portSpinBox->setEnabled(false);
             m_isServerRunning = true;
         } else {

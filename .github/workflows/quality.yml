@@ -1,0 +1,34 @@
+name: NST Code Quality & CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  quality-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies & Qt6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential qt6-base-dev qt6-declarative-dev libqt6sql6-sqlite liblua5.4-dev clang-format
+
+      - name: Install Lizard Complexity Analyzer
+        run: pip install lizard
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build NST Project
+        run: cmake --build build -j$(nproc)
+
+      - name: Run NST Code Quality Suite
+        run: |
+          chmod +x scripts/quality_check.sh
+          ./scripts/quality_check.sh

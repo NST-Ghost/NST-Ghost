@@ -147,11 +147,11 @@ class ImageTranslator:
             # Try importing each dependency separately for better error messages
             try:
                 import torch
-                debug_log(f"✓ torch imported successfully (version: {torch.__version__})")
-                print(f"[DEBUG] ✓ torch imported successfully (version: {torch.__version__})", file=_sys.stderr)
+                debug_log(f"[OK] torch imported successfully (version: {torch.__version__})")
+                print(f"[DEBUG] [OK] torch imported successfully (version: {torch.__version__})", file=_sys.stderr)
             except ImportError as e:
-                debug_log(f"✗ torch import FAILED: {e}", "error")
-                print(f"[DEBUG] ✗ torch import FAILED: {e}", file=_sys.stderr)
+                debug_log(f"[FAIL] torch import FAILED: {e}", "error")
+                print(f"[DEBUG] [FAIL] torch import FAILED: {e}", file=_sys.stderr)
                 
                 # Enhanced diagnostics for WinError 126
                 if "126" in str(e) and sys.platform == 'win32':
@@ -187,26 +187,6 @@ class ImageTranslator:
                         # Try loading each critical DLL individually
                         critical_dlls = ['c10.dll', 'torch_cpu.dll', 'fbgemm.dll', 'libomp140.x86_64.dll', 'asmjit.dll']
                         debug_log("DLL Load Test (one by one):")
-                        print("\nDLL Load Test (one by one):", file=_sys.stderr)
-                        
-                        for dll_name in critical_dlls:
-                            dll_path = os.path.join(torch_lib, dll_name)
-                            try:
-                                if os.path.exists(dll_path):
-                                    ctypes.CDLL(dll_path)
-                                    debug_log(f"  ✓ {dll_name} - LOADABLE")
-                                    print(f"  ✓ {dll_name} - LOADABLE", file=_sys.stderr)
-                                else:
-                                    debug_log(f"  ✗ {dll_name} - FILE NOT FOUND", "warning")
-                                    print(f"  ✗ {dll_name} - FILE NOT FOUND", file=_sys.stderr)
-                            except OSError as dll_err:
-                                debug_log(f"  ✗ {dll_name} - LOAD FAILED: {dll_err}", "error")
-                                print(f"  ✗ {dll_name} - LOAD FAILED: {dll_err}", file=_sys.stderr)
-                                # This is likely the culprit!
-                                if "126" in str(dll_err):
-                                    debug_log(f"    ^ THIS DLL has missing dependencies!", "error")
-                                    print(f"    ^ THIS DLL has missing dependencies!", file=_sys.stderr)
-                    else:
                         debug_log("Could not find torch/lib directory!", "error")
                         print("Could not find torch/lib directory!", file=_sys.stderr)
                     
@@ -217,11 +197,11 @@ class ImageTranslator:
             
             try:
                 import easyocr
-                debug_log("✓ easyocr imported successfully")
-                print(f"[DEBUG] ✓ easyocr imported successfully", file=_sys.stderr)
+                debug_log("[OK] easyocr imported successfully")
+                print(f"[DEBUG] [OK] easyocr imported successfully", file=_sys.stderr)
             except ImportError as e:
-                debug_log(f"✗ easyocr import FAILED: {e}", "error")
-                print(f"[DEBUG] ✗ easyocr import FAILED: {e}", file=_sys.stderr)
+                debug_log(f"[FAIL] easyocr import FAILED: {e}", "error")
+                print(f"[DEBUG] [FAIL] easyocr import FAILED: {e}", file=_sys.stderr)
                 raise
             
             self.easyocr = easyocr

@@ -221,7 +221,7 @@ QPixmap LoadProjectDialog::loadEngineIcon(const QString &engine) const
 QString LoadProjectDialog::engineFileTypes(const QString &engine) const
 {
     static QMap<QString, QString> types{
-        {"RPGM", ".json, .png, .ogg, ..."},
+        {"RPGM", "RPG Maker (MV/MZ) & PGMMV / Cocos2d-JS (.json, .png, .ogg, ...)"},
         {"UNITY", "unity.exe, .assets, .dll, ..."},
         {"RENPY", ".rpy, .rpyc, ..."}
     };

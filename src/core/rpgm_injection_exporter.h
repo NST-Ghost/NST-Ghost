@@ -12,12 +12,17 @@
  *
  * Instead of modifying original game JSON files, this exporter:
  *   1. Creates a nst_translations/ folder inside the game root
- *   2. Writes translation .txt files (one per source data file)
- *   3. Writes a config.txt settings file
+ *   2. Writes translation .json files (one per source data file):
+ *        { "source_text": "translated_text", ... }
+ *   3. Writes a config.json settings file that drives the runtime hooks:
+ *        { "__customHooks__": [...], "__textFields__": [...],
+ *          "__textCommands__": {...}, "__controlCharPatterns__": [...],
+ *          "__ignorePatterns__": [...], "__fontConfig__": {...},
+ *          "__sourceLocale__": "ja" }
  *   4. Copies the NST_TranslationLayer.js plugin to js/plugins/
  *
  * The JS plugin then hooks into the RPG Maker runtime and translates
- * text on-the-fly using data from these external files.
+ * text on-the-fly using data from these external JSON files.
  */
 class RpgmInjectionExporter : public QObject
 {
@@ -54,6 +59,10 @@ private:
 
     QString fileBaseName(const QString &filePath) const;
     static QString pluginSourcePath();
+
+    // Build the default __customHooks__ array for config.json. These mirror
+    // the legacy hardcoded prototype patching and can be edited by users.
+    QJsonArray defaultHooks() const;
 };
 
 #endif // RPGM_INJECTION_EXPORTER_H

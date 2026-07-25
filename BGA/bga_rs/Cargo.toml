@@ -6,7 +6,7 @@ description = "Background Game Analyzer - Rust Core"
 license = "MIT"
 
 [lib]
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }

@@ -5,11 +5,11 @@
 #include <QStackedWidget>
 #include <QSharedPointer>
 
+#include <QTabBar>
+#include <QPushButton>
 #include "menubar.h"
-#include "customtitlebar.h"
 #include "filetranslationwidget.h"
 #include "settingsdialog.h"
-#include "realtimetranslationwidget.h"
 #include "globalstatuswidget.h"
 #include "updatecontroller.h"
 #include "translationservicemanager.h"
@@ -55,10 +55,13 @@ private slots:
     void onToggleContext(bool checked);
     void onHideCompleted(bool checked);
 
-    // Navigation slots
-private slots:
-    void onNavigationChanged(int index);
-    
+    // Tab slots
+    void onProjectTabChanged(int index);
+    void onProjectTabCloseRequested(int index);
+    void onAddProjectButtonClicked();
+    void onOpenProject();
+    void onUpdateProject();
+
     // Smart Filter slots (delegated)
     void onExportSmartFilterRules();
     void onImportSmartFilterRules();
@@ -82,12 +85,11 @@ private:
     
     // UI Components
     MenuBar *m_menuBar;
-    CustomTitleBar *m_titleBar;
+    QTabBar *m_projectTabBar;
+    QPushButton *m_addProjectButton;
     QStackedWidget *m_stackedWidget;
     
     // Widgets
-    FileTranslationWidget *m_fileTranslationWidget;
-    RealTimeTranslationWidget *m_realTimeWidget;
     GlobalStatusWidget *m_globalStatusWidget;
     
     // Managers / Controllers owned by MainWindow but shared/used by children
@@ -135,6 +137,9 @@ private:
     
     void updateCursorShape(const QPoint &pos);
     int getResizeDirection(const QPoint &pos);
+
+    FileTranslationWidget* currentProjectWidget() const;
+    FileTranslationWidget* addNewProjectTab(const QString &engineName, const QString &projectPath, bool cliMode = false);
 };
 
 #endif // MAINWINDOW_H

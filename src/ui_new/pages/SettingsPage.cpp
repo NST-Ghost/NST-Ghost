@@ -96,7 +96,7 @@ void SettingsPage::setupUI()
     QHBoxLayout *buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
     
-    QPushButton *btnSave = new QPushButton("💾 Save Settings", this);
+    QPushButton *btnSave = new QPushButton("Save Settings", this);
     connect(btnSave, &QPushButton::clicked, this, [this]() {
         saveSettings();
         emit settingsChanged();

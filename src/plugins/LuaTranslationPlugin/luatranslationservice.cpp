@@ -10,6 +10,26 @@
 #include <QJsonArray>
 #include <QSettings>
 #include <QThread>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+
+#include <QDir>
+
+static void writeLogToFile(const QString &msg) {
+    QString homeLogPath = QDir::homePath() + "/lua_plugin_debug.log";
+    QFile homeFile(homeLogPath);
+    if (homeFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream stream(&homeFile);
+        stream << "[" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz") << "] " << msg << "\n";
+    }
+
+    QFile localFile("lua_plugin_debug.log");
+    if (localFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream stream(&localFile);
+        stream << "[" << QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz") << "] " << msg << "\n";
+    }
+}
 
 // --- LuaWorker Implementation ---
 
@@ -47,20 +67,6 @@ bool LuaWorker::initLua()
     
     // Register JSON functions
     lua_register(L, "nst_json_encode", [](lua_State* L) -> int {
-        // Simple implementation: expects a table, converts to JSON string
-        // Note: This is a basic implementation. For full Lua->JSON support, 
-        // we'd need a recursive converter. For now, let's assume simple string/number tables.
-        // Actually, let's use a proper recursive helper if possible, or just QJsonDocument::fromJson for decoding
-        // and QJsonDocument::toJson for encoding.
-        
-        // For this task, I'll implement a basic wrapper. 
-        // Converting Lua table to QJsonObject/QJsonArray is non-trivial without a helper.
-        // Let's rely on the user passing a string for body for now in the example?
-        // No, the user wants to see if there are problems. JSON IS the problem.
-        // I will implement a "good enough" encoder for the Groq payload (nested tables).
-        
-        // ...actually, writing a full Lua<->QJson converter in a lambda is too much.
-        // I'll add static helper methods to LuaWorker.
         return LuaWorker::lua_json_encode(L);
     });
 
@@ -81,11 +87,13 @@ bool LuaWorker::initLua()
     if (luaL_dofile(L, m_scriptPath.toStdString().c_str()) != LUA_OK) {
         QString error = lua_tostring(L, -1);
         qCritical() << "Failed to load Lua script:" << m_scriptPath << error;
+        writeLogToFile(QString("[INIT ERROR] Failed to load script %1: %2").arg(m_scriptPath, error));
         emit errorOccurred(QString("Failed to load script: %1").arg(error));
         lua_close(L);
         L = nullptr;
         return false;
     }
+    writeLogToFile(QString("[INIT SUCCESS] Loaded script: %1").arg(m_scriptPath));
     return true;
 }
 
@@ -95,6 +103,7 @@ int LuaWorker::lua_log(lua_State *L)
     LuaWorker* worker = static_cast<LuaWorker*>(lua_touserdata(L, lua_upvalueindex(1)));
     const char* msg = lua_tostring(L, 1);
     qDebug() << "[Lua]" << msg;
+    writeLogToFile(QString("[LOG] %1").arg(msg ? msg : ""));
     if (worker) {
         emit worker->logMessage(QString::fromUtf8(msg));
     }
@@ -125,6 +134,8 @@ int LuaWorker::lua_http_request(lua_State *L)
         body = QByteArray(lua_tostring(L, 4));
     }
 
+    writeLogToFile(QString("[HTTP REQUEST] %1 %2 | Body len: %3").arg(method, urlStr).arg(body.size()));
+
     // Perform request synchronously (blocking this worker thread)
     QNetworkAccessManager manager;
     QNetworkReply *reply = nullptr;
@@ -143,6 +154,8 @@ int LuaWorker::lua_http_request(lua_State *L)
     QByteArray responseBody = reply->readAll();
     int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     
+    writeLogToFile(QString("[HTTP RESPONSE] Status: %1 | Reply len: %2").arg(statusCode).arg(responseBody.size()));
+
     lua_pushlstring(L, responseBody.constData(), responseBody.size());
     lua_pushinteger(L, statusCode);
 
@@ -169,9 +182,6 @@ int LuaWorker::lua_json_encode(lua_State *L)
     if (val.isObject()) doc.setObject(val.toObject());
     else if (val.isArray()) doc.setArray(val.toArray());
     else {
-        // Wrap primitive in array or just to string? 
-        // QJsonDocument can't hold primitive directly.
-        // For Groq, we usually send an object.
         lua_pushstring(L, ""); 
         return 1;
     }
@@ -197,47 +207,13 @@ int LuaWorker::lua_json_decode(lua_State *L)
 
 int LuaWorker::lua_get_setting(lua_State *L)
 {
-    // Arguments: key
     const char* key = luaL_checkstring(L, 1);
     
-    // Get script filename to use as group
-    lua_getglobal(L, "debug");
-    lua_getfield(L, -1, "getinfo");
-    lua_pushinteger(L, 1);
-    lua_pushstring(L, "S");
-    lua_call(L, 2, 1);
-    lua_getfield(L, -1, "short_src");
-    QString scriptPath = QString::fromUtf8(lua_tostring(L, -1));
-    lua_pop(L, 3); // Pop short_src, info table, debug
-    
-    QFileInfo fi(scriptPath);
-    QString scriptName = fi.fileName();
-    
-    // If scriptPath is not available (e.g. running from string), fallback
-    // But we always run from file in this plugin.
-    // Actually, simpler: we know m_scriptPath in LuaWorker instance, 
-    // but this is a static method.
-    // We can pass the worker instance as upvalue or just use the global QSettings.
-    // Since it's static, we can't access m_scriptPath directly.
-    // BUT, we can get the script path from Lua debug info as above, OR
-    // we can capture 'this' in the lambda if we make it non-static or use a closure.
-    
-    // Let's use the lambda capture approach in initLua instead of static method for this one,
-    // so we can access m_scriptPath.
-    // Wait, I declared it static in header. Let's change it to non-static or use the debug info trick.
-    // The debug info trick is reliable enough for `dofile`.
-    
-    // Actually, let's just use the lambda in initLua to capture 'this'.
-    // But I already wrote the static declaration.
-    // Let's stick to static and use the debug info or just pass the script name as a global when initializing.
-    
-    // Better: Set a global variable `__script_name` in initLua.
     lua_getglobal(L, "__script_name");
     QString currentScriptName = QString::fromUtf8(lua_tostring(L, -1));
     lua_pop(L, 1);
     
     if (currentScriptName.isEmpty()) {
-         // Fallback
          currentScriptName = "UnknownScript";
     }
 
@@ -250,8 +226,26 @@ int LuaWorker::lua_get_setting(lua_State *L)
     settings.endGroup();
     settings.endGroup();
     settings.endGroup();
+
+    if (!val.isValid() || val.toString().trimmed().isEmpty()) {
+        QSettings nativeSettings("NST", "PluginSettings");
+        val = nativeSettings.value("Plugins/" + currentScriptName + "/Settings/" + key);
+    }
+
+    if (!val.isValid() || val.toString().trimmed().isEmpty()) {
+        QSettings globalSettings;
+        if (key == QString("api_key")) {
+            val = globalSettings.value("llmApiKey", "");
+        } else if (key == QString("base_url")) {
+            val = globalSettings.value("llmBaseUrl", "");
+        } else if (key == QString("model")) {
+            val = globalSettings.value("llmModel", "");
+        }
+    }
     
-    if (val.isValid()) {
+    writeLogToFile(QString("[GET SETTING] Script: %1 | Key: %2 | Found: %3").arg(currentScriptName, key, val.isValid() && !val.toString().isEmpty() ? "YES" : "NO"));
+
+    if (val.isValid() && !val.toString().isEmpty()) {
         lua_pushstring(L, val.toString().toUtf8().constData());
     } else {
         lua_pushnil(L);
@@ -376,22 +370,15 @@ void LuaWorker::processBatchTranslation(const QStringList &sourceTexts)
         if (!initLua()) return;
     }
 
+    writeLogToFile(QString("[BATCH TRANSLATION START] Processing batch of %1 items").arg(sourceTexts.size()));
     lua_getglobal(L, "on_batch_text_extract");
     if (!lua_isfunction(L, -1)) {
         lua_pop(L, 1);
-        // Fallback to sequential? Or just error?
-        // Let's fallback to sequential for compatibility, but it defeats the purpose of batching.
-        // Better to log a warning and do sequential.
         qWarning() << "Script does not support on_batch_text_extract. Falling back to sequential.";
+        writeLogToFile("[BATCH FALLBACK] on_batch_text_extract not found, using sequential on_text_extract");
         
         QList<qtlingo::TranslationResult> results;
         for (const QString &text : sourceTexts) {
-             // We can't easily reuse processTranslation because it emits signals.
-             // We should probably just emit error or implement a loop here.
-             // For now, let's just emit error to encourage implementing the function.
-             // Or better: implement a loop and emit batchFinished at the end.
-             
-             // Actually, let's just try to call on_text_extract in a loop.
              lua_getglobal(L, "on_text_extract");
              if (lua_isfunction(L, -1)) {
                  lua_pushstring(L, text.toUtf8().constData());
@@ -400,14 +387,15 @@ void LuaWorker::processBatchTranslation(const QStringList &sourceTexts)
                      if (lua_isstring(L, -1)) res = QString::fromUtf8(lua_tostring(L, -1));
                      results.append({text, res});
                  } else {
-                     results.append({text, text}); // Error fallback
+                     results.append({text, text});
                  }
-                 lua_pop(L, 1); // Pop result
+                 lua_pop(L, 1);
              } else {
                  lua_pop(L, 1);
                  results.append({text, text});
              }
         }
+        writeLogToFile(QString("[BATCH FALLBACK DONE] Processed %1 items").arg(results.size()));
         emit batchTranslationFinished(results);
         return;
     }
@@ -421,44 +409,58 @@ void LuaWorker::processBatchTranslation(const QStringList &sourceTexts)
 
     // Call function
     // Expect 2 return values: result_table, error_message
-    if (lua_pcall(L, 1, 2, 0) != LUA_OK) {
-        QString error = lua_tostring(L, -1);
-        qCritical() << "Error calling on_batch_text_extract:" << error;
-        emit errorOccurred(QString("Lua execution error: %1").arg(error));
-        lua_pop(L, 1);
-        return;
-    }
+    bool batchSuccess = false;
+    QList<qtlingo::TranslationResult> results;
 
-    // Check first return value (table)
-    if (lua_isnil(L, -2)) {
-        QString errorMsg = "Batch Translation failed (Script returned nil)";
-        if (lua_isstring(L, -1)) {
-            errorMsg = QString::fromUtf8(lua_tostring(L, -1));
+    if (lua_pcall(L, 1, 2, 0) == LUA_OK) {
+        if (!lua_isnil(L, -2) && lua_istable(L, -2)) {
+            int len = lua_rawlen(L, -2);
+            for (int i = 1; i <= len; ++i) {
+                lua_rawgeti(L, -2, i);
+                QString res = "";
+                if (lua_isstring(L, -1)) {
+                    res = QString::fromUtf8(lua_tostring(L, -1));
+                }
+                lua_pop(L, 1);
+                
+                if (i - 1 < sourceTexts.size()) {
+                    results.append({sourceTexts[i-1], res});
+                }
+            }
+            batchSuccess = (results.size() == sourceTexts.size());
         }
         lua_pop(L, 2);
-        emit errorOccurred(errorMsg);
-        return;
+    } else {
+        lua_pop(L, lua_gettop(L));
     }
 
-    QList<qtlingo::TranslationResult> results;
-    if (lua_istable(L, -2)) {
-        int len = lua_rawlen(L, -2);
-        // We expect the returned array to match the input array order
-        for (int i = 1; i <= len; ++i) {
-            lua_rawgeti(L, -2, i);
-            QString res = "";
-            if (lua_isstring(L, -1)) {
-                res = QString::fromUtf8(lua_tostring(L, -1));
-            }
-            lua_pop(L, 1);
-            
-            if (i - 1 < sourceTexts.size()) {
-                results.append({sourceTexts[i-1], res});
+    if (!batchSuccess) {
+        writeLogToFile(QString("[BATCH FALLBACK] Batch translation failed or returned incomplete data. Falling back to sequential mode for %1 items...").arg(sourceTexts.size()));
+        results.clear();
+        for (const QString &text : sourceTexts) {
+            lua_getglobal(L, "on_text_extract");
+            if (lua_isfunction(L, -1)) {
+                lua_pushstring(L, text.toUtf8().constData());
+                if (lua_pcall(L, 1, 2, 0) == LUA_OK) {
+                    QString res = text;
+                    if (lua_isstring(L, -2)) {
+                        res = QString::fromUtf8(lua_tostring(L, -2));
+                    }
+                    results.append({text, res});
+                    lua_pop(L, 2);
+                } else {
+                    lua_pop(L, lua_gettop(L));
+                    results.append({text, text});
+                }
+            } else {
+                lua_pop(L, 1);
+                results.append({text, text});
             }
         }
+        writeLogToFile(QString("[BATCH FALLBACK SUCCESS] Processed %1 items sequentially").arg(results.size()));
     }
-    lua_pop(L, 2); // Pop table and error (or nil)
 
+    writeLogToFile(QString("[BATCH SUCCESS] Finished %1 of %2 items").arg(results.size()).arg(sourceTexts.size()));
     emit batchTranslationFinished(results);
 }
 
