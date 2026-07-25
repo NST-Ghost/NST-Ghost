@@ -33,8 +33,9 @@ static void writeLogToFile(const QString &msg) {
 
 // --- LuaWorker Implementation ---
 
-LuaWorker::LuaWorker(const QString &scriptPath)
-    : m_scriptPath(scriptPath)
+LuaWorker::LuaWorker(const QString &scriptPath, QObject *parent)
+    : QObject(parent)
+    , m_scriptPath(scriptPath)
 {
     initLua();
 }

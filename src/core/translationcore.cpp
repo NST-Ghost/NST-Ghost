@@ -195,7 +195,6 @@ void TranslationCore::setTranslationSettings(const TranslationSettings &settings
                 config.command = settings.mcpServerCommand;
                 config.arguments = newArgs;
                 config.workingDirectory = QDir::currentPath();
-                config.enabled = true;
                 
                 m_mcpClient->start(config);
             }

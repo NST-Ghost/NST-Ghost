@@ -22,7 +22,7 @@ signals:
     void mockDataLoaded(const QJsonArray& data);
 
 private:
-    LuaScriptManager() = default;
+    explicit LuaScriptManager(QObject *parent = nullptr) : QObject(parent) {}
     QMap<QString, LuaPlugin*> m_scripts;
     
     static int api_log(lua_State* L);

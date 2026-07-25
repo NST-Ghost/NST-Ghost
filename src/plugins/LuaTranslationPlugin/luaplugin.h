@@ -12,7 +12,7 @@ class LuaTranslationPlugin : public QObject, public qtlingo::TranslationPluginIn
     Q_INTERFACES(qtlingo::TranslationPluginInterface)
 
 public:
-    LuaTranslationPlugin();
+    explicit LuaTranslationPlugin(QObject *parent = nullptr);
     QStringList keys() const override;
     qtlingo::ITranslationService* create(const QString &key, QObject *parent = nullptr) override;
 

@@ -7,7 +7,8 @@
 #include <lua.hpp>
 #include <QSettings>
 
-LuaTranslationPlugin::LuaTranslationPlugin()
+LuaTranslationPlugin::LuaTranslationPlugin(QObject *parent)
+    : QObject(parent)
 {
     scanScripts();
 }

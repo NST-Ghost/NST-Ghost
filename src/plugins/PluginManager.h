@@ -13,7 +13,7 @@ public:
     QVector<IPlugin*> plugins() const { return m_plugins; }
 
 private:
-    PluginManager() = default;
+    explicit PluginManager(QObject *parent = nullptr) : QObject(parent) {}
     QVector<QPluginLoader*> m_loaders;
     QVector<IPlugin*> m_plugins;
 };

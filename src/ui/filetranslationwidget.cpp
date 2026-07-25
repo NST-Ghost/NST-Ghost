@@ -562,13 +562,14 @@ void FileTranslationWidget::onTranslationFinished(const qtlingo::TranslationResu
 
 void FileTranslationWidget::processIncomingResults()
 {
+    if (!m_translationModel) return;
     if (m_incomingResults.isEmpty()) {
         m_resultProcessingTimer->stop();
         return;
     }
     int processedCount = 0;
     const int BATCH_SIZE = 50;
-    if (m_translationModel) m_translationModel->blockSignals(true);
+    m_translationModel->blockSignals(true);
 
     while (!m_incomingResults.isEmpty() && processedCount < BATCH_SIZE) {
         QueuedTranslationResult queuedResult = m_incomingResults.dequeue();
@@ -1479,7 +1480,6 @@ void FileTranslationWidget::setSettings(const QString &apiKey, const QString &ta
     m_googleApi = googleApi;
     m_llmProvider = llmProvider;
     m_llmApiKey = llmApiKey;
-    m_llmModel = llmModel;
     m_llmModel = llmModel;
     m_llmBaseUrl = llmBaseUrl;
     m_sourceLanguage = sourceLanguage;

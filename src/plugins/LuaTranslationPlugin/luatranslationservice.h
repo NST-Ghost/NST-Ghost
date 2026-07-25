@@ -13,7 +13,7 @@ class LuaWorker : public QObject
 {
     Q_OBJECT
 public:
-    explicit LuaWorker(const QString &scriptPath);
+    explicit LuaWorker(const QString &scriptPath, QObject *parent = nullptr);
     ~LuaWorker();
 
 public slots:

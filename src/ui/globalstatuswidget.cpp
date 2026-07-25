@@ -42,15 +42,7 @@ void GlobalStatusWidget::updateStatusIndicator(QLabel *indicator, bool active)
 
 void GlobalStatusWidget::mousePressEvent(QMouseEvent *event)
 {
-    // Determine which status was clicked roughly by X coordinate or using childAt
-    QWidget *clickedWidget = childAt(event->pos());
-    
-    if (clickedWidget == m_tableIndicator || clickedWidget == m_tableLabel) {
-        emit tableStatusClicked();
-    } else {
-        // Broad click handling based on half screen if they just click the general area
-        emit tableStatusClicked();
-    }
-    
+    Q_UNUSED(event);
+    emit tableStatusClicked();
     QWidget::mousePressEvent(event);
 }

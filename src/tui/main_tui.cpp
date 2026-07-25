@@ -447,7 +447,6 @@ public:
 
                     auto status_color = Color::White;
                     if (job.status == "[BUSY] กำลังทำ") status_color = Color::Yellow;
-                    else if (job.status == "[QUEUED] รอคิว") status_color = Color::White;
                     else if (job.status == "[DONE] เสร็จสิ้น" || job.status == "เสร็จสิ้น") status_color = Color::Green;
                     else if (job.status == "[FAIL] ล้มเหลว") status_color = Color::Red;
 
