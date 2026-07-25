@@ -241,7 +241,12 @@ void TranslationCore::translateFiles(const QStringList &filePaths, const QString
         // Prepare text for filtering
         QStringList allSources;
         for (const QJsonValue &val : entries) {
-            allSources.append(val.toObject()["source"].toString());
+            QJsonObject obj = val.toObject();
+            QString source = obj["source"].toString();
+            QString translated = obj["text"].toString();
+            if (source.isEmpty()) continue;
+            if (!translated.isEmpty()) continue; // Skip already translated entries
+            allSources.append(source);
         }
 
         QList<bool> skipFlags = m_smartFilterManager->shouldSkipBatch(allSources);

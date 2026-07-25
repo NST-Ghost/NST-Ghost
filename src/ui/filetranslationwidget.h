@@ -191,12 +191,14 @@ private:
     QTimer *m_spinnerTimer;
     int m_spinnerFrame = 0;
     QModelIndex m_currentTranslatingFileIndex;
+    QString m_currentTranslatingFilePath;
     
     struct TranslationJob {
         QString serviceName;
         QStringList sourceTexts;
         TranslationSettings settings;
         QModelIndex fileIndex;
+        QString filePath;
     };
     QQueue<TranslationJob> m_translationQueue;
     bool m_isTranslating = false;

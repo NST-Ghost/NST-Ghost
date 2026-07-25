@@ -544,7 +544,9 @@ void FileTranslationWidget::onTranslationFinished(const qtlingo::TranslationResu
     if (!m_translationModel) return;
     QueuedTranslationResult queuedResult;
     queuedResult.result = result;
-    if (m_currentTranslatingFileIndex.isValid()) {
+    if (!m_currentTranslatingFilePath.isEmpty()) {
+        queuedResult.filePath = m_currentTranslatingFilePath;
+    } else if (m_currentTranslatingFileIndex.isValid()) {
         QStandardItem *fileItem = m_fileListModel->itemFromIndex(m_currentTranslatingFileIndex);
         if (fileItem) {
             queuedResult.filePath = fileItem->data(Qt::UserRole).toString();
@@ -594,7 +596,7 @@ void FileTranslationWidget::processIncomingResults()
         const QString &targetFilePath = queuedResult.filePath;
         QString currentLoadedPath = m_projectDataManager->getCurrentLoadedFilePath();
 
-        if (targetFilePath == currentLoadedPath) {
+        if (!targetFilePath.isEmpty() && targetFilePath == currentLoadedPath) {
             auto pendingList = m_pendingTranslations.values(sourceText);
             bool updatedVisibleRows = false;
             for (const PendingTranslation &pending : pendingList) {
@@ -619,20 +621,8 @@ void FileTranslationWidget::processIncomingResults()
                 }
             }
         }
-        if (!targetFilePath.isEmpty() && m_projectDataManager->getLoadedGameProjectData().contains(targetFilePath)) {
-            QJsonArray textsArray = m_projectDataManager->getLoadedGameProjectData().value(targetFilePath);
-            bool modified = false;
-            for (int i = 0; i < textsArray.size(); ++i) {
-                QJsonObject textObject = textsArray.at(i).toObject();
-                if (textObject["source"].toString() == sourceText) {
-                    textObject["text"] = translatedText;
-                    textsArray.replace(i, textObject);
-                    modified = true;
-                }
-            }
-            if (modified) {
-                m_projectDataManager->getLoadedGameProjectData().insert(targetFilePath, textsArray);
-            }
+        if (!targetFilePath.isEmpty()) {
+            m_projectDataManager->updateTranslation(sourceText, translatedText, targetFilePath);
         }
         auto pendingList = m_pendingTranslations.values(sourceText);
         m_pendingTranslations.remove(sourceText);
@@ -809,6 +799,7 @@ void FileTranslationWidget::onTranslateSelectedTextWithService()
         job.sourceTexts = sourceTexts;
         job.settings = settings;
         job.fileIndex = ui->fileListView->currentIndex();
+        job.filePath = m_projectDataManager->getCurrentLoadedFilePath();
         
         QStandardItem *item = m_fileListModel->itemFromIndex(job.fileIndex);
         if (item) {
@@ -967,43 +958,47 @@ void FileTranslationWidget::onDeployProject()
         return;
     }
 
-    // Show export mode dialog
-    QStringList options;
-    options << tr("Only Translated Files (Recommended)") 
-            << tr("All Files");
-    
-    bool ok;
-    QString choice = QInputDialog::getItem(
-        this, 
-        tr("Deploy Options"),
-        tr("What do you want to export?"),
-        options, 
-        0,  // default: Only Translated
-        false, 
-        &ok
-    );
-    
-    if (!ok) return;
-    
-    bool onlyTranslated = (choice == options[0]);
+    bool onlyTranslated = true;
+    QString dir = m_defaultDeploymentPath;
 
-    QString dir;
+    // If Shift key is held down, allow advanced customization of deploy mode and target folder
+    if (QApplication::keyboardModifiers() & Qt::ShiftModifier) {
+        QStringList options;
+        options << tr("Only Translated Files (Recommended)") 
+                << tr("All Files");
+        
+        bool ok;
+        QString choice = QInputDialog::getItem(
+            this, 
+            tr("Deploy Options"),
+            tr("What do you want to export?"),
+            options, 
+            0, 
+            false, 
+            &ok
+        );
+        if (!ok) return;
+        onlyTranslated = (choice == options[0]);
+
+        dir = QFileDialog::getExistingDirectory(this, tr("Select Deployment Folder"),
+                                                !dir.isEmpty() ? dir : gamePath,
+                                                QFileDialog::ShowDirsOnly
+                                                | QFileDialog::DontResolveSymlinks);
+        if (dir.isEmpty()) return;
+    } else {
+        if (dir.isEmpty()) {
+            dir = gamePath;
+        } else {
+            QFileInfo info(dir);
+            if (!info.isDir() && !info.absolutePath().isEmpty()) {
+                QDir().mkpath(info.absolutePath());
+            }
+        }
+    }
+
     const bool isRenpy = (m_engineName.compare(QStringLiteral("renpy"), Qt::CaseInsensitive) == 0);
-
     if (isRenpy) {
         dir = gamePath;
-    } else if (!m_defaultDeploymentPath.isEmpty()) {
-        dir = m_defaultDeploymentPath;
-        // Verify path is valid/writable?
-        QFileInfo info(dir);
-        if (!info.isDir() && !info.absolutePath().isEmpty()) {
-            QDir().mkpath(info.absolutePath());
-        }
-    } else {
-        dir = QFileDialog::getExistingDirectory(this, tr("Select Deployment Folder (Where to create game)"),
-                                                    gamePath,
-                                                    QFileDialog::ShowDirsOnly
-                                                    | QFileDialog::DontResolveSymlinks);
     }
 
     if (dir.isEmpty()) return;
@@ -1220,7 +1215,9 @@ void FileTranslationWidget::onTranslateSelectedFiles()
         for (int i = 0; i < entries.size(); ++i) {
             QJsonObject obj = entries[i].toObject();
             QString source = obj["source"].toString();
+            QString translated = obj["text"].toString();
             if (source.isEmpty()) continue;
+            if (!translated.isEmpty()) continue; // Skip already translated entries
             allSources.append(source);
             originalIndices.append(i); // Keep track if needed, though we just append
         }
@@ -1243,6 +1240,7 @@ void FileTranslationWidget::onTranslateSelectedFiles()
             job.sourceTexts = sourceTexts;
             job.settings = settings;
             job.fileIndex = fileIdx;
+            job.filePath = filePath;
 
             // Update Item Text to show status
             QString originalText = item->data(Qt::UserRole + 1).toString();
@@ -1305,7 +1303,9 @@ void FileTranslationWidget::onTranslateAllCLI()
         for (int j = 0; j < entries.size(); ++j) {
             QJsonObject obj = entries[j].toObject();
             QString source = obj["source"].toString();
+            QString translated = obj["text"].toString();
             if (source.isEmpty()) continue;
+            if (!translated.isEmpty()) continue; // Skip already translated entries
             allSources.append(source);
         }
         
@@ -1326,6 +1326,7 @@ void FileTranslationWidget::onTranslateAllCLI()
             job.sourceTexts = sourceTexts;
             job.settings = settings;
             job.fileIndex = fileIdx;
+            job.filePath = filePath;
 
             // Update Item Text to show status
             QString originalText = item->data(Qt::UserRole + 1).toString();
@@ -1368,12 +1369,14 @@ void FileTranslationWidget::onUnmarkAsIgnored()
 void FileTranslationWidget::processNextTranslationJob()
 {
     if (m_translationQueue.isEmpty()) {
+        m_currentTranslatingFilePath.clear();
         emit translationStateChanged(false);
         return;
     }
     if (m_isTranslating) return;
     TranslationJob job = m_translationQueue.dequeue();
     m_currentTranslatingFileIndex = job.fileIndex;
+    m_currentTranslatingFilePath = job.filePath;
     m_isTranslating = true;
     emit translationStateChanged(true);
 
@@ -1434,6 +1437,7 @@ void FileTranslationWidget::cancelTranslation()
     m_translationQueue.clear();
     m_spinnerTimer->stop();
     m_isTranslating = false;
+    m_currentTranslatingFilePath.clear();
 
     if (m_translationServiceManager) {
         m_translationServiceManager->cancel();
