@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NST Mobile Translator - Meta Audience Network Demo</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Phone Mockup Container -->
+    <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+            
+            <!-- App Header -->
+            <header class="app-header">
+                <div class="app-brand">
+                    <img src="app_icon.jpg" alt="NST Logo" class="app-logo">
+                    <div>
+                        <h1 class="app-title">NST Mobile</h1>
+                        <span class="app-subtitle">Game Translator Pro</span>
+                    </div>
+                </div>
+
+                <!-- Meta Audience Network Rewarded Energy Badge -->
+                <div class="energy-badge" id="energyBadge" onclick="openAdModal()">
+                    <span class="energy-icon">⚡</span>
+                    <span class="energy-amount" id="energyCount">150</span>
+                    <span class="energy-add">+</span>
+                </div>
+            </header>
+
+            <!-- Ad Banner Placeholder (Meta Audience Network) -->
+            <div class="meta-banner-ad">
+                <span class="ad-label">Meta Audience Network Ad</span>
+                <p class="ad-text">🎮 เล่นเกมญี่ปุ่นแบบไร้ขีดจำกัดด้วย NST Server! ดูโฆษณาเพื่อรับพลังงานแปลฟรี</p>
+            </div>
+
+            <!-- Content Tabs -->
+            <nav class="app-tabs">
+                <button class="tab-btn active" onclick="switchTab('gamesTab')">🎮 เกมในเครื่อง</button>
+                <button class="tab-btn" onclick="switchTab('translatorTab')">⚡ เซิร์ฟเวอร์แปล</button>
+                <button class="tab-btn" onclick="switchTab('monetizeTab')">💰 รับแปลฟรี (Ads)</button>
+            </nav>
+
+            <!-- TAB 1: Games Library -->
+            <div class="tab-content active" id="gamesTab">
+                <div class="section-title">
+                    <span>โฟลเดอร์เกมที่ดึงเข้ามาในมือถือ</span>
+                    <button class="scan-btn" onclick="scanFolder()">🔄 สแกนซ้ำ</button>
+                </div>
+
+                <!-- Game 2: 悪堕ち魔法少女クリッカー -->
+                <div class="game-card featured" onclick="inspectGame(2)">
+                    <div class="game-badge active">กำลังแปลผ่าน Go Server ⚡</div>
+                    <div class="game-header">
+                        <div class="game-icon-box">魔法</div>
+                        <div class="game-info">
+                            <h2 class="game-title">悪堕ち魔法少女クリッカー</h2>
+                            <span class="game-subtitle">Akudochi Mahou Shoujo Clicker</span>
+                            <div class="game-path">/home/jop/Downloads/New Folder (1)/.../悪堕ち魔法少女クリッカー/</div>
+                        </div>
+                    </div>
+                    <div class="game-meta">
+                        <span class="meta-tag">Engine: RPG Maker MZ</span>
+                        <span class="meta-tag">Files: 36 JSONs</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="game2Progress" style="width: 45%;"></div>
+                    </div>
+                    <div class="progress-status">
+                        <span id="game2Status">กำลังแปลภาษาด้วย Go Server (Port 8080)...</span>
+                        <span class="click-detail">แตะเพื่อดูไฟล์ ➔</span>
+                    </div>
+                </div>
+
+                <!-- Game 1: FRAGILE PRINCESS -->
+                <div class="game-card" onclick="inspectGame(1)">
+                    <div class="game-badge success">แปลเสร็จแล้ว 100% ✅</div>
+                    <div class="game-header">
+                        <div class="game-icon-box fragile">FP</div>
+                        <div class="game-info">
+                            <h2 class="game-title">FRAGILE PRINCESS Ver 1.1.1</h2>
+                            <span class="game-subtitle">RJ01647202</span>
+                            <div class="game-path">/home/jop/Downloads/New Folder/.../FRAGILE_PRINCESS_Ver_1_1_1/</div>
+                        </div>
+                    </div>
+                    <div class="game-meta">
+                        <span class="meta-tag">Engine: RPG Maker MV</span>
+                        <span class="meta-tag">Strings: 4,117 Lines</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill done" style="width: 100%;"></div>
+                    </div>
+                    <div class="progress-status">
+                        <span>พร้อมเข้าเล่นภาษาไทยแล้ว</span>
+                        <span class="click-detail">แตะเพื่อดูไฟล์ ➔</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: NST Go Server Live Monitor -->
+            <div class="tab-content" id="translatorTab">
+                <div class="server-status-card">
+                    <div class="server-status-header">
+                        <div class="status-indicator online"></div>
+                        <h3>NST Go Translation Server</h3>
+                    </div>
+                    <p class="server-url">Endpoint: <code>http://localhost:8080/api/v1/translate</code></p>
+                    <div class="server-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">15.0</span>
+                            <span class="stat-label">ประโยค/วินาที</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">14478</span>
+                            <span class="stat-label">TCP Port</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">Active</span>
+                            <span class="stat-label">Cache Engine</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="test-translator-box">
+                    <h4>ทดสอบส่งแปลสดไปยัง Go Server (ใช้ 1 ⚡)</h4>
+                    <textarea id="sampleInput" rows="2" placeholder="ใส่ข้อความภาษาญี่ปุ่น...">\N[1]は\V[10]ゴールドを手に入れた！</textarea>
+                    <button class="action-btn" onclick="testTranslate()">🚀 แปลผ่าน NST Go Server</button>
+                    
+                    <div class="result-box" id="testResultBox" style="display:none;">
+                        <span class="result-label">ผลลัพธ์จาก Go Server:</span>
+                        <div class="result-text" id="testResultText"></div>
+                        <span class="cache-badge" id="testCacheBadge"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Meta Audience Network Rewarded Monetization -->
+            <div class="tab-content" id="monetizeTab">
+                <div class="monetize-card">
+                    <div class="meta-logo-row">
+                        <span class="meta-icon">∞</span>
+                        <span class="meta-title">Meta Audience Network</span>
+                    </div>
+                    <h2>ดูโฆษณาเพื่อแปลเกมฟรี!</h2>
+                    <p>ระบบ Rewarded Ads แบบไม่มีค่าใช้จ่าย รับพลังงานแปลเกมฟรี +50 ⚡ ต่อการรับชม 1 ครั้ง</p>
+                    
+                    <div class="reward-box">
+                        <div class="reward-current">
+                            <span>พลังงานคงเหลือ</span>
+                            <strong id="tabEnergyCount">150 ⚡</strong>
+                        </div>
+                        <button class="watch-ad-btn" onclick="openAdModal()">
+                            🎬 รับชมโฆษณา Meta (+50 ⚡)
+                        </button>
+                    </div>
+
+                    <div class="ad-benefit-list">
+                        <div class="benefit-item">✨ ไม่ต้องมีบัตรเครดิต</div>
+                        <div class="benefit-item">✨ รองรับโมเดล NST Go Server & Google API</div>
+                        <div class="benefit-item">✨ ปลดล็อกแปลเกมฉบับเต็มฟรี</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation Bar -->
+            <div class="bottom-nav">
+                <span class="nav-info">NST Mobile 1.0 • Connected to Localhost Server</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: Meta Audience Network Rewarded Ad Simulation -->
+    <div class="modal-overlay" id="adModal">
+        <div class="ad-modal-card">
+            <div class="meta-ad-header">
+                <span class="meta-brand-tag">Meta Audience Network • Rewarded Video</span>
+                <span class="ad-timer" id="adTimer">5s</span>
+            </div>
+            
+            <div class="ad-video-screen">
+                <div class="ad-animation-box">
+                    <div class="ad-logo-pulse">Meta</div>
+                    <p class="ad-sponsor-text">🌟 เล่นเกม RPG ญี่ปุ่นภาษาไทยง่ายๆ ผ่าน NST Server App</p>
+                    <div class="ad-reward-badge">+50 FREE ENERGY</div>
+                </div>
+            </div>
+
+            <div class="ad-footer">
+                <button class="close-ad-btn" id="closeAdBtn" disabled onclick="closeAdModal(true)">
+                    ⏳ กรุณารับชมจนจบ (5s)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Game File Inspector -->
+    <div class="modal-overlay" id="gameInspectModal">
+        <div class="inspect-modal-card">
+            <div class="inspect-header">
+                <h3 id="inspectTitle">รายละเอียดโฟลเดอร์เกม</h3>
+                <button class="icon-close" onclick="closeInspectModal()">✕</button>
+            </div>
+            <div class="inspect-body">
+                <div class="inspect-path" id="inspectPath"></div>
+                <div class="file-list-title">โครงสร้างไฟล์ data/*.json ในเกม:</div>
+                <div class="file-list" id="inspectFileList">
+                    <!-- Dynamic File List -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

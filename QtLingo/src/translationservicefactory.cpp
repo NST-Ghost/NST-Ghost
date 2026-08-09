@@ -70,6 +70,7 @@ public:
         loadPlugins();
         QStringList services = {"Google Translate", "LLM Translation"};
         services.append(m_pluginMap.keys());
+        services.removeDuplicates();
         return services;
     }
 

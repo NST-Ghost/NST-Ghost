@@ -47,12 +47,23 @@ MainWindow::MainWindow(QWidget *parent)
        statusBar()->showMessage("Translation Service Error: " + message, 5000); 
     });
 
+    // Connect progress updates to GlobalStatusWidget in status bar
+    connect(m_translationServiceManager, &TranslationServiceManager::progressUpdated, this, [this](int current, int total) {
+        if (m_globalStatusWidget) {
+            m_globalStatusWidget->updateProgress(current, total);
+        }
+    });
+
     // Initialize global status BEFORE children widget creation
     m_globalStatusWidget = new GlobalStatusWidget(this);
     statusBar()->addPermanentWidget(m_globalStatusWidget);
     
     connect(m_globalStatusWidget, &GlobalStatusWidget::tableStatusClicked, this, [this]() {
-        if (m_projectTabBar->count() > 0 && m_projectTabBar->currentIndex() != -1) {
+        QWidget *curr = m_stackedWidget ? m_stackedWidget->currentWidget() : nullptr;
+        FileTranslationWidget *fileWidget = qobject_cast<FileTranslationWidget*>(curr);
+        if (fileWidget) {
+            fileWidget->showProgressConsole();
+        } else if (m_projectTabBar && m_projectTabBar->count() > 0 && m_projectTabBar->currentIndex() != -1) {
             onProjectTabChanged(m_projectTabBar->currentIndex());
         }
     });

@@ -14,6 +14,7 @@
 #include <QTextStream>
 #include <QDateTime>
 
+#include <QElapsedTimer>
 #include <QDir>
 
 static void writeLogToFile(const QString &msg) {
@@ -56,8 +57,10 @@ bool LuaWorker::initLua()
     lua_pushstring(L, fi.fileName().toUtf8().constData());
     lua_setglobal(L, "__script_name");
 
-    // Register HTTP function
-    lua_register(L, "nst_http_request", lua_http_request);
+    // Register HTTP function with 'this' upvalue for UI logging
+    lua_pushlightuserdata(L, this);
+    lua_pushcclosure(L, LuaWorker::lua_http_request, 1);
+    lua_setglobal(L, "nst_http_request");
 
     // Register Sleep function
     lua_register(L, "nst_sleep", [](lua_State* L) -> int {
@@ -113,11 +116,12 @@ int LuaWorker::lua_log(lua_State *L)
 
 int LuaWorker::lua_http_request(lua_State *L)
 {
-    // Arguments: url, method, headers (table), body
+    LuaWorker* worker = static_cast<LuaWorker*>(lua_touserdata(L, lua_upvalueindex(1)));
     const char* urlStr = luaL_checkstring(L, 1);
     const char* method = luaL_optstring(L, 2, "GET");
     
     QNetworkRequest request(QUrl(QString::fromUtf8(urlStr)));
+    request.setTransferTimeout(60000); // 60s network timeout
     
     // Process headers
     if (lua_istable(L, 3)) {
@@ -135,7 +139,14 @@ int LuaWorker::lua_http_request(lua_State *L)
         body = QByteArray(lua_tostring(L, 4));
     }
 
-    writeLogToFile(QString("[HTTP REQUEST] %1 %2 | Body len: %3").arg(method, urlStr).arg(body.size()));
+    QElapsedTimer httpTimer;
+    httpTimer.start();
+
+    QString reqLog = QString("[HTTP SEND] %1 %2 (Payload: %3 bytes)").arg(method, urlStr).arg(body.size());
+    writeLogToFile(reqLog);
+    if (worker) {
+        emit worker->logMessage(reqLog);
+    }
 
     // Perform request synchronously (blocking this worker thread)
     QNetworkAccessManager manager;
@@ -151,11 +162,32 @@ int LuaWorker::lua_http_request(lua_State *L)
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     loop.exec();
 
-    // Return result: body, status_code, headers
+    qint64 elapsedMs = httpTimer.elapsed();
     QByteArray responseBody = reply->readAll();
     int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    
-    writeLogToFile(QString("[HTTP RESPONSE] Status: %1 | Reply len: %2").arg(statusCode).arg(responseBody.size()));
+
+    if (reply->error() != QNetworkReply::NoError) {
+        QString errStr = QString("[HTTP ERROR] %1 %2 -> Status: %3, Error: %4 (%5 ms)")
+                             .arg(method, urlStr)
+                             .arg(statusCode)
+                             .arg(reply->errorString())
+                             .arg(elapsedMs);
+        writeLogToFile(errStr);
+        if (worker) {
+            emit worker->logMessage(errStr);
+            emit worker->errorOccurred(errStr);
+        }
+    } else {
+        QString okStr = QString("[HTTP RECV] %1 %2 -> Status: %3 OK (%4 bytes, %5 ms)")
+                            .arg(method, urlStr)
+                            .arg(statusCode)
+                            .arg(responseBody.size())
+                            .arg(elapsedMs);
+        writeLogToFile(okStr);
+        if (worker) {
+            emit worker->logMessage(okStr);
+        }
+    }
 
     lua_pushlstring(L, responseBody.constData(), responseBody.size());
     lua_pushinteger(L, statusCode);
@@ -432,11 +464,20 @@ void LuaWorker::processBatchTranslation(const QStringList &sourceTexts)
         }
         lua_pop(L, 2);
     } else {
+        QString luaErr = lua_isstring(L, -1) ? QString::fromUtf8(lua_tostring(L, -1)) : "Unknown Lua Error";
+        QString errStr = QString("[LUA ERROR] Batch execution failed: %1").arg(luaErr);
+        writeLogToFile(errStr);
+        emit logMessage(errStr);
+        emit errorOccurred(errStr);
         lua_pop(L, lua_gettop(L));
     }
 
     if (!batchSuccess) {
-        writeLogToFile(QString("[BATCH FALLBACK] Batch translation failed or returned incomplete data. Falling back to sequential mode for %1 items...").arg(sourceTexts.size()));
+        QString fallbackMsg = QString("[WARN] Batch translation returned incomplete data (%1/%2 items). Retrying sequentially...")
+                                  .arg(results.size()).arg(sourceTexts.size());
+        writeLogToFile(fallbackMsg);
+        emit logMessage(fallbackMsg);
+
         results.clear();
         for (const QString &text : sourceTexts) {
             lua_getglobal(L, "on_text_extract");
@@ -450,6 +491,8 @@ void LuaWorker::processBatchTranslation(const QStringList &sourceTexts)
                     results.append({text, res});
                     lua_pop(L, 2);
                 } else {
+                    QString err = lua_isstring(L, -1) ? QString::fromUtf8(lua_tostring(L, -1)) : "Error";
+                    emit logMessage(QString("[LUA ERROR] Item extract failed: %1").arg(err));
                     lua_pop(L, lua_gettop(L));
                     results.append({text, text});
                 }

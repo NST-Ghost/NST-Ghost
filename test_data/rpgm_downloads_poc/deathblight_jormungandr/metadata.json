@@ -1,0 +1,29 @@
+{
+  "article": {
+    "id": "675",
+    "title": "Deathblight Jormungandr",
+    "slug": "deathblight-jormungandr-HJ888",
+    "viewsCount": 141,
+    "engine": {
+      "name": "rpgm"
+    }
+  },
+  "all_downloads": [
+    {
+      "id": "1871",
+      "name": "[Windows] Storage",
+      "type": "DIRECT_FILE",
+      "url": "public/deathblight-jormungandr-HJ888/2026/07/1783613102558779410/Deathblight_Jormungandr_v1.0.7z",
+      "isActive": true
+    }
+  ],
+  "compressed_downloads": [
+    {
+      "id": "1871",
+      "name": "[Windows] Storage",
+      "type": "DIRECT_FILE",
+      "url": "public/deathblight-jormungandr-HJ888/2026/07/1783613102558779410/Deathblight_Jormungandr_v1.0.7z",
+      "isActive": true
+    }
+  ]
+}

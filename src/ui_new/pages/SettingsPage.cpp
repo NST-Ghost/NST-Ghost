@@ -68,6 +68,7 @@ void SettingsPage::setupUI()
     m_comboLlmProvider = new QComboBox(llmGroup);
     m_comboLlmProvider->addItem("None", "");
     m_comboLlmProvider->addItem("OpenAI", "openai");
+    m_comboLlmProvider->addItem("MaxPlus AI", "maxplus");
     m_comboLlmProvider->addItem("Anthropic", "anthropic");
     m_comboLlmProvider->addItem("Custom", "custom");
     llmForm->addRow("Provider:", m_comboLlmProvider);

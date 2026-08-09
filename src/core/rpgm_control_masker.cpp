@@ -45,8 +45,22 @@ RpgmControlMasker::MaskResult RpgmControlMasker::mask(const QString &sourceText)
     );
 
     QString text = sourceText;
-    QRegularExpressionMatchIterator it = rpgmControlRegex.globalMatch(sourceText);
     int tagIndex = 0;
+
+    // 1. Mask Plugin Command Key Prefixes (e.g. X座標 =, Y座標 =, テキスト =, スクリプト =, etc.)
+    static const QRegularExpression pluginPrefixRegex(
+        QStringLiteral("^(?:X座標|Y座標|テキスト|スクリプト|スイッチ|変数|ピクチャID|透明度|拡大率)\\s*=\\s*"),
+        QRegularExpression::CaseInsensitiveOption
+    );
+    QRegularExpressionMatch prefixMatch = pluginPrefixRegex.match(sourceText);
+    if (prefixMatch.hasMatch()) {
+        QString prefix = prefixMatch.captured(0);
+        QString tag = QString("__NST_TAG_%1__").arg(tagIndex++);
+        result.tagMap[tag] = prefix;
+        result.hasMaskedTags = true;
+    }
+
+    QRegularExpressionMatchIterator it = rpgmControlRegex.globalMatch(sourceText);
 
     while (it.hasNext()) {
         QRegularExpressionMatch match = it.next();

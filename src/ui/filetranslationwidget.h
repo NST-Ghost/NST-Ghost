@@ -74,6 +74,8 @@ public:
     void setDefaultDeploymentPath(const QString &path);
     QString defaultDeploymentPath() const;
 
+    void showProgressConsole();
+
     void openFontManager(); // Added
     
     bool loadProjectFile(const QString &filePath);

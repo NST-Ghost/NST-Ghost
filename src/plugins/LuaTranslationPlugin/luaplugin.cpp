@@ -43,6 +43,9 @@ void LuaTranslationPlugin::scanScripts()
     QDirIterator it(scriptDir.absolutePath(), {"*.lua"}, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filePath = it.next();
+        if (filePath.contains("/templates/") || filePath.contains("/template/")) {
+            continue;
+        }
         QFileInfo fileInfo(filePath);
         QString fileName = fileInfo.fileName();
         

@@ -1,0 +1,6 @@
+nst-server-go
+*.exe
+*.exe.stackdump
+*.so
+*.dylib
+*.dll

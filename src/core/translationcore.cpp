@@ -380,11 +380,25 @@ void TranslationCore::processIncomingResults()
 bool TranslationCore::isLikelyCode(const QString &text) const
 {
     if (text.isEmpty()) return true;
-    if (text.length() < 2) return false;
-    
-    static const QRegularExpression codeRegex("^[{}\\[\\]();,<>]+$|[a-zA-Z0-9_]+\\(.*\\)");
-    if (codeRegex.match(text).hasMatch()) return true;
-    
+
+    // Quick non-ASCII check (Kanji, Hiragana, Katakana, Thai, Cyrillic, Hangul)
+    for (const QChar &c : text) {
+        ushort u = c.unicode();
+        if ((u >= 0x3000 && u <= 0x9FFF) || (u >= 0x0E00 && u <= 0x0E7F) || 
+            (u >= 0x0400 && u <= 0x04FF) || (u >= 0xAC00 && u <= 0xD7AF)) {
+            return false;
+        }
+    }
+
+    static const QRegularExpression codePattern(
+        R"(^(function\b|void\b|var\b|let\b|const\b|import\b|return\b|if\s*\(|while\s*\(|for\s*\()|\b(this\.|SceneManager\.|Graphics\.|AudioManager\.|renpy\.|config\.)|;\s*$)",
+        QRegularExpression::CaseInsensitiveOption
+    );
+    if (codePattern.match(text.trimmed()).hasMatch()) return true;
+
+    static const QRegularExpression pureSymbols("^[{}\\[\\]();,<>=\\+\\-\\*\\/\\%\\&\\|]+$");
+    if (pureSymbols.match(text.trimmed()).hasMatch()) return true;
+
     return false;
 }
 

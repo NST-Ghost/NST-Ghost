@@ -577,6 +577,12 @@ void FileTranslationWidget::processIncomingResults()
         QString sourceText = queuedResult.result.sourceText;
         QString translatedText = queuedResult.result.translatedText;
 
+        // Empty Translation Guard: Prevents saving empty string "" for a non-empty source text
+        if (translatedText.trimmed().isEmpty() && !sourceText.trimmed().isEmpty()) {
+            qWarning() << "[NST] Translation returned empty string for:" << sourceText << "- falling back to sourceText.";
+            translatedText = sourceText;
+        }
+
         // RPG Maker Pre-Translation Control Code Restoration (Unmasking)
         if (RpgmControlMasker::isRpgmEngine(m_engineName)) {
             if (m_rpgmTagMaps.contains(sourceText)) {
@@ -1464,9 +1470,28 @@ void FileTranslationWidget::cancelTranslation()
 
 bool FileTranslationWidget::isLikelyCode(const QString &text) const
 {
-    // Simple heuristic
-    if (text.contains("{") && text.contains("}")) return true;
-    if (text.contains(";") && text.contains("=")) return true;
+    if (text.isEmpty()) return true;
+
+    // Quick non-ASCII check (Kanji, Hiragana, Katakana, Thai, Cyrillic, Hangul)
+    for (const QChar &c : text) {
+        ushort u = c.unicode();
+        if ((u >= 0x3000 && u <= 0x9FFF) || (u >= 0x0E00 && u <= 0x0E7F) || 
+            (u >= 0x0400 && u <= 0x04FF) || (u >= 0xAC00 && u <= 0xD7AF)) {
+            return false;
+        }
+    }
+
+    // Code statements like function calls, variable assignments, or JS/Python/C# code lines
+    static const QRegularExpression codePattern(
+        R"(^(function\b|void\b|var\b|let\b|const\b|import\b|return\b|if\s*\(|while\s*\(|for\s*\()|\b(this\.|SceneManager\.|Graphics\.|AudioManager\.|renpy\.|config\.)|;\s*$)",
+        QRegularExpression::CaseInsensitiveOption
+    );
+    if (codePattern.match(text.trimmed()).hasMatch()) return true;
+
+    // Pure code symbols with no words
+    static const QRegularExpression pureSymbols("^[{}\\[\\]();,<>=\\+\\-\\*\\/\\%\\&\\|]+$");
+    if (pureSymbols.match(text.trimmed()).hasMatch()) return true;
+
     return false;
 }
 
@@ -1570,4 +1595,14 @@ void FileTranslationWidget::onDataCleared()
     m_fileListModel->clear();
     m_translationModel->clear();
 }
+
+void FileTranslationWidget::showProgressConsole()
+{
+    if (m_progressConsoleDialog) {
+        m_progressConsoleDialog->show();
+        m_progressConsoleDialog->raise();
+        m_progressConsoleDialog->activateWindow();
+    }
+}
+
 

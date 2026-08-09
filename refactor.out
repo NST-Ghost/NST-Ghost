@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/home/jop/work/NST/NST/refactor_ui.py", line 155, in <module>
-    refactor_ui("/home/jop/work/NST/NST/src/dialogs/settingsdialog.ui")
-    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/jop/work/NST/NST/refactor_ui.py", line 114, in refactor_ui
-    l1.append(pro_group)
-    ~~~~~~~~~^^^^^^^^^^^
-TypeError: append() argument 1 must be xml.etree.ElementTree.Element, not None

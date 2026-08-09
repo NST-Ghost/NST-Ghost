@@ -13,9 +13,14 @@
 #include "plugins/LuaScriptManager.h"
 #endif
 
+#include <QDirIterator>
+#include <QProcess>
+#include <QUrl>
+
 PluginManagerDialog::PluginManagerDialog(QWidget* parent) : QDialog(parent) {
     setWindowTitle("Plugin Manager");
-    resize(700, 500);
+    resize(700, 520);
+    setAcceptDrops(true);
     
     auto* layout = new QVBoxLayout(this);
     auto* splitter = new QSplitter(Qt::Vertical);
@@ -24,7 +29,7 @@ PluginManagerDialog::PluginManagerDialog(QWidget* parent) : QDialog(parent) {
     auto* topWidget = new QWidget;
     auto* topLayout = new QVBoxLayout(topWidget);
     
-    topLayout->addWidget(new QLabel("Available Plugins:"));
+    topLayout->addWidget(new QLabel("Available Plugins (Drag & Drop .zip / .yaml / .lua files here):"));
     m_pluginList = new QListWidget;
     topLayout->addWidget(m_pluginList);
     
@@ -55,11 +60,13 @@ PluginManagerDialog::PluginManagerDialog(QWidget* parent) : QDialog(parent) {
     
     // Buttons
     auto* btnLayout = new QHBoxLayout;
+    m_importBtn = new QPushButton("Import Plugin (.zip/.yaml/.lua)");
     m_installBtn = new QPushButton("Install Dependencies");
     m_runActionBtn = new QPushButton("Run Action");
     auto* reloadBtn = new QPushButton("Reload Plugins");
     auto* closeBtn = new QPushButton("Close");
     
+    btnLayout->addWidget(m_importBtn);
     btnLayout->addWidget(m_installBtn);
     btnLayout->addWidget(m_runActionBtn);
     btnLayout->addWidget(reloadBtn);
@@ -68,6 +75,7 @@ PluginManagerDialog::PluginManagerDialog(QWidget* parent) : QDialog(parent) {
     layout->addLayout(btnLayout);
     
     connect(m_pluginList, &QListWidget::currentRowChanged, this, &PluginManagerDialog::onPluginSelected);
+    connect(m_importBtn, &QPushButton::clicked, this, &PluginManagerDialog::onImportClicked);
     connect(m_installBtn, &QPushButton::clicked, this, &PluginManagerDialog::onInstallClicked);
     connect(m_runActionBtn, &QPushButton::clicked, this, &PluginManagerDialog::onRunActionClicked);
     connect(reloadBtn, &QPushButton::clicked, this, &PluginManagerDialog::onReloadClicked);
@@ -81,20 +89,121 @@ PluginManagerDialog::PluginManagerDialog(QWidget* parent) : QDialog(parent) {
 #endif
     
     loadPlugins();
-    appendLog("Plugin Manager initialized");
+    appendLog("Plugin Manager initialized (Drag & drop .zip / .yaml / .lua supported)");
+}
+
+void PluginManagerDialog::dragEnterEvent(QDragEnterEvent* event) {
+    if (event->mimeData()->hasUrls()) {
+        event->acceptProposedAction();
+    }
+}
+
+void PluginManagerDialog::dropEvent(QDropEvent* event) {
+    if (!event->mimeData()->hasUrls()) return;
+
+    bool imported = false;
+    for (const QUrl& url : event->mimeData()->urls()) {
+        QString filePath = url.toLocalFile();
+        if (!filePath.isEmpty()) {
+            if (importPluginFile(filePath)) {
+                imported = true;
+            }
+        }
+    }
+
+    if (imported) {
+        onReloadClicked();
+    }
+}
+
+void PluginManagerDialog::onImportClicked() {
+    QString filePath = QFileDialog::getOpenFileName(
+        this,
+        "Import Plugin Package or Script",
+        QString(),
+        "Plugin Files (*.zip *.yaml *.yml *.lua);;ZIP Archives (*.zip);;YAML Files (*.yaml *.yml);;Lua Scripts (*.lua);;All Files (*)"
+    );
+
+    if (!filePath.isEmpty()) {
+        if (importPluginFile(filePath)) {
+            onReloadClicked();
+        }
+    }
+}
+
+bool PluginManagerDialog::importPluginFile(const QString& filePath) {
+    QFileInfo fileInfo(filePath);
+    if (!fileInfo.exists()) return false;
+
+    QString ext = fileInfo.suffix().toLower();
+    QString baseName = fileInfo.completeBaseName();
+    QString targetBaseDir = QDir::current().filePath("scripts/lua");
+    QDir().mkpath(targetBaseDir);
+
+    if (ext == "zip") {
+        QString destDir = targetBaseDir + "/" + baseName;
+        QDir().mkpath(destDir);
+
+        appendLog("Extracting plugin archive: " + fileInfo.fileName() + " -> " + destDir);
+#ifdef Q_OS_WIN
+        int code = QProcess::execute("powershell", {"-Command", QString("Expand-Archive -Path '%1' -DestinationPath '%2' -Force").arg(filePath, destDir)});
+#else
+        int code = QProcess::execute("unzip", {"-o", filePath, "-d", destDir});
+#endif
+        if (code == 0) {
+            appendLog("[OK] Extracted zip plugin successfully: " + baseName);
+            return true;
+        } else {
+            appendLog("[FAIL] Failed to extract zip file: " + filePath);
+            return false;
+        }
+    } else if (ext == "yaml" || ext == "yml" || ext == "lua") {
+        QString destPath = targetBaseDir + "/" + fileInfo.fileName();
+        if (QFile::exists(destPath)) {
+            QFile::remove(destPath);
+        }
+        if (QFile::copy(filePath, destPath)) {
+            appendLog("[OK] Imported script file: " + fileInfo.fileName());
+            return true;
+        } else {
+            appendLog("[FAIL] Failed to copy script file: " + filePath);
+            return false;
+        }
+    } else {
+        appendLog("[FAIL] Unsupported plugin file format: ." + ext);
+        return false;
+    }
 }
 
 void PluginManagerDialog::loadPlugins() {
     m_pluginList->clear();
     
 #ifdef HAS_LUA
-    QString scriptPath = QCoreApplication::applicationDirPath() + "/scripts";
+    QString scriptPath = QDir::current().filePath("scripts/lua");
     QDir scriptDir(scriptPath);
     if (!scriptDir.exists()) {
         scriptDir.mkpath(".");
     }
     
-    for (const QString& file : scriptDir.entryList({"*.lua"}, QDir::Files)) {
+    // Auto convert any .yaml to .lua using yaml2lua converter
+    LuaScriptManager::instance().loadScriptsFromDir(scriptPath);
+
+    QDirIterator it(scriptPath, {"*.lua"}, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        QString fullPath = it.next();
+        if (fullPath.contains("/templates/") || fullPath.contains("/template/")) {
+            continue;
+        }
+        QString relPath = scriptDir.relativeFilePath(fullPath);
+        QString file = QFileInfo(fullPath).fileName();
+        
+        // Auto-register / auto-mark as Installed & Enabled if not explicitly disabled
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
+        if (!settings.contains("Plugins/" + file + "/Installed")) {
+            settings.setValue("Plugins/" + file + "/Installed", true);
+            settings.setValue("Plugins/" + file + "/Enabled", true);
+        }
+
         m_pluginList->addItem(file);
     }
     
@@ -102,6 +211,9 @@ void PluginManagerDialog::loadPlugins() {
         m_pluginList->addItem("(No plugins found in " + scriptPath + ")");
         m_installBtn->setEnabled(false);
         m_runActionBtn->setEnabled(false);
+    } else {
+        m_installBtn->setEnabled(true);
+        m_runActionBtn->setEnabled(true);
     }
 #else
     m_pluginList->addItem("(Lua support not available)");
@@ -116,8 +228,8 @@ void PluginManagerDialog::appendLog(const QString& msg) {
 
 QString PluginManagerDialog::getPluginStatus(const QString& pluginName) {
     QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
-    bool installed = settings.value("Plugins/" + pluginName + "/Installed", false).toBool();
-    bool enabled = settings.value("Plugins/" + pluginName + "/Enabled", false).toBool();
+    bool installed = settings.value("Plugins/" + pluginName + "/Installed", true).toBool();
+    bool enabled = settings.value("Plugins/" + pluginName + "/Enabled", true).toBool();
     
     QString status;
     if (installed) status += "[OK] Installed";
@@ -134,7 +246,7 @@ void PluginManagerDialog::onPluginSelected() {
     if (!item) return;
     
     QString pluginName = item->text();
-    QString scriptPath = QCoreApplication::applicationDirPath() + "/scripts";
+    QString scriptPath = QDir::current().filePath("scripts/lua");
     
     m_infoText->setText(
         "Plugin: " + pluginName + "\n" +
@@ -143,7 +255,7 @@ void PluginManagerDialog::onPluginSelected() {
     );
     
     QSettings settings(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
-    bool enabled = settings.value("Plugins/" + pluginName + "/Enabled", false).toBool();
+    bool enabled = settings.value("Plugins/" + pluginName + "/Enabled", true).toBool();
     m_enableCheckBox->setChecked(enabled);
     
     appendLog("Selected plugin: " + pluginName);
@@ -218,7 +330,7 @@ void PluginManagerDialog::onRunActionClicked() {
 void PluginManagerDialog::onReloadClicked() {
 #ifdef HAS_LUA
     appendLog("Reloading plugins...");
-    QString scriptPath = QCoreApplication::applicationDirPath() + "/scripts";
+    QString scriptPath = QDir::current().filePath("scripts/lua");
     LuaScriptManager::instance().loadScriptsFromDir(scriptPath);
     LuaScriptManager::instance().registerAPI();
     loadPlugins();

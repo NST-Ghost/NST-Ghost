@@ -60,6 +60,9 @@ public:
 private slots:
     void updateLlmModelComboBox();
     void fetchLlmModels();
+    void fetchPluginModels();
+    void updateLlmModelVisibility(bool animate = true);
+    void updatePluginModelVisibility(bool animate = true);
     void testConnection();
     void updateLuaPluginEngineUI(const QString &scriptName);
 

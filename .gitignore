@@ -71,3 +71,5 @@ renpy_rs/demo-renpy/
 unity_assets_rs/demo/
 BGA/godot-tools-demo/
 Unit-Test/
+*.xz
+

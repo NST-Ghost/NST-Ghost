@@ -1,0 +1,21 @@
+{
+  "article": {
+    "id": "677",
+    "title": "Succum Brewery",
+    "slug": "succum-brewery-HJ892",
+    "viewsCount": 182,
+    "engine": {
+      "name": "rpgm"
+    }
+  },
+  "all_downloads": [
+    {
+      "id": "1873",
+      "name": "[Android/Windows/Mac] Itch",
+      "type": "DIRECT_FILE",
+      "url": "https://succumdev.itch.io/succum-brewery",
+      "isActive": true
+    }
+  ],
+  "compressed_downloads": []
+}

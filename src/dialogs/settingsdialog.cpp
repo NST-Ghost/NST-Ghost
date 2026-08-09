@@ -21,6 +21,8 @@
 #include <QTextStream>
 #include <QElapsedTimer>
 #include <QDateTime>
+#include <QGraphicsOpacityEffect>
+#include <QPropertyAnimation>
 #include <lua.hpp>
 
 #include "src/llm_translation_service.h"
@@ -33,11 +35,14 @@ static QString resolveScriptPath(const QString &scriptName) {
     QFileInfo luaSub(dir.absoluteFilePath("lua/" + scriptName));
     if (luaSub.exists()) return luaSub.absoluteFilePath();
 
-    // 2. Search recursively across scripts directory
+    // 2. Search recursively across scripts directory (excluding templates)
     QDirIterator it(dir.absolutePath(), QStringList() << "*.lua", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         it.next();
-        if (it.fileName() == scriptName) {
+        if (it.filePath().contains("/templates/") || it.filePath().contains("/template/")) {
+            continue;
+        }
+        if (it.fileName() == scriptName || it.filePath().endsWith(scriptName)) {
             return it.filePath();
         }
     }
@@ -77,6 +82,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
     ui->llmProviderComboBox->addItems({
         "NodeNetwork PAYG",
         "OpenAI",
+        "MaxPlus AI",
         "DeepSeek",
         "Claude",
         "Google AI Studio",
@@ -123,10 +129,15 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     connect(ui->llmProviderComboBox, &QComboBox::currentIndexChanged, this, &SettingsDialog::updateLlmModelComboBox);
     connect(ui->fetchModelsButton, &QPushButton::clicked, this, &SettingsDialog::fetchLlmModels);
+    connect(ui->fetchPluginModelsButton, &QPushButton::clicked, this, &SettingsDialog::fetchPluginModels);
 
     connect(ui->testConnectionBtn, &QPushButton::clicked, this, &SettingsDialog::testConnection);
     connect(ui->clearConsoleBtn, &QPushButton::clicked, [this]() {
         ui->devConsoleEdit->clear();
+    });
+
+    connect(ui->llmApiKeyEdit, &QLineEdit::textChanged, [this]() {
+        updateLlmModelVisibility(true);
     });
 
     // Connect Lua Plugin ComboBox changes
@@ -139,6 +150,7 @@ SettingsDialog::SettingsDialog(QWidget *parent)
             QSettings s(QSettings::IniFormat, QSettings::UserScope, "NST", "PluginSettings");
             s.setValue("Plugins/" + scriptName + "/Settings/api_key", text);
         }
+        updatePluginModelVisibility(true);
     });
 
     connect(ui->pluginBaseUrlEdit, &QLineEdit::textChanged, [this](const QString &text) {
@@ -159,6 +171,8 @@ SettingsDialog::SettingsDialog(QWidget *parent)
 
     updateLlmModelComboBox();
     setupPluginsUI();
+    updateLlmModelVisibility(false);
+    updatePluginModelVisibility(false);
 
     // --- Parallel Translation Workers & Console Log Settings ---
     QGroupBox *parallelGroupBox = new QGroupBox("Performance & Parallel Translation Pipeline", this);
@@ -415,6 +429,9 @@ void SettingsDialog::updateLlmModelComboBox()
     } else if (provider == "Google Vertex AI") {
         ui->llmModelComboBox->addItems({"gemini-1.5-flash", "gemini-1.5-pro"});
         ui->llmBaseUrlEdit->setPlaceholderText("Full Vertex AI generateContent endpoint URL");
+    } else if (provider == "MaxPlus AI") {
+        ui->llmModelComboBox->addItems({"gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet", "deepseek-v3", "deepseek-r1"});
+        ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.maxplus-ai.cc/v1)");
     } else if (provider == "Groq") {
         ui->llmModelComboBox->addItems({"llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"});
         ui->llmBaseUrlEdit->setPlaceholderText("(Leave empty for default: https://api.groq.com/openai/v1)");
@@ -461,6 +478,7 @@ void SettingsDialog::fetchLlmModels()
     QString baseUrl = llmBaseUrl().trimmed();
     if (baseUrl.isEmpty()) {
         if (provider == "OpenAI") baseUrl = "https://api.openai.com/v1";
+        else if (provider == "MaxPlus AI") baseUrl = "https://api.maxplus-ai.cc/v1";
         else if (provider == "Groq") baseUrl = "https://api.groq.com/openai/v1";
         else if (provider == "DeepSeek") baseUrl = "https://api.deepseek.com";
         else if (provider == "MistralAI") baseUrl = "https://api.mistral.ai/v1";
@@ -510,6 +528,133 @@ void SettingsDialog::fetchLlmModels()
         }
         reply->deleteLater();
     });
+}
+
+void SettingsDialog::fetchPluginModels()
+{
+    QString scriptName = ui->luaPluginComboBox->currentText();
+    QString apiKey = ui->pluginApiKeyEdit->text().trimmed();
+    QString baseUrl = ui->pluginBaseUrlEdit->text().trimmed();
+
+    if (apiKey.isEmpty()) {
+        QMessageBox::warning(this, "Fetch Models", "Please enter an API Key first.");
+        return;
+    }
+
+    if (baseUrl.isEmpty()) {
+        baseUrl = ui->pluginBaseUrlEdit->placeholderText();
+        if (baseUrl.contains("http")) {
+            int start = baseUrl.indexOf("http");
+            int end = baseUrl.indexOf(")", start);
+            if (end == -1) end = baseUrl.length();
+            baseUrl = baseUrl.mid(start, end - start).trimmed();
+        }
+    }
+
+    if (!baseUrl.isEmpty() && baseUrl.startsWith("http")) {
+        baseUrl = baseUrl.trimmed();
+        if (baseUrl.endsWith("/")) baseUrl.chop(1);
+        QUrl url(baseUrl.endsWith("/v1") ? baseUrl + "/models" : baseUrl + "/v1/models");
+        QNetworkRequest request(url);
+        request.setRawHeader("Authorization", "Bearer " + apiKey.toUtf8());
+
+        QNetworkReply *reply = m_networkManager->get(request);
+        connect(reply, &QNetworkReply::finished, this, [this, reply, scriptName]() {
+            if (reply->error() == QNetworkReply::NoError) {
+                QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+                if (doc.isObject() && doc.object().contains("data")) {
+                    QJsonArray data = doc.object()["data"].toArray();
+                    QStringList models;
+                    for (const QJsonValue &val : data) {
+                        if (val.isObject() && val.toObject().contains("id")) {
+                            QString id = val.toObject()["id"].toString();
+                            if (!id.isEmpty()) {
+                                models.append(id);
+                            }
+                        }
+                    }
+                    
+                    if (!models.isEmpty()) {
+                        models.sort();
+                        ui->pluginModelComboBox->clear();
+                        ui->pluginModelComboBox->addItems(models);
+                        QMessageBox::information(this, "Fetch Models", QString("Successfully fetched %1 models for %2.").arg(models.size()).arg(scriptName));
+                        reply->deleteLater();
+                        return;
+                    }
+                }
+            }
+            // Fallback to updateLuaPluginEngineUI
+            updateLuaPluginEngineUI(scriptName);
+            reply->deleteLater();
+        });
+    } else {
+        updateLuaPluginEngineUI(scriptName);
+    }
+}
+
+void SettingsDialog::updateLlmModelVisibility(bool animate)
+{
+    bool hasKey = !ui->llmApiKeyEdit->text().trimmed().isEmpty();
+    QWidget* label = ui->llmModelLabel;
+    QWidget* box = ui->llmModelComboBox;
+    QWidget* btn = ui->fetchModelsButton;
+
+    if (!hasKey) {
+        label->setVisible(false);
+        box->setVisible(false);
+        btn->setVisible(false);
+    } else {
+        if (!box->isVisible()) {
+            label->setVisible(true);
+            box->setVisible(true);
+            btn->setVisible(true);
+            if (animate) {
+                for (QWidget* w : {label, box, btn}) {
+                    QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(w);
+                    w->setGraphicsEffect(effect);
+                    QPropertyAnimation *anim = new QPropertyAnimation(effect, "opacity");
+                    anim->setDuration(300);
+                    anim->setStartValue(0.0);
+                    anim->setEndValue(1.0);
+                    connect(anim, &QPropertyAnimation::finished, effect, &QObject::deleteLater);
+                    anim->start(QAbstractAnimation::DeleteWhenStopped);
+                }
+            }
+        }
+    }
+}
+
+void SettingsDialog::updatePluginModelVisibility(bool animate)
+{
+    bool hasKey = !ui->pluginApiKeyEdit->text().trimmed().isEmpty();
+    QWidget* label = ui->label_pluginModel;
+    QWidget* box = ui->pluginModelComboBox;
+    QWidget* btn = ui->fetchPluginModelsButton;
+
+    if (!hasKey) {
+        label->setVisible(false);
+        box->setVisible(false);
+        btn->setVisible(false);
+    } else {
+        if (!box->isVisible()) {
+            label->setVisible(true);
+            box->setVisible(true);
+            btn->setVisible(true);
+            if (animate) {
+                for (QWidget* w : {label, box, btn}) {
+                    QGraphicsOpacityEffect *effect = new QGraphicsOpacityEffect(w);
+                    w->setGraphicsEffect(effect);
+                    QPropertyAnimation *anim = new QPropertyAnimation(effect, "opacity");
+                    anim->setDuration(300);
+                    anim->setStartValue(0.0);
+                    anim->setEndValue(1.0);
+                    connect(anim, &QPropertyAnimation::finished, effect, &QObject::deleteLater);
+                    anim->start(QAbstractAnimation::DeleteWhenStopped);
+                }
+            }
+        }
+    }
 }
 
 void SettingsDialog::updateLuaPluginEngineUI(const QString &scriptName)
@@ -665,6 +810,12 @@ void SettingsDialog::loadPluginList()
     QDirIterator it(scriptDir.absolutePath(), QStringList() << "*.lua", QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filePath = it.next();
+        
+        // Skip template folders and example scripts
+        if (filePath.contains("/templates/") || filePath.contains("/template/")) {
+            continue;
+        }
+
         QString fileName = it.fileName();
 
         lua_State *L = luaL_newstate();

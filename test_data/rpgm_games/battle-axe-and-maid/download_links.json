@@ -1,0 +1,58 @@
+[
+  {
+    "id": "639",
+    "name": "[Windows] Gofile",
+    "type": "DIRECT_FILE",
+    "url": "https://gofile.io/d/mPW5rA",
+    "isActive": true
+  },
+  {
+    "id": "638",
+    "name": "[Windows] Catbox",
+    "type": "DIRECT_FILE",
+    "url": "https://files.catbox.moe/0dusrs.xz",
+    "isActive": true
+  },
+  {
+    "id": "637",
+    "name": "[Windows] Send",
+    "type": "DIRECT_FILE",
+    "url": "https://send.now/k04se5s981xh",
+    "isActive": true
+  },
+  {
+    "id": "636",
+    "name": "[Windows] Pixeldrain",
+    "type": "DIRECT_FILE",
+    "url": "https://pixeldrain.com/u/gCuu2TnA",
+    "isActive": true
+  },
+  {
+    "id": "635",
+    "name": "[Windows] Dgdrive",
+    "type": "DIRECT_FILE",
+    "url": "https://dgdrive.site/p54lw7i3rsnu",
+    "isActive": true
+  },
+  {
+    "id": "634",
+    "name": "[Windows] Uploadhive",
+    "type": "DIRECT_FILE",
+    "url": "https://uploadhive.com/1tpr3etpn7zz",
+    "isActive": true
+  },
+  {
+    "id": "633",
+    "name": "[Windows] Krakenfiles",
+    "type": "DIRECT_FILE",
+    "url": "https://krakenfiles.com/view/KSFSt4w83J/file.html",
+    "isActive": true
+  },
+  {
+    "id": "632",
+    "name": "[Windows] Buzzheavier",
+    "type": "DIRECT_FILE",
+    "url": "https://buzzheavier.com/h5zkom89z4rz",
+    "isActive": true
+  }
+]

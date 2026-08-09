@@ -115,8 +115,12 @@ void TranslationServiceManager::processNextTranslation()
         worker->currentBatch.clear();
 
         if (worker->service->supportsBatchTranslation()) {
-            int maxItems = 100;
-            int maxChars = 15000;
+            QSettings qsettings;
+            int maxItems = qsettings.value("Translation/BatchSize", 25).toInt();
+            int maxChars = qsettings.value("Translation/BatchMaxChars", 4000).toInt();
+            if (maxItems < 1) maxItems = 25;
+            if (maxChars < 500) maxChars = 4000;
+
             int currentChars = 0;
 
             while (!m_translationQueue.isEmpty() && worker->currentBatch.size() < maxItems) {
@@ -148,6 +152,8 @@ void TranslationServiceManager::processNextTranslation()
 void TranslationServiceManager::onWorkerBatchDone(WorkerSlot *worker, const QList<qtlingo::TranslationResult> &results)
 {
     if (!worker) return;
+
+    emit logMessage(QString("[WORKER-%1] Completed batch of %2 items").arg(worker->id + 1).arg(results.size()));
 
     worker->retryCount = 0;
     worker->currentBatch.clear();

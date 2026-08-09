@@ -1,0 +1,16 @@
+name: "MaxPlus AI"
+version: "1.0.0"
+author: "Community"
+description: "MaxPlus AI LLM Translation Plugin via OpenAI-compatible API"
+
+settings:
+  base_url: "https://api.maxplus-ai.cc/v1"
+  default_model: "gpt-4o-mini"
+  models:
+    - "gpt-4o"
+    - "gpt-4o-mini"
+    - "claude-3-5-sonnet"
+    - "deepseek-v3"
+    - "deepseek-r1"
+
+temperature: 0.3

@@ -14,6 +14,15 @@ LuaScriptManager& LuaScriptManager::instance() {
 #include <QDirIterator>
 
 void LuaScriptManager::loadScriptsFromDir(const QString& dir) {
+    QString goConverterPath = QDir::current().filePath("tools/yaml2lua");
+    QString pyConverterPath = QDir::current().filePath("tools/yaml_to_lua_converter.py");
+    
+    if (QFile::exists(goConverterPath)) {
+        QProcess::execute(goConverterPath, {dir});
+    } else if (QFile::exists(pyConverterPath)) {
+        QProcess::execute("python3", {pyConverterPath, dir});
+    }
+
     QDirIterator it(dir, {"*.lua"}, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         QString filePath = it.next();

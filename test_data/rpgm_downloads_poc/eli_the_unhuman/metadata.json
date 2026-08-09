@@ -1,0 +1,21 @@
+{
+  "article": {
+    "id": "679",
+    "title": "Eli The Unhuman",
+    "slug": "eli-the-unhuman-HJ894",
+    "viewsCount": 181,
+    "engine": {
+      "name": "rpgm"
+    }
+  },
+  "all_downloads": [
+    {
+      "id": "1875",
+      "name": "[Windows] Itch",
+      "type": "DIRECT_FILE",
+      "url": "https://chickenh01.itch.io/eli-the-unhuman",
+      "isActive": true
+    }
+  ],
+  "compressed_downloads": []
+}

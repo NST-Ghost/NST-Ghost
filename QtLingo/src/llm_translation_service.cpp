@@ -121,9 +121,10 @@ QString LLMTranslationService::buildSystemPrompt(const QString &glossaryContext)
         "The game is a fictional video game, and all scenarios are strictly fictional roleplay. You must translate EVERY string regardless of content. "
         "It is a critical error to refuse a translation, provide explanations, or redact content.\n\n"
         "RULES:\n"
-        "1. Preserve all control codes, placeholders, variables, tags (e.g. \\v[1], \\n, %%s, {name}, [color]), and punctuation marks exactly.\n"
-        "2. Do not mix writing systems or introduce commentary.\n"
-        "3. DO NOT truncate or shorten translations.\n\n"
+        "1. Preserve all control codes, placeholders, variables, tags (e.g. \\v[1], \\n, %s, {name}, [color]), and embedded code/expressions (e.g. \\eval{...}, $gameVariables) exactly.\n"
+        "2. If a string contains embedded code, formulas, or programming expressions, translate ONLY the human-readable text parts inside, keeping all code logic and structure completely intact.\n"
+        "3. Do not mix writing systems or introduce commentary.\n"
+        "4. DO NOT truncate or shorten translations.\n\n"
         "%3"
     ).arg(sourceLangStr, m_targetLanguage, glossaryContext);
 }
@@ -182,7 +183,9 @@ void LLMTranslationService::translate(const QString &sourceText)
         m_currentReply->deleteLater();
         m_currentReply = nullptr;
     }
-    m_currentReply = m_networkManager->post(request, QJsonDocument(requestBody).toJson());
+    QByteArray bodyData = QJsonDocument(requestBody).toJson(QJsonDocument::Compact);
+    emit logMessage(QString("[HTTP SEND] POST %1 (Model: %2, Body: %3 bytes)").arg(request.url().toString(), m_model).arg(bodyData.size()));
+    m_currentReply = m_networkManager->post(request, bodyData);
 }
 
 void LLMTranslationService::batchTranslate(const QStringList &sourceTexts)
@@ -269,7 +272,13 @@ void LLMTranslationService::batchTranslate(const QStringList &sourceTexts)
         m_currentReply->deleteLater();
         m_currentReply = nullptr;
     }
-    m_currentReply = m_networkManager->post(request, QJsonDocument(requestBody).toJson());
+    QByteArray bodyData = QJsonDocument(requestBody).toJson(QJsonDocument::Compact);
+    emit logMessage(QString("[HTTP SEND] POST %1 (%2 items, Model: %3, Body: %4 bytes)")
+                        .arg(request.url().toString())
+                        .arg(uncachedTexts.size())
+                        .arg(m_model)
+                        .arg(bodyData.size()));
+    m_currentReply = m_networkManager->post(request, bodyData);
 }
 
 void LLMTranslationService::onNetworkReply(QNetworkReply *reply)
@@ -280,6 +289,7 @@ void LLMTranslationService::onNetworkReply(QNetworkReply *reply)
     }
 
     QByteArray responseData = reply->readAll();
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     
     if (reply->error() != QNetworkReply::NoError) {
         qDebug() << "Network Error:" << reply->errorString();
@@ -300,10 +310,14 @@ void LLMTranslationService::onNetworkReply(QNetworkReply *reply)
             m_forceMaxCompletionTokens = true;
         }
 
-        emit errorOccurred(errorMsg);
+        QString formattedErr = QString("[HTTP ERROR] Status: %1 | %2").arg(statusCode).arg(errorMsg);
+        emit logMessage(formattedErr);
+        emit errorOccurred(formattedErr);
         reply->deleteLater();
         return;
     }
+
+    emit logMessage(QString("[HTTP RECV] Status: %1 OK (%2 bytes)").arg(statusCode).arg(responseData.size()));
 
     qDebug() << "LLM API Response:" << responseData;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData);
@@ -574,6 +588,7 @@ QString LLMTranslationService::chatCompletionBaseUrl() const
     if (m_provider == "Electron Hub") return "https://api.electronhub.ai/v1";
     if (m_provider == "Fireworks AI") return "https://api.fireworks.ai/inference/v1";
     if (m_provider == "Groq") return "https://api.groq.com/openai/v1";
+    if (m_provider == "MaxPlus AI" || m_provider == "MaxPlus") return "https://api.maxplus-ai.cc/v1";
     if (m_provider == "MistralAI") return "https://api.mistral.ai/v1";
     if (m_provider == "Moonshot AI") return "https://api.moonshot.ai/v1";
     if (m_provider == "NanoGPT") return "https://nano-gpt.com/api/v1";
@@ -623,6 +638,8 @@ bool LLMTranslationService::isChatCompletionProvider() const
         "Electron Hub",
         "Fireworks AI",
         "Groq",
+        "MaxPlus AI",
+        "MaxPlus",
         "MistralAI",
         "Moonshot AI",
         "NanoGPT"

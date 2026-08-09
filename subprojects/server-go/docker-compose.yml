@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  nst-server-go:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nst_server_go
+    restart: unless-stopped
+    ports:
+      - "14478:14478" # TCP Socket (compatible with NST / MTool protocol)
+      - "8080:8080"   # HTTP REST API (/api/v1/translate, /health)
+    environment:
+      - TCP_PORT=14478
+      - HTTP_PORT=8080
+      - BACKEND_URL=http://my-llm-backend:8000/v1/chat/completions # Change to your backend URL
+      - API_KEY=your_optional_api_key
+      - LLM_MODEL=qwen2.5-7b
+      - SOURCE_LANG=Japanese
+      - TARGET_LANG=Thai

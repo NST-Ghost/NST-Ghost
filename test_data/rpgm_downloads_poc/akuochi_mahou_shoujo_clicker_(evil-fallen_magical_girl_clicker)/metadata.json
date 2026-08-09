@@ -1,0 +1,29 @@
+{
+  "article": {
+    "id": "711",
+    "title": "Akuochi Mahou Shoujo Clicker (Evil-Fallen Magical Girl Clicker)",
+    "slug": "akuochi-mahou-shoujo-clicker-evil-fallen-magical-girl-clicker-HJ928",
+    "viewsCount": 54,
+    "engine": {
+      "name": "rpgm"
+    }
+  },
+  "all_downloads": [
+    {
+      "id": "1912",
+      "name": "[Windows] Storage",
+      "type": "DIRECT_FILE",
+      "url": "public/akuochi-mahou-shoujo-clicker-evil-fallen-magical-girl-clicker-HJ928/2026/08/1785687490575274318/RJ01399977.7z",
+      "isActive": true
+    }
+  ],
+  "compressed_downloads": [
+    {
+      "id": "1912",
+      "name": "[Windows] Storage",
+      "type": "DIRECT_FILE",
+      "url": "public/akuochi-mahou-shoujo-clicker-evil-fallen-magical-girl-clicker-HJ928/2026/08/1785687490575274318/RJ01399977.7z",
+      "isActive": true
+    }
+  ]
+}

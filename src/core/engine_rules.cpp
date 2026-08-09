@@ -33,6 +33,10 @@ bool EngineRules::isRpgmNonText(const QString &text)
     static const QRegularExpression rpgmAssetRef("^(bgm|se|bgs|me|img)/", QRegularExpression::CaseInsensitiveOption);
     if (rpgmAssetRef.match(text).hasMatch()) return true;
 
+    // Common RPG Maker Tileset Image Names (e.g. World_A1, Outside_A1, Dungeon_A1, SF_Outside_B)
+    static const QRegularExpression rpgmTilesetPattern(R"(^(World|Outside|Inside|Dungeon|SF_Outside|SF_Inside|SF_Outside_A\d|SF_Inside_A\d)_[A-E][1-5]?$)", QRegularExpression::CaseInsensitiveOption);
+    if (rpgmTilesetPattern.match(text).hasMatch()) return true;
+
     return false;
 }
 
@@ -101,6 +105,15 @@ bool EngineRules::isGlobalNonText(const QString &text)
 {
     if (text.isEmpty()) return true;
 
+    // Quick non-ASCII check (Kanji, Hiragana, Katakana, Thai, Cyrillic, Hangul)
+    for (const QChar &c : text) {
+        ushort u = c.unicode();
+        if ((u >= 0x3000 && u <= 0x9FFF) || (u >= 0x0E00 && u <= 0x0E7F) || 
+            (u >= 0x0400 && u <= 0x04FF) || (u >= 0xAC00 && u <= 0xD7AF)) {
+            return false;
+        }
+    }
+
     if (isNumericOrSymbol(text)) return true;
     if (isFilePathOrMedia(text)) return true;
     if (isVariableLike(text)) return true;
@@ -121,7 +134,11 @@ bool EngineRules::isNumericOrSymbol(const QString &text)
 
 bool EngineRules::isFilePathOrMedia(const QString &text)
 {
-    return text.contains("/") || text.contains(".png") || text.contains(".ogg") || text.contains(".json") || text.contains(".wav") || text.contains(".mp3") || text.contains(".mat");
+    if (text.contains(" ")) return false; // Natural dialogue with spaces is not a file path
+    static const QRegularExpression mediaExt(R"(\.(png|jpg|jpeg|gif|bmp|webp|ogg|mp3|wav|m4a|flac|json|mat|prefab|asset|dll|so|exe)$)", QRegularExpression::CaseInsensitiveOption);
+    if (mediaExt.match(text).hasMatch()) return true;
+    if (text.startsWith("img/") || text.startsWith("audio/") || text.startsWith("bgm/") || text.startsWith("se/") || text.startsWith("bgs/") || text.startsWith("data/")) return true;
+    return false;
 }
 
 bool EngineRules::isVariableLike(const QString &text)
@@ -133,16 +150,10 @@ bool EngineRules::isVariableLike(const QString &text)
 bool EngineRules::isCamelCase(const QString &text)
 {
     if (text.contains(" ")) return false;
-    static QRegularExpression regex("^[a-zA-Z0-9]+$");
-    if (!regex.match(text).hasMatch()) return false;
-
-    bool hasUpper = false;
-    bool hasLower = false;
-    for (const QChar &c : text) {
-        if (c.isUpper()) hasUpper = true;
-        if (c.isLower()) hasLower = true;
-    }
-    return hasUpper && hasLower;
+    if (text.length() < 3) return false;
+    // Only match lowerCamelCase method/variable identifiers like getScriptPath, onButtonClick
+    static QRegularExpression regex("^[a-z]+[A-Z0-9][a-zA-Z0-9]*$");
+    return regex.match(text).hasMatch();
 }
 
 bool EngineRules::isSnakeCase(const QString &text)
@@ -150,14 +161,16 @@ bool EngineRules::isSnakeCase(const QString &text)
     if (text.contains(" ")) return false;
     if (!text.contains("_")) return false;
     
-    static QRegularExpression regex("^[a-zA-Z0-9_]+$");
-    return regex.match(text).hasMatch();
+    // Only match system variables like sys_var, img_01, snd_click
+    static QRegularExpression sysVar(R"(^(sys|img|snd|bgm|se|bgs|flag|var|tmp|str|num|id|key)_[a-zA-Z0-9_]+$)", QRegularExpression::CaseInsensitiveOption);
+    return sysVar.match(text).hasMatch();
 }
 
 bool EngineRules::isTagOrMarkup(const QString &text)
 {
-    static QRegularExpression regex("^(\\<.*\\>|\\[.*\\]|\\{.*\\})$");
-    return regex.match(text).hasMatch();
+    // Only match pure empty system HTML/XML tags without inner text, like "<br/>", "</p>", "<hr>"
+    static QRegularExpression systemTag(R"(^<[a-zA-Z0-9_\-\s="/]+>$)", QRegularExpression::CaseInsensitiveOption);
+    return systemTag.match(text).hasMatch();
 }
 
 bool EngineRules::isTechnicalOrHex(const QString &text)
